@@ -1,0 +1,15 @@
+# Godot
+.godot/
+*.tmp
+*.aybak
+export/builds/
+
+# Node / toolchain
+node_modules/
+tools/godot-node/godot-*.mjs
+tools/godot-node/package-lock.json
+
+# OS/editor junk
+.DS_Store
+Thumbs.db
+*.swp

@@ -109,14 +109,14 @@ Event-based recording (не video, ADR-004). Событие = фиксирова
 
 ```
 struct RunEvent {
-  t: int16        # время от старта забега, децисекунды (0.1s), max 3259 с
+  t: int32        # время от старта забега, децисекунды (0.1s), cap ~68 h
   type: uint8     # enum RunEventType (ниже)
   room: uint8     # index RoomData в AreaGraph (≤255)
   x: int16; y: int16; z: int16   # room-local, см (0.01m), clamp ±327m
   ry: uint8       # rotation Y, град 0–359
   target: uint16  # entity id (enemy/chest/npc id в run-локациях) или 0
   data: uint8     # тип-специфичное поле (weapon idx / item idx / dir idx)
-}  # 12 байт на событие (в JSON-save — компактный массив [t,type,room,x,y,z,ry,target,data])
+}  # 14 байт на событие (в JSON-save — компактный массив [t,type,room,x,y,z,ry,target,data])
 ```
 
 RunEventType (enum):

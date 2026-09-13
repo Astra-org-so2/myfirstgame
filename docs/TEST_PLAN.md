@@ -1,6 +1,6 @@
 # AFTER YOU — Test Plan
 
-Версия: 0.1 (Phase 0). Связанные: ARCHITECTURE.md §3 (порты),
+Версия: 0.2 (Phase 0, GDD v2.0). Связанные: ARCHITECTURE.md §3 (порты),
 TECHNICAL_DESIGN.md §13 (риг).
 
 ---
@@ -70,19 +70,38 @@ Runner:
 | Damage/health | урон/крит/блок; death; multiple hits; heal clamp; status | 4 |
 | Inventory | add/stack/remove; capacity; equipment slots; drop-in-world flag | 6 |
 | Loot | seeded table: распределение, rarity, dup-правила; determinism | 6 |
-| Upgrades | tier-эффекты, stack-ограничения, stat-resolve | 6 |
+| Inheritance | resolve 1/3 (perma, unique); NPC-gate (NPC dead → недоступно);
+  behavior-gate (RUNNER: fled>10); «gameplay, не +5%» (эффект =
+  WEAPON_DESIGN-таблица); UX ≤10 s (timeout → random) | 6 |
 | Save/Load | roundtrip; version migration v1→v2; corrupt JSON → recovery; crc mismatch → .bak; missing keys → defaults; atomic (kill mid-write — симуляция: tmp-файл остаётся, основной валиден) | 15 (первые в 8) |
 | RNG streams | splitmix64 determinism; independence streams; seed range | 7 |
 | Room gen | seed A/B/A' детерминизм; нет изолятов; нет «дверь без цели»; spawn-пробы; difficulty-монотонность; fallback после 8 fail | 7 |
 | Run recorder | event capture по EventBus; лимит 4096 (sampling); size cap; run-summary компактность | 8 |
-| Run events | сериализация/десериализация (roundtrip 12-байтовая запись); quantization bounds | 8 |
-| World state | apply_change validation; idempotency; unknown-id → skip+log; dropped_items cap | 10 |
+| Run events | сериализация/десериализация (roundtrip 14-байтовая запись,
+  int32-t); quantization bounds; sampling при >4096 | 8 |
+| World state | apply_change validation; idempotency; unknown-id → skip+log;
+  dropped_items cap; **notes roundtrip** (write → RUN N+1 → read,
+  4 stands, 5-line pool); **memory_stats** (агрегация, dominant_style);
+  «Что изменилось» (≤5 строк, 1 строка = 1 flag) | 10 |
 | Ghost replay | timeline build (keyframes); room remap (совпадает/отсутствует); interpolation monotonic speed; navmesh clamp | 9 |
-| FSM (враг) | transition table (allowed/denied); state timing; interrupt rules; per-archetype invariants | 5 |
-| Echo builder | из RunSummary: weapon/паттерн selection; edge: пустая история → default | 5/10 |
-| Mystery triggers | condition evaluation (run_count, choice, ghost_complete); stage progression | 11 |
+| FSM (враг) | transition table (allowed/denied); state timing; interrupt rules;
+  per-archetype invariants (5: Hollow/Remnant/Watcher/Mimic/Forgotten) | 5 |
+| Echo builder | Remnant: из RunEvent/RunSummary (path/weapon/style, best run);
+  Mimic: dominant_style resolve (punish-паттерн); Watcher: anchor set
+  (≤2/run) → Memory Echo (следующий забег); Forgotten: whisper pool
+  (история игрока: notes/replicas); edge: пустая история → default | 5/9/10 |
+| Mystery triggers | condition evaluation (flag-gating: stage N+1 только после flag N;
+  run_count, choice); stage progression; **ambiguity-тест** (ни одна
+  реплика/событие не «отвечает» «запись или живой» — проверка по
+  DIALOGUE_GUIDELINES §7) | 11 |
 | UI state machine | screen stack push/pop; input-routing per screen; pause/resume | 13 (часть с 1-й UI-фазы) |
 | Quality presets | apply preset → значения сессов (shadow/fog/particles) | 16 |
+| Scripted anchors | A1–A17 (FIRST_30_MINUTES): триггеры срабатывают (window,
+  не таймер); pillar/blade/Hollow/camp+note/figure/combat/sealed door;
+  first death window ~20 мин (A19); RUN 02: door-open + #1 (B4) | 8/11 |
+| Boss (The First) | phase transitions (Wandering/Workshop); паттерн-память
+  (threshold 3, parry, reset 3); core-hit window (2/4 s, FIRST BLADE);
+  take/leave choice; death → K7 transformation (flags) | 12 |
 
 ## 4. Integration-тесты (end-to-end в риге)
 

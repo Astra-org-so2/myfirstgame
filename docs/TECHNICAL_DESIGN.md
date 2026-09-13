@@ -1,6 +1,7 @@
 # AFTER YOU — Technical Design (data model, форматы, алгоритмы)
 
-Версия: 0.1 (Phase 0). Связанные: ARCHITECTURE.md, DECISIONS.md.
+Версия: 0.2 (Phase 0, GDD v2.0). Связанные: ARCHITECTURE.md, DECISIONS.md,
+docs/design/*.
 
 ---
 
@@ -12,7 +13,8 @@ load-time, ошибка регистрации = push_error + skip, не crash).
 
 ### WeaponData
 ```
-id: StringName            # "weapon_sword"
+id: StringName            # "weapon_blade" | "weapon_hand_cannon" |
+                           #  "weapon_echo_staff" | "weapon_first_blade"
 display_name: String
 damage: int               # базовый урон
 attack_speed: float       # сек/удар (cooldown базовой атаки)
@@ -21,17 +23,41 @@ range: float              # метры hitbox
 arc: float                # угловой сектор hitbox (deg)
 knockback: Vector2        # сила / время
 stamina_cost: int
-type: enum {melee, ranged}
-ranged: {ammo: int, projectile_speed: float, projectile_scene: PackedScene}
+type: enum {melee, ranged, staff}
+ranged: {ammo: int, reload_count: int, projectile_speed: float,
+         projectile_scene: PackedScene, noise: int}
+  # HAND CANNON: ammo 5/забег, reload_count 1 (WEAPON_DESIGN §2.2)
+staff: {actions: {name: StringName, cooldown: float, range: float,
+                  target: enum{self, enemy, echo}, effect: StaffEffectRef}}
+  # ECHO STAFF: read/disrupt/soothe/shatter (WEAPON_DESIGN §3.2)
+special: {name: StringName, cooldown: float, window: float}
+  # BLADE: riposte (0.5 s window); FIRST BLADE: core_hit (boss-only)
+core_hit: bool            # true только для FIRST BLADE (BOSS_DESIGN §3.3)
 vfx: {swing: PackedScene, hit: PackedScene}
 audio: {swing: AudioStream, hit: AudioStream}
 model_scene: PackedScene  # визуал оружия (mount)
 color_tint: Color
 ```
 
+### InheritanceData (meta; заменяет UpgradeData v0.1)
+```
+id: StringName            # "sharp", "flow", "ember", ...
+display_name: String
+description: String       # 1 строка, «что делает» (без чисел, DIALOGUE §5)
+gate: enum {none, npc, behavior}
+npc_id: StringName|null   # npc-gate: EMBER=Mara, TRACK=Orren, PAGE=Nia,
+                          #        COMPASS=Cartographer (PROGRESSION §1)
+behavior: {stat: StringName, op, value}  # behavior-gate (RUNNER: fled>10)
+effect: InheritanceEffectRef  # gameplay-эффект (не «+5%»: WEAPON_DESIGN
+                              #   upgrade-таблица; PROGRESSION_DESIGN §1)
+mvp_pool: bool            # 12 в MVP-pool / 3 post-MVP
+```
+
+
 ### EnemyData
 ```
-id: StringName            # "stalker"
+id: StringName            # "hollow" | "remnant" | "watcher" |
+                           #  "mimic" | "forgotten" (ENEMY_DESIGN)
 display_name: String
 health: int
 move_speed: float / detect_speed: float
@@ -43,8 +69,15 @@ attack: AttackData {windup: float, active: float, recovery: float,
                    damage, knockback, range, arc|aoe_radius,
                    projectile: RangedData|null, vfx, audio}
 ai: {update_hz: float, path_update_hz: float, idle_radius: float}
+memory: {anchor_set: bool,           # Watcher: наблюдение → memory anchor
+         mirror_style: bool,         # Mimic: зеркало dominant_style
+         whisper_pool: StringName,   # Forgotten: pool фраз (история игрока)
+         mirror_ahead: float}        # False Echo: 0.5 s (ECHO §5)
+  # агрессивность — от memory_stats (ENEMY_DESIGN §7: slayer/runner/
+  # explorer/consistent-style) — data: data/memory_stats_thresholds.tres
 model_scene: PackedScene
-death: {vfx, audio, drops: LootTableRef, score_value: int}
+death: {vfx, audio, drops: LootTableRef, score_value: int,
+        footprint: bool}             # true → след остаётся (WORLD_STATE)
 ```
 
 ### ItemData
@@ -54,14 +87,6 @@ stack_max: int,
 effect: ItemEffectRef (лечит X / +stamina / осколки / narrative),
 icon: Texture2D, model_scene: PackedScene|null,
 can_drop_in_world: bool   # true → при смерти/броске остаётся в мире (memory!)
-```
-
-### UpgradeData (legacy, meta)
-```
-id, display_name, description, tier_cost: [int, int, int]  # 3 уровня
-effect: UpgradeEffectRef {stat, op(+ / * / set), value}
-  # stat: max_hp, dodge_cd, damage_mult, stamina, detect_noise, loot_weight...
-unique: bool
 ```
 
 ### RoomData
@@ -123,17 +148,21 @@ RunEventType (enum):
 ```
 ENTER_ROOM, ATTACK, ATTACK_HIT, ENEMY_KILLED, CHEST_OPENED, ITEM_PICKED,
 ITEM_DROPPED, NPC_TALKED, NPC_KILLED, EVENT_COMPLETED, CHOICE_MADE,
-PLAYER_DIED, PLAYER_SPAWNED, GHOST_WATCHED (для mystery M4)
+PLAYER_DIED, PLAYER_SPAWNED, GHOST_WATCHED (M3-seed),
+NOTE_WRITTEN, ANCHOR_SET (Watcher → Memory Echo), ECHO_TRIGGER,
+ECHO_NOTE_READ (#6), MUMMY_EXAMINED (#5)
 ```
 
 **Лимиты и политика:**
 - ≤ 4096 событий на забег; переполнение → «sampling»: события ATTACK
   дуплицируются → каждая 2-я (флаг в RunHeader); остальное — truncation
   с log (ghost воспроизводит до конца лога, дальше — stand).
-- Полные логи сохраняются для **последних 3 забегов**; остальные —
+- Полные логи сохраняются для **всех забегов** (MVP: ~10–15 runs,
+  ~150 КБ; ADR-004-правка); старые (post-MVP, `runs_max: 50`) —
   `RunSummary` (seed, duration, death_cause, kills, rooms_visited,
-  major_events: ≤16 самых значимых, legacy_earned, weapon_used,
-  mystery_flags) — для Echo-врага, M1/M2, «Что изменилось».
+  major_events: ≤16 самых значимых, inheritance_earned, weapon_used,
+  mystery_flags, dominant_style) — для Remnant («лучший забег» =
+  best run: max playtime+kills), M1/M2, «Что изменилось».
 - Запись: только по событиям EventBus (никаких per-frame записей).
   Движение ghost восстанавливается интерполяцией между keyframes
   (ENTER_ROOM/ATTACK/ITEM_*...), см. §5.
@@ -149,9 +178,10 @@ PLAYER_DIED, PLAYER_SPAWNED, GHOST_WATCHED (для mystery M4)
   "saved_at_unix": 1757760000,
   "engine_version": "4.7.2",
   "world": { ...WorldState... },
-  "player": { legacy: {id: tier}, shards: 120, memories: 3,
+  "player": { inheritances: [StringName], trust: {npc: int},
               total_deaths: 7, best_run: {...} },
-  "runs": { "full": [ RunRecord x3 ], "summaries": [RunSummary xN≤64] },
+  "runs": { "full": [ RunRecord xN (все, MVP) ],
+              "summaries": [RunSummary xN≤64] },
   "settings": { quality: "high", master: 0.8, music: 0.7, sfx: 0.9,
                 muted: false, video: {...} },
   "stats": {...},
@@ -184,17 +214,29 @@ PLAYER_DIED, PLAYER_SPAWNED, GHOST_WATCHED (для mystery M4)
 ```
 {
   version: 1,
-  world_id: "forgotten_forest_v1",     # стабильный id мира
+  world_id: "forgotten_forest_v1",     # стабильный id мира (The Forgotten Forest)
   run_count: int,
+  flags: {flag_id: bool},                # WORLD_STATE_DESIGN §2 (20+ flags)
   discovered: [StringName],
-  killed_npcs: [StringName],
+  npcs: {npc_id: {alive, trust, interactions, gifts_given}},  # §5
   completed_events: [StringName],
-  choices: {choice_id: int},
+  choices: {choice_id: int},             # take/leave FIRST BLADE, ...
   opened_shortcuts: [StringName],
   unlocked_rooms: [StringName],
   dropped_items: [{item_id, room, pos, run}],   # ≤64, старые — «рассеиваются»
+  notes: [{note_id, run_id, stand_id, line_id, t}],  # §4 (4 stands, 5-line pool)
+  last_death_pos: {room, pos}|null,      # → мумия #5
+  anchors: [{room, pos, run}],           # Watcher → Memory Echo (≤2/run)
   ghosts: {last_run_ref, markers: [{room, pos, run}]},
-  mystery_progress: {mystery_id: int_stage}
+  memory: {kills, fled, explored, notes_written, dominant_style,
+           npc_killed, child_hit, strange_actions, deaths, runs_completed},
+  # memory_stats — скрытые счётчики (WORLD_STATE_DESIGN §3)
+  inheritances: [StringName],            # §7 (15: 12 MVP + 3 post-MVP)
+  weapons: {blade, cannon, staff, first_blade_taken},  # §7
+  transform: {boss_defeated, fog_density, light_temp, gate_glow,
+              city_visible, echo_budget, footprint_permanent, npc_calm},
+  # K7 transformation (WORLD_STATE_DESIGN §6)
+  mystery_progress: {mystery_id: int_stage}   # M1–M4 (MYSTERY_REVEAL_MAP)
 }
 ```
 Мутации WorldState — только через `WorldDirector.apply_change(change, source)`:
@@ -215,10 +257,12 @@ PLAYER_DIED, PLAYER_SPAWNED, GHOST_WATCHED (для mystery M4)
    `opened_shortcut` = перманентно, `npc_killed` = перманентно,
    `item_picked` = run-scoped, если не can_drop_in_world).
 
-## 5. Ghost replay (алгоритм)
+## 5. Ghost replay (алгоритм) — Passive Echo
 
 Вход: `RunRecord` (последний full-лог) + текущий AreaGraph (seed текущего
-забега).
+забега). (Budget per ADR-014: 1 Passive + 1 Combat (Remnant — enemy,
+Phase 5) + 1 «специальный» (Memory|Forgotten|False) = max 3/run (MVP);
+RUN 1: 0, RUN 02: 2, RUN 03: 2, RUN 04+: до 3; post-boss: -2.)
 
 1. **Таймлайн:** события лога → keyframes `K[i] = (t, room, pos_local, ry,
    action)`. Позиция в room-local (записывается таковой — ADR-003).
@@ -287,8 +331,10 @@ Touch (future): виртуальные кнопки = те же actions.
   одновременных SFX, prioritized), `play_music(track, crossfade)`,
   `play_ambience(area_id)`.
 - Наборы (MVP): footsteps (4 surfaces), weapon swing/hit (per weapon),
-  enemy attack/death (per archetype), UI (6), ambient (3 areas), music
-  (2: exploration, combat) + 1 stinger (mystery).
+  enemy attack/death (per archetype), UI (6), ambient (3 areas),
+  music: **одна мелодия «The Wound» ×5 вариаций** (Normal/Memory/Echo/
+  Archivist/Ending, GDD v2.0 §7) + ambient-слои + 1 stinger (boss reveal);
+  звуковой язык слоёв (WORLD_BIBLE §1.1: distortion/reversed/whispers/reverb).
 - Форматы: OGG (music/ambience), WAV (SFX short, 44.1k stereo).
 
 ## 9. VFX (MVP-набор, все — пул)
@@ -300,13 +346,15 @@ mystery glow (emissive pulse), boss telegraph (ground decal + particles).
 
 ## 10. UI screens (список + states)
 
-HUD (health bar, stamina bar, weapon icon, interact prompt, ghost marker
+HUD (health bar, stamina bar, weapon icon, interact prompt, echo marker
 «след впереди»), Inventory (12 grid + equipment 3 slots), Dialogue
-(portrait, text, choices), Pause (resume/settings/quit-to-hub), Settings
-(video: quality preset, resolution, vsync; audio: 3 vols + mute; controls
-remap `?`), DeathScreen («вы умерли. Мир запомнил.» + что изменилось
-(≤3 строки) + continue → 1 нажатие), RunSummary (статистика забега +
-выбор legacy upgrade 1/3), Journal («Памяти» — mystery-записки).
+(portrait, text, choices max 2), Pause (resume/settings/quit-to-hub),
+Settings (video: quality preset, resolution, vsync; audio: 3 vols + mute;
+controls remap `?`), DeathScreen («вы умерли. Мир запомнил.» +
+Inheritance-карточки 1/3 (UX ≤10 s) + «Что изменилось» (≤5 строк) +
+continue → 1 нажатие), RunSummary (статистика забега + выбор
+Inheritance 1/3), Journal («Записки» — player notes (5-line pool) +
+найдённые world-notes), «Что изменилось» panel (WORLD_STATE_DESIGN §9.2).
 
 ## 11. Debug tools (F1–F8, release-off)
 
@@ -314,8 +362,10 @@ F1 overlay (fps, ms frame, draw calls, node count, phys bodies, ai budget
 ms, seed, run state, ghost state, world-state summary);
 F2 spawn enemy (цикл архетипов, курсором перед игроком);
 F3 give weapon (цикл 3); F4 teleport (цикл локаций); F5 kill player;
-F6 advance world state (simulated death: +run_count, ghost from current
-run); F7 replay previous run (spawn ghost now); F8 clear temp run state.
+F6 advance world state (simulated death: +run_count, +deaths, ghost from
+current run, door-open check); F7 replay previous run (spawn passive echo
+now); F8 clear temp run state; (F9, dev-only: set memory_stats —
+tune-инструмент, release-off).
 Все — через `DebugTools` autoload, feature-tag `Release` убирает autoload.
 
 ## 12. Performance budget (цели; фактические замеры — Phase 16)
@@ -351,3 +401,42 @@ Low preset: shadows off, fog simple, particles 50%, no post, textures 512 →
   равно dummy, поэтому physics-feel только native).
 - Команда: `./tools/run_tests.sh` (bootstrap idempotent; stage-прогон unit+
   integration; exit code = число падений).
+
+## 14. v2-системы (GDD 2.0): boss-данные, ending-state
+
+### 14.1 BossData (The First; BOSS_DESIGN §5)
+```
+id: StringName            # "boss_the_first"
+hp: int                   # 600 (tune Phase 12)
+phases: [BossPhaseData]   # phase 1: Wandering, phase 2: Workshop
+  # BossPhaseData: {hp_from, hp_to, speed, patterns: [PatternData],
+  #                 minion: {enemy_id, run_ref: "best"}|null,
+  #                 arena_variant: StringName}
+patterns: [PatternData]   # PatternData: {name, telegraph, damage,
+                          #  range, core_window: float|null}
+pattern_memory: {threshold: int, parry_window: float, reset_moves: int}
+  # паттерн-память (BOSS_DESIGN §3.2): data, не хардкод
+core: {window_base: float, window_first_blade: float, damage,
+       damage_no_blade: float}
+enter_condition: WorldStateCond   # ADR-019: mine_level_3_explored AND
+                                  #  deaths>=3 AND first_traces_seen
+death: {vfx, audio, lines: [StringName], world_effect: WorldStateChangeRef}
+  # K6 + K7 transformation (WORLD_STATE_DESIGN §6)
+```
+
+### 14.2 EndingState (post-MVP; архитектура готова, контент — Act V)
+```
+endings: {A, B, C}        # A/B/C (NARRATIVE_STRUCTURE §6; C = true,
+                          #  игрок становится новой Archivist — GDD §6.11)
+ending_choice: StringName|null   # ставится в Act V (post-MVP)
+epilogue_seen: [StringName]
+postgame: {mode: enum{none, archive, quiet, living}}
+  # A → archive (мир «архивный»), B → quiet (мир «пустой»),
+  # C → living (мир «живой», New Game+ — «живой мир»)
+ambiguity_frame: bool      # final-frame ambiguity (NARRATIVE §6)
+```
+- Миграция: `ending_choice`/`postgame` — nullable с safe defaults
+  (save v1 → v2: absent = null = «не выбран»).
+- MVP: только `ending_choice: null` + подготовка (K6-seed, boss
+  death); Act V/VI — post-MVP (GDD v2.0 §11: «архитектура готова,
+  контент — post-MVP»).

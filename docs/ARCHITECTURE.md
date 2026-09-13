@@ -35,14 +35,17 @@ myfirstgame/
 │   └── inbox/              # свежие скачанные пакеты до лицензии/проверки
 ├── scenes/
 │   ├── player/             # Player.tscn + части (CameraRig, WeaponMount...)
-│   ├── enemies/            # по сцене на архетип (Stalker.tscn, ...)
+│   ├── enemies/            # по сцене на архетип (Hollow/Remnant/Watcher/
+│   │                       #  Mimic/Forgotten .tscn; 5 архетипов v2)
 │   ├── boss/
 │   ├── world/              # AreaHub.tscn, Area*.tscn (локации)
 │   ├── rooms/              # hand-authored room-варианты (Room_Camp_A.tscn...)
 │   ├── interactables/      # Chest, Door, Shrine, Note, Fire, Corpse...
 │   ├── ui/                 # HUD, Inventory, Dialogue, Pause, Settings,
-│   │                       # DeathScreen, RunSummary, UpgradeSelection
-│   ├── ghost/              # Ghost.tscn (визуал + replay-контроллер)
+│   │                       # DeathScreen (Inheritance 1/3), RunSummary,
+│   │                       #  WhatChanged, Journal (Notes)
+│   ├── ghost/              # Echo.tscn (Passive/Memory/False: визуал +
+│   │                       #  replay-контроллер; Combat = Remnant, enemies/)
 │   └── systems/            # WorldEnvironment, LightRig, AudioRig
 ├── scripts/
 │   ├── core/               # EventBus, Log, QualityManager, DebugTools
@@ -52,7 +55,8 @@ myfirstgame/
 │   ├── boss/
 │   ├── world/              # AreaGraph, WorldDirector, WorldState,
 │   │                       # RoomVariants, PersistentObject spawner
-│   ├── progression/        # LegacyShop, UpgradeResolver
+│   ├── progression/        # InheritancePicker, InheritanceResolver,
+│   │                       #  TrustSystem (NPC-gate)
 │   ├── run/                # RunManager, RunRecorder, RunEvent, RunHistory
 │   ├── ghost/              # GhostDirector, GhostReplay, GhostController
 │   ├── persistence/        # SaveManager, SaveData, SaveMigration
@@ -208,8 +212,8 @@ composition (сцена-локация содержит своих контро�
   причины (Mesh-узел с 400-строчным скриптом = smell).
 - `.tres` ресурсы — immutable по духу (мутация = bug); данные забега — в
   RunState, не в ресурсах.
-- Имена: классы и сцены — `PascalCase` (`Stalker.tscn`, `Stalker.gd`),
-  файлы данных — `snake_case` (`stalker_data.tres`), действия/сигналы/
+- Имена: классы и сцены — `PascalCase` (`Hollow.tscn`, `Hollow.gd`),
+  файлы данных — `snake_case` (`hollow_data.tres`), действия/сигналы/
   переменные — `snake_case`.
 - Error handling: `push_error`/`push_warning` + assertions в тестах; `null`
   не игнорировать (fail-fast в dev, graceful fallback + log в release).

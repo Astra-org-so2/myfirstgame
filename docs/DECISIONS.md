@@ -60,8 +60,9 @@ room-вариантов; (2) у всех вариантов одной комн�
 Статус: ACCEPTED
 Контекст: ghost/echo требуют данных прошлых забегов; video-запись —
 дорогая, огромная, хрупкая.
-Решение: запись только значимых событий (RunEvent, 12-байтная запись,
-≤4096 на забег, sampling-политика), полные логи — 3 последних забега,
+Решение: запись только значимых событий (RunEvent, 14-байтная запись,
+int32-время, ≤4096 на забег, sampling-политика), полные логи — все
+забеги (MVP: ~150 КБ), старые — RunSummary (post-MVP),
 остальные — RunSummary. Позиции — room-local, квантованные (1cm, 0.1s).
 Последствия: компактность (забег ~50KB), воспроизводимость по данным;
 ghost = интерполяция между keyframes (TECH_DESIGN §5), не frame-
@@ -126,20 +127,24 @@ AudioManager, QualityManager, DebugTools[release-off]). Новый autoload
 ## ADR-010. Размер мира и длина забега
 Статус: ACCEPTED
 Контекст: «маленький, но отполированный» — жёсткие числовые рамки.
-Решение: 1 биом; 9 локаций (хаб + 8 + boss-арена внутри рощи); 2–3
-room-варианта на локацию; забег до boss 15–25 мин; полный обход
-40–60 мин; ≤12 активных врагов в локации; ≤6 локальных источников
-света (High).
+Решение: 1 биом (The Forgotten Forest); 9 зон (хаб-camp + 8); boss-
+арена = **Undercroft** (нижний уровень шахты, не «роща» — правка по
+GDD v2.0); 2–3 room-варианта на локацию; забег до boss 15–25 мин
+(обычно RUN 05–07 — событийное условие, BOSS_DESIGN §2); полный
+обход 40–60 мин; ≤12 активных врагов в локации; ≤6 локальных
+источников света (High).
 Последствия: бюджет-совместимо (TECH_DESIGN §12); контент-план
 ограничен (качественный, не «ещё один»).
 
 ## ADR-011. Echo/Mimic зависят от run-данных (данные > хардкод)
 Статус: ACCEPTED
 Контекст: ключевые враги темы «мир помнит» — из прошлых забегов.
-Решение: Mimic копирует оружие/паттерн текущего забега (RunState);
-Echo строится из RunSummary последнего значимого забега (оружие,
-sequence действий, сложность = ф-ция от duration/kills). Пустая
-история → осознанный default-вариант (помечен, не fake).
+Решение (GDD v2.0): **Remnant** (Combat Echo) строится из run-данных
+(RunEvent/RunSummary: путь, оружие, стиль); **Mimic** зеркалит
+доминирующее поведение игрока (memory_stats.dominant_style —
+dodge/ranged/melee); **The First** бьёт паттернами на основе атак
+игрока (паттерн-память, BOSS_DESIGN §3.2). Пустая история →
+осознанный default-вариант (помечен, не fake).
 Последствия: эти враги неразделимы с run-системой (зависимость
 enemies→run через данные, не код — ARCHITECTURE §7).
 
@@ -161,13 +166,91 @@ feature Release, иконка, версия); владелец выполняе�
 кода). MVP — EN only.
 Последствия: нет i18n-сложности в MVP; локализация — data-only.
 
-## ADR-014. Ghost: только последняя жизнь (MVP)
-Статус: PROPOSED (Q5 GDD)
-Решение: 1 ghost (последний забег) + маркеры старых (3–5 дешёвых
-маркеров). До 3 ghost — post-MVP (архитектурно GhostDirector уже
-многоghost-способен: список replay-таймлайнов, не один).
-Последствия: проще/дешевле; эмоция «мои прошлые персонажи» — через
-маркеры + M4; расширение без переписывания.
+## ADR-014. Echo-бюджет: 1 Passive + 1 Combat + 1 «специальный» (MVP)
+Статус: ACCEPTED (GDD v2.0; расширяет PROPOSED «только последняя жизнь»)
+Контекст: «не каждый Run создаёт полный Echo» (GDD v2.0 §15 Q5);
+Echo — спектр из 5 типов (ECHO_SYSTEM_DESIGN).
+Решение: per run (MVP): 1 Passive (replay последнего забега) + 1
+Combat (Remnant, из run-данных) + 1 «специальный» (Memory|Forgotten|
+False) = max 3. RUN 1: 0; RUN 02: 2; RUN 03: 2; RUN 04+: до 3.
+Post-boss: -2 («тише»). До 5 per run — post-MVP. GhostDirector
+способен на несколько ghost (список replay-таймлайнов).
+Последствия: проще/дешевле; эмоция «мои прошлые версии» — через
+бюджет + следы + «Что изменилось»; расширение без переписывания.
+
+---
+
+## ADR-015. Креативное направление v2 (Story & World Master Prompt)
+Статус: ACCEPTED
+Контекст: после технического Phase 0 владелец поставил полное
+креативное направление (мир Veyra, Eli, 5 NPC, Archivist, 5
+архетипов врагов, 3 архетипа оружия, 6 актов, 4 mystery, 2 твиста,
+3 финала). Старый v0.1-креатив (Stalker/Brute/Watcher/Mimic/Echo,
+Keeper, longsword/dagger/axe, M1–M5, 2 финала) — SUPERSEDED.
+Решение: канон v2 зафиксирован в `docs/GDD.md` v2.0 + 14
+дизайн-документах `docs/design/*` (GDD §1–§15). Техническая
+архитектура Phase 0 (autoloads, RunEvent, save, риг) — без изменений.
+Последствия: весь контент-план (ROADMAP Phases 3–12) — по v2;
+старые имена врагов/оружия в TEST_PLAN — обновлены.
+
+## ADR-016. Echo — спектр (5 типов) + ambiguity-правило
+Статус: ACCEPTED
+Контекст: ядро игры — «мир помнит»; Echo = «запись» или «живой»?
+Решение: 5 типов: Passive (ghost replay) / Combat (Remnant, из
+run-данных) / Memory (scripted reconstruction; в т.ч. из Watcher
+anchor) / Corrupted (Forgotten; шепчет фразы из истории игрока) /
+False (mirror-ahead: повторяет движение игрока на 1 beat раньше).
+**Ambiguity-правило:** игра НИКОГДА не отвечает «запись или живой»
+(до Act II). (ECHO_SYSTEM_DESIGN §6; MYSTERY_REVEAL_MAP §4.5.)
+Последствия: все Echo-реплики проходят DIALOGUE_GUIDELINES §7;
+твист 1 («все — настоящие») — только Act II (post-MVP).
+
+## ADR-017. Прогрессия: нет валюты; 15 Inheritances (12 в MVP)
+Статус: ACCEPTED
+Контекст: «апгрейды должны менять геймплей, не +5%»; «NPC death =
+permanent meta cost».
+Решение: 15 Inheritances: 8 базовых + 4 NPC-gated (MVP-pool = 12) +
+3 post-MVP (BREAKER, PARADOX, RUNNER (behavior-gated)). 1 из 3 при
+смерти (UX ≤ 10 s). 4 NPC-gated: смерть NPC = наследие недоступно
+навсегда. (PROGRESSION_DESIGN §1.)
+Последствия: нет currency-системы (упрощение save/UI); цена NPC-
+смерти — осознанная и видимая (WORLD_STATE_DESIGN §5).
+
+## ADR-018. memory_stats (скрытые счётчики) + записки игрока
+Статус: ACCEPTED
+Контекст: «поведение игрока = сюжет» (GDD v2.0 §6.9); «игрок
+пишет записки — мир их хранит».
+Решение: 10 скрытых счётчиков (kills, fled, explored, notes_written,
+dominant_style, npc_killed, child_hit, strange_actions, deaths,
+runs_completed) — игрок не видит числа, видит последствия (NPC-
+реплики, Mimic, Echo aggression, discoveries). Записки: 4 note
+stands, 5-line pool (no free text), читаются в следующем забеге.
+(WORLD_STATE_DESIGN §3–§4.)
+Последствия: data-driven (thresholds в Resources); «странное
+поведение» — не наказание, а сцена/секрет/клише (GDD §6.9).
+
+## ADR-019. Boss: событийное условие + арена Undercroft
+Статус: ACCEPTED
+Контекст: «окно, не таймер» (GDD v2.0 §8); ADR-010 (арена) требует
+правки.
+Решение: дверь Undercroft открывается, когда: (1) mine_level_3_
+explored; (2) deaths >= 3; (3) first_traces_seen (RUN 05+: следы +
+фонарь The First). → обычно RUN 05–07. Арена = Undercroft (нижний
+уровень шахты; BOSS_DESIGN §1). FIRST BLADE — take/leave choice
+(WEAPON_DESIGN §4.3).
+Последствия: tempo — за игроком (не таймером); ADR-010 обновлён.
+
+## ADR-020. Первый опыт: скрипт A1–A19/B1–B6 + 10 signature (канон)
+Статус: ACCEPTED
+Контекст: GDD v2.0 §8 (фиксированные вехи: 0:30 pillar, 0:45 blade,
+1:30 Hollow, 2:30 camp+note, 4:00 figure, 6:00 combat, 8:00 sealed
+door; first death ~20 мин; RUN 02 ~25–30 мин первый Echo).
+Решение: детальный скрипт — FIRST_30_MINUTES (якоря A1–A19, B1–B6);
+10 signature moments (канон, GDD §7) + 7 ключевых беатов K1–K7 —
+NARRATIVE_STRUCTURE §4; карта — MYSTERY_REVEAL_MAP §3. First death
+= окно ~20 мин (window, не таймер); camp = sanctuary.
+Последствия: Phase 8 (run system) + Phase 11 (mystery) валидируют
+вехи по FIRST_30_MINUTES; QA-маршрут Phase 17 — по FIRST_3_RUNS.
 
 ---
 

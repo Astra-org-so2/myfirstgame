@@ -291,6 +291,87 @@ NARRATIVE_STRUCTURE §4; карта — MYSTERY_REVEAL_MAP §3. First death
 замеры Performance — на референс-устройстве (ADR-012, R9); риски R8/R9;
 iOS-совместимость — держим (общая архитектура), отдельный pass — post-MVP.
 
+## ADR-022. Ограничения wasm-рига: кросс-файл-ссылки через preload-константы
+Статус: ACCEPTED (вынуждено сборкой рига, 2026-09, Phase 2)
+Контекст: headless-риг (Godot 4.7.2-stable wasm на Node, ADR-018/ADR-002)
+не регистрирует кастомные `class_name` в runtime: любой кросс-файл
+ссылочный паттерн, использующий имя класса, падает на парсе. Проверено
+5 независимыми экспериментами (отдельные/парные preload, ordered
+`load()` в `_ready`, `ClassA.new()` после успешного `load()`,
+`extends preload(...)`):
+1. `class_name` не становится глобальным идентификатором —
+   `Parse Error: Identifier "ClassA" not declared`;
+2. `extends` принимает только имя встроенного/зарегистрированного класса
+   (`Expected superclass name after "extends"`) — кросс-файл-наследование
+   скриптов невозможно вообще;
+3. членов built-in enum `JoyAxis` в runtime нет (`Cannot find member
+   "RIGHT_X" in base "JoyAxis"`) — частичная регистрация глобалов;
+4. **`Callable.call()` на Callable, созданном в другом скрипте, — FATAL-
+   crash движка** (cowdata index -1); создание + вызов в пределах одного
+   скрипта — работает;
+5. **скрипт-метод с именем built-in метода базового класса, вызываемый
+   кросс-скрипт — FATAL** (репрод: `CameraRig.rotate(Vector2)` тень
+   `Node3D.rotate(axis, angle)`); переименование — лечит (в проекте:
+   `rotate` → `orbit`);
+6. отсутствует часть «float-математики» и Node3D-API: `sinf/cosf/tanf/
+   atanf/expf` (→ использовать `sin/cos/tan/atan/exp`),
+   `Node3D.get_global_origin()` (→ `global_position`), `modulate` у
+   Node3D отсутствует (CanvasItem-only; 3D-flash — через albedo
+   StandardMaterial3D мешей);
+7. работают: обычные кросс-файл вызовы методов, чтение/запись свойств
+   (включая @export) кросс-скрипт, передача объектов/Vector2, `is`/`==`
+   на preload-скрипты, static через константу и инстанс, сигналы
+   (connect/call в пределах скрипта);
+8. **движок стартует в PAUSED-состоянии**: `_process`/`_physics_process`
+   не вызываются вообще, пока не вызван `GodotInstance.resume()`
+   (таймеры при этом работают — маскирует проблему); после `resume()` —
+   стабильные 60 Hz в pump; harness.mjs вызывает `resume()` перед
+   pump (проверено счётчиками кадров);
+9. **`Input.parse_input_event` не питает action-state**
+   (`is_action_pressed` остаётся false) — тестовый ввод =
+   `Input.action_press/release` (синхронно, проверено);
+10. **`is_action_just_pressed` сбрасывается только реальными frame
+    boundaries** (release/flush его не чистят) → production-код
+    использует held-edge (нажат в этом тике и не в прошлом) —
+    эквивалентно в движке, устойчиво к пропущенным кадрам и работает
+    в риге;
+11. **время тестов не доверять engine-frame'ам**: часть «игрового
+    времени» может протечь во время boot, до старта pump (ноды тогда
+    молчат) → integration-тесты ведут детерминированную ручную
+    «часовую стрелку»: `node._physics_process(DT)`, `DT = 1/60`
+    (tests/integration/player_scene_test.gd).
+Сборка (custom build 4.7.2) — не наш артефакт; пересборка/апгрейд рига
+вне фазы (R5).
+Решение (единственный рабочий контракт кросс-файл-ссылок в проекте):
+- `const _X = preload("res://...")` — для ТИПА, конструктора
+  (`_X.new()`), static (`_X.stat()`), enum (`_X.State.MEMBER`) и проверки
+  (`n is _X`, `n.get_script() == _X`);
+- `extends` — только встроенные классы Godot;
+- общий enum/константы — отдельный dependency-free файл
+  (`player_state.gd`), читаемый preload-константой;
+- **pull по Callable между скриптами запрещён** — только push
+  (источник сам вызывает метод получателя) или общий holder;
+  (JoystickProvider = push: джойстик шлёт вектор, игрок читает);
+- built-in enum'ы с отсутствующими членами — именованные int-константы
+  (`AXIS_RIGHT_X = 2`);
+- математика — `sin/cos/tan/atan/exp` (не `sinf/cosf/...`), глоб. позиция
+  — `global_position` (не `get_global_origin()`);
+- имена методов: без пересечения с built-in методами базового класса
+  (тень `Node3D.rotate` = FATAL кросс-скрипт-вызова);
+- `.tscn`: NodePath-свойства на сценарные типы не используются
+  (lookup через `$` в `_ready`); ресурсы (`.tres`) — через ext_resource.
+Контракт тестов в риге (см. ограничения 8–11): ввод =
+`Input.action_press/release`; время = ручной `node._physics_process(DT)`
+с фиксированным `DT` (детерминированная «часовая стрелка», без
+`await create_timer`); node-колбэки — только после `resume()` harness'а.
+Конвенция распространяется на весь проект (не только тесты): в реальном
+Godot-редакторе `class_name`-декларации в файлах оставляются (они
+инертны в риге, а в редакторе дают автодополнение и рефакторинг).
+Последствия: ARCHITECTURE §3.4 (один `MovementPort` с ENGINE/MOCK
+бэкендами вместо иерархии портов); все Phase-2+ скрипты пишутся по
+контракту; при смене/апгрейде рига (R5) контракт можно упростить —
+проверяется smoke-тестом.
+
 ---
 
 ## Реестр рисков (Phase 0, живые)

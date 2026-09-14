@@ -1,0 +1,47 @@
+[gd_scene load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/touch_controls.gd" id="1_root"]
+[ext_resource type="Script" path="res://scripts/ui/touch_joystick.gd" id="2_joy"]
+[ext_resource type="Script" path="res://scripts/ui/touch_button.gd" id="3_btn"]
+[ext_resource type="Script" path="res://scripts/ui/touch_camera_zone.gd" id="4_cam"]
+[ext_resource type="Resource" path="res://data/ui/touch_layout.tres" id="5_layout"]
+
+[node name="TouchControls" type="CanvasLayer"]
+script = ExtResource("1_root")
+layout = ExtResource("5_layout")
+
+[node name="Joystick" type="Control" parent="."]
+offset_right = 40.0
+offset_bottom = 40.0
+mouse_filter = 2
+script = ExtResource("2_joy")
+
+[node name="Dodge" type="Control" parent="."]
+offset_right = 40.0
+offset_bottom = 40.0
+mouse_filter = 2
+script = ExtResource("3_btn")
+
+[node name="Attack" type="Control" parent="."]
+offset_right = 40.0
+offset_bottom = 40.0
+mouse_filter = 2
+script = ExtResource("3_btn")
+
+[node name="Interact" type="Control" parent="."]
+offset_right = 40.0
+offset_bottom = 40.0
+mouse_filter = 2
+script = ExtResource("3_btn")
+
+[node name="Inventory" type="Control" parent="."]
+offset_right = 40.0
+offset_bottom = 40.0
+mouse_filter = 2
+script = ExtResource("3_btn")
+
+[node name="CameraZone" type="Control" parent="."]
+offset_right = 40.0
+offset_bottom = 40.0
+mouse_filter = 2
+script = ExtResource("4_cam")

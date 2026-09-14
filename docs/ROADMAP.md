@@ -77,6 +77,42 @@ Manual: qa_phase2_movement.md (+ touch-чек-лист на устройстве
 Exit: движение «приятное» (чек-лист), dodge i-frames работают
 (замер окна), 60fps в риге-тиках, touch-контролы играбельны (на
 устройстве, ADR-021), 0 ошибок.
+STATUS: COMPLETE (риг-часть) — см. отчёт ниже.
+IMPLEMENTED: PlayerController (CharacterBody3D: ввод→logic→port,
+сигналы state/dodge/stamina, take_hit/respawn, held-edge dodge),
+PlayerMovementLogic (чистая state-machine: idle/walk/run/dodge/hurt,
+stamina+exhaustion, i-frames [0.05, 0.25] c из dodge 0.35 c, cooldown
+0.4 c, hitstun + knockback с экспон. затуханием), MovementPort (один
+класс, ENGINE/MOCK-бэкенды — ADR-002/ADR-022), CameraRig (орбита
+yaw/pitch с лимитами, wall-clip RayCast3D + FOV-компенсация, MMB-drag +
+gamepad stick/dpad, touch-drag), PlaceholderVisualAnim (процедурный
+placeholder, ADR-005: bob/lean/lurch/hurt-flash через albedo),
+touch-слой (Joystick + 4 кнопки + CameraZone, layout
+`data/ui/touch_layout.tres`, safe-area clamp, JoystickProvider push-\
+seam), PlayerData-ресурс (data-driven, validate()), main.tscn
+(hub + Player + 4 стены + SpawnPoint + TouchControls). АРХИТЕКТУРА:
+весь проект переведён на контракт ADR-022 (preload-константы, без
+кросс-файл class_name/наследования — ограничение wasm-сборки рига).
+TESTED: риг — 120/120 PASS (42 smoke + player_data 16 +
+movement_logic 29 + camera_rig 14 + touch_layout 4 + player_scene
+15: движение вперёд/стоп, dodge с i-frames (замер окна), hitstun→
+рекавери, respawn-сброс — через mock-порт, детерминированный ручной
+clock), 0 script-ошибок в прогоне; 60 Hz физ-тик в риге подтверждён
+счётчиком кадров (после `GodotInstance.resume()` — harness);
+негативные пути: fail → rc=1, фильтры unit/integration — корректны.
+Риг выявил и пойман баг production: аргументы `Input.get_vector`
+(оси y были перепутаны — игрок бы ходил «назад»).
+KNOWN ISSUES: риг без 3D-физики/рендера (ADR-002/ADR-022):
+«ощущение» движения, wall-clip камеры, 60 fps на GPU, touch-эргоника
+— только редактор/устройство (ADR-021); take_hit = hitstun+knockback
+(damage/HP — Phase 4); числа движения — baseline (тюнинг Phase 4/16).
+NEXT: чек-лист qa_phase2_movement.md владельцу (ПК + Android),
+затем Phase 3 (First environment).
+**Чек-лист Phase 2 для владельца:** ПК-редактор — см. раздел A
+tests/qa/qa_phase2_movement.md (запуск без ошибок, движение/
+спринт/dodge/камера, respawn из debugger); Android-устройство —
+раздел B (touch-слой, джойстик, drag-камера, aspect 20:9, 60 fps);
+feel — раздел C (закрепить в PERF_REPORT в Phase 16).
 
 ## PHASE 3 — First environment (The Forgotten Forest)
 Scope: camp-hub (WORLD_BIBLE §4.1): floor, paths, 8–12 деревьев

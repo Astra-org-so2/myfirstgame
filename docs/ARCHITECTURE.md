@@ -116,12 +116,22 @@ data): `idle / detect / chase / attack / hurt / recovery / death` +
 ### 3.4 Movement + Physics Port (player/, ADR-002)
 
 `PlayerController` (вход, тайминги, stamina, state: idle/walk/run/dodge/
-attack/hurt/dead) **не знает** про CharacterBody3D напрямую — работает через
-`MovementPhysicsPort` (интерфейс: `move(velocity)`, `apply_gravity(delta)`,
-`is_on_ground()`, `slide()`, `get_velocity()`...):
-- `EngineMovementPort` (production): реальные CharacterBody3D вызовы;
-- `MockMovementPort` (tests/): упрощённая модель (гравитация, плоские полы,
-  AABB-стены) — только в headless-тестах.
+hurt) **не знает** про CharacterBody3D напрямую — работает через
+`MovementPort` (API: `move(velocity)`, `apply_gravity(delta)`,
+`integrate(delta)`, `is_on_ground()`, `is_on_wall()`, `get/set_position()`,
+`get_velocity()`).
+
+Один класс, два бэкенда (подрезано ADR-022 — в wasm-риге нет кросс-файл
+наследования скриптов):
+- **ENGINE** (`_init(body: CharacterBody3D, ...)`): реальные CharacterBody3D
+  вызовы (`velocity` + `move_and_slide`), `integrate()` — no-op;
+- **MOCK** (`_init(null, ...)`): чистая математика (гравитация, плоский пол
+  `floor_y`, AABB-стены с push-out по минимальной оси проникновения) —
+  только в headless-тестах (в риге нет 3D-физики, ADR-002).
+
+Состояние движения (`idle/walk/run/dodge/hurt`) — общий enum в
+`player_state.gd` (dependency-free файл: логика, контроллер, визуал и тесты
+читают его через preload-константу).
 
 Почему: wasm-тест-риг не имеет 3D-физики (ADR-002); логика движения
 (ускорение, dodge-окна, stamina-косты) тестируется в песочнице, физическое

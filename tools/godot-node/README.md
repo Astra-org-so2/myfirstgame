@@ -9,20 +9,48 @@ docs/DECISIONS.md ADR-002).
 - `bootstrap.mjs` — idempotent setup: npm install + 2 small patches
   (Node-compatible boot, cross-bundle handoff) + esbuild bundles.
 - `harness.mjs` — the runner: DOM shim (jsdom) → engine boot (`--headless`)
-  → stage project files into the engine MEMFS → frame pump (~60fps) →
-  exit code. `--tests` mode swaps `run/main_scene` to
-  `res://tests/runner.tscn` for the run (backup/restore, crash-safe).
+  → stage project files into the engine MEMFS → `GodotInstance.resume()`
+  (the wasm instance boots paused; node callbacks don't fire until it's
+  called) → frame pump (~60fps) → exit code. `--tests` mode swaps
+  `run/main_scene` to `res://tests/runner.tscn` for the run (backup/restore,
+  crash-safe).
 - `godot-boot.mjs` / `godot-api.mjs` — generated bundles (do not edit).
 
-## Verified capabilities (Phase 0 spike)
-scenes, GDScript, text resources (.tscn/.tres/.gd), signals, timers
-(explicit `Timer.start()`), `_ready`/`_process`/`_physics_process`
-(fixed 60Hz), math, File I/O (MEMFS), `quit(rc)`.
+## Verified capabilities
+scenes, GDScript, text resources (.tscn/.tres/.gd), signals, timers,
+`_ready`, math, File I/O (MEMFS), `quit(rc)`. After `GodotInstance.resume()`
+(the harness calls it before the pump — the wasm instance boots paused):
+`_process`/`_physics_process` run at a fixed 60 Hz during the pump.
 
 ## Verified limitations (do not design tests around these)
+Full register — docs/DECISIONS.md ADR-022 (every item reproduced in
+`/tmp` probes before being documented):
 - **no 3D physics** (Dummy server: gravity/collisions/`move_and_slide` are
-  no-ops) → movement logic is tested through `MockMovementPort`
+  no-ops) → movement is tested through `MovementPort` mock mode
   (docs/ARCHITECTURE.md §3.4);
+- **no global class_name registry at runtime** → all cross-file references
+  are `const _X = preload("res://...")` (types, `_X.new()`, statics,
+  enums, `is`); `extends` — built-ins only;
+- **cross-script `Callable.call()` crashes the engine (FATAL)** →
+  push-based seams (source calls the receiver's method), never pull-by-Callable;
+- **script method shadowing a built-in method of the base class crashes
+  cross-script calls** (repro: `CameraRig.rotate` vs `Node3D.rotate`) →
+  rename (in project: `orbit`);
+- **missing globals/APIs**: `sinf/cosf/tanf/atanf/expf` (use
+  `sin/cos/tan/atan/exp`), `Node3D.get_global_origin()` (use
+  `global_position`), `Node3D.modulate` (absent; 3D flash via mesh material
+  albedo), `JoyAxis.*` members (use `AXIS_RIGHT_X/Y` int consts),
+  `OS.get_frame()`, `Engine.is_paused()`, `SceneTree.is_running()`;
+- **`Input.parse_input_event` does not feed the action state** → tests use
+  `Input.action_press/release` (synchronous, verified);
+- **`is_action_just_pressed` is only cleared by real frame boundaries** →
+  production edge logic uses held-edge (pressed this tick, not last) —
+  see `PlayerController`;
+- **frame timing is not trustworthy for test logic**: engine time can elapse
+  during boot, before the pump starts (node callbacks silent then) →
+  integration tests drive the clock deterministically: manual
+  `node._physics_process(DT)` ticks with fixed `DT = 1/60` (see
+  `tests/integration/player_scene_test.gd`);
 - navigation classes partially absent → pathfinding logic is plain code with
   an injectable navmesh source;
 - no rendering, no audio output (expected for headless).

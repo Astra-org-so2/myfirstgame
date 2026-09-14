@@ -163,6 +163,11 @@ const { preloadGodot } = await import(new URL('./godot-boot.mjs', import.meta.ur
 await preloadGodot();
 const { getGodot } = await import(new URL('./godot-api.mjs', import.meta.url));
 const godot = getGodot();
+// The wasm instance boots in a PAUSED state (web-plugin contract): node
+// _process/_physics_process never fire until resume() is called (timers
+// still work, which masks the problem). Verified: resume() -> 60 Hz
+// physics ticks. (ADR-022)
+try { godot.resume(); } catch (e) { console.error('[harness] resume failed:', e.message); }
 console.error('[harness] started=' + godot.isStarted() + '; pumping frames...');
 
 (async () => {

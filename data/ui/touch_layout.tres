@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="TouchLayout" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/touch_layout.gd" id="1_touch"]
+
+[resource]
+script = ExtResource("1_touch")
+joystick_center = Vector2(0.16, 0.72)
+joystick_radius = 0.14
+dodge_center = Vector2(0.86, 0.78)
+attack_center = Vector2(0.76, 0.6)
+interact_center = Vector2(0.92, 0.52)
+inventory_center = Vector2(0.96, 0.36)
+button_radius = 0.075
+camera_zone = Rect2(0.5, 0, 0.5, 1)
+safe_margin_px = 16

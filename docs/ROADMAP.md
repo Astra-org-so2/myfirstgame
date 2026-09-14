@@ -39,6 +39,28 @@ Exit: проект стартует в редакторе (владелец) И 
 ошибок; input map полный (touch + dev); landscape/stretch на месте;
 структура по ARCHITECTURE.
 Risks: — (инфраструктура проверена в Phase 0 spike).
+STATUS: COMPLETE (риг-часть) — см. отчёт ниже.
+IMPLEMENTED: project.godot (4.7.2, Forward+, landscape + canvas_items
+stretch/aspect expand, ETC2/ASTC import, locale en, полный input map:
+30 actions — move/sprint/dodge/attack/ranged/interact/inventory/pause/
+camera_*/ui_*/debug_f1-f9 с kb/m + gamepad-биндами), scenes/main.tscn
+(hub-заглушка: WorldEnvironment с height-fog, DirectionalLight3D,
+Ground, HubMarker, Camera3D), структура папок по ARCHITECTURE §2
+(46 каталогов), tests/runner.tscn|gd (39 smoke-тестов + filter-режим
+all/unit/integration), harness: watchdog (124) + filter-канал.
+TESTED: риг — 39/39 PASS (1 boot + 30 input-map + 1 load + 5
+main-scene-структура + 2 mobile-config); негативные пути: fail → rc=1
+(скрач-проект с удалённым action), hang → rc=124 (watchdog 12 s).
+KNOWN ISSUES: запуск в Godot-редакторе на ПК владельца НЕ проверен
+(песочница без GPU/редактора) — первый запуск в редакторе = чек-лист
+Phase 1 (см. ниже); render-качество Forward+ — по определению не
+видимо headless (замер Phase 16).
+NEXT: чек-лист редактора владельцу (5 мин), затем Phase 2 (Player).
+**Чек-лист Phase 1 для владельца (редактор, 5 мин):** (1) открыть
+проект в Godot 4.7.2 → 0 ошибок в Output; (2) F5 → виден hub (туман,
+свет, квадрат, земля) с камеры; (3) Project Settings → Input Map:
+actions на месте; (4) Display: landscape, stretch canvas_items/expand;
+(5) Rendering: Forward+; ETC2/ASTC включён.
 
 ## PHASE 2 — Player
 Scope: PlayerController + camera rig (orbit, collision, distance FOV,

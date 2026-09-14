@@ -29,5 +29,22 @@ scenes, GDScript, text resources (.tscn/.tres/.gd), signals, timers
 
 ## Usage
 ```sh
-./tools/run_tests.sh            # from the repo root
+./tools/run_tests.sh              # all suites
+./tools/run_tests.sh unit         # unit-only
+./tools/run_tests.sh integration  # integration-only
 ```
+
+### Filtering
+`run_tests.sh` exports `TEST_FILTER`; the harness writes it to
+`tests/.test_filter` before staging (the wasm engine cannot read host env
+vars — a project file is the supported channel). The runner
+(`tests/runner.gd`) skips suites whose tags don't match; the file is
+deleted on exit (crash-safe).
+
+### Exit codes (contract for CI)
+- `0` — all matched tests passed (or none matched);
+- `N` — N failed tests (the runner prints `TESTS_DONE rc=N`);
+- `124` — hard timeout (watchdog: `HARNESS_TIMEOUT`, default 300 s) —
+  the game never called `get_tree().quit()` (e.g. a swallowed script
+  error);
+- `1` — infra error (engine boot / main-scene load failure).

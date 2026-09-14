@@ -11,7 +11,7 @@
 //
 // Exit codes: 0 = all tests passed, n = n test failures, 124 = timeout.
 import { JSDOM, VirtualConsole } from 'jsdom';
-import { readFileSync, readdirSync, statSync, existsSync, copyFileSync, writeFileSync, renameSync } from 'node:fs';
+import { readFileSync, readdirSync, statSync, existsSync, copyFileSync, writeFileSync, renameSync, unlinkSync } from 'node:fs';
 import { join, relative } from 'node:path';
 
 const args = process.argv.slice(2);
@@ -77,7 +77,10 @@ const t0 = Date.now();
 const mod = await createModule(Module);
 mod.initConfig({ canvas: canvasEl, canvasResizePolicy: 2 });
 
-// Test mode: swap run/main_scene to the test runner (crash-safe restore).
+// Test mode: swap run/main_scene to the test runner (crash-safe restore) and
+// write the test filter for the runner (the wasm engine cannot read host env
+// vars — a project file is the supported channel; deleted on exit).
+const filterFile = join(projectDir === '.' ? process.cwd() : new URL(projectDir, import.meta.url).pathname, 'tests', '.test_filter');
 if (testMode) {
   const root0 = projectDir === '.' ? process.cwd() : new URL(projectDir, import.meta.url).pathname;
   const pg = root0 + '/project.godot';
@@ -94,7 +97,8 @@ if (testMode) {
     } else {
       writeFileSync(pg, t + '\nrun/main_scene="res://tests/runner.tscn"\n');
     }
-    console.error('[harness] test mode: main scene swapped to res://tests/runner.tscn');
+    writeFileSync(filterFile, process.env.TEST_FILTER || 'all');
+    console.error(`[harness] test mode: main scene swapped to res://tests/runner.tscn; filter=${process.env.TEST_FILTER || 'all'}`);
   } finally {}
 }
 
@@ -120,18 +124,27 @@ if (testMode) {
 
 // --- exit handling (defined before boot so boot failures can use it) ---
 let finished = false;
+let watchdog = null;
 const done = (code, msg) => {
   if (finished) return;
   finished = true;
+  if (watchdog) clearTimeout(watchdog);
   if (msg) console.error('[harness] ' + msg);
   if (testMode) {
     const root0 = projectDir === '.' ? process.cwd() : new URL(projectDir, import.meta.url).pathname;
     const pg = root0 + '/project.godot';
     const bak = pg + '.aybak';
     try { if (existsSync(bak)) renameSync(bak, pg); } catch (e) { console.error('[harness] restore failed:', e.message); }
+    try { if (existsSync(filterFile)) unlinkSync(filterFile); } catch (e) { console.error('[harness] filter cleanup failed:', e.message); }
   }
   process.exit(code);
 };
+// Watchdog: force-exit if the game never quits (e.g. a script error swallowed
+// the test runner's quit()). 124 = timeout, per run_tests.sh contract.
+watchdog = setTimeout(
+  () => done(124, `hard timeout after ${hardTimeoutSec}s (game did not quit)`),
+  hardTimeoutSec * 1000,
+);
 
 let nmod;
 try {

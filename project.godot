@@ -1,0 +1,208 @@
+; Engine configuration file.
+; AFTER YOU — Godot 4.7.2-stable.
+;
+; Platform: Android first (ADR-021, mobile-first):
+; - renderer Forward+ (Vulkan); mobile renderer = fallback, Phase 16 decision
+; - landscape, canvas_items stretch + aspect expand (aspect 16:9-20:9, safe area)
+; - ETC2/ASTC texture import for mobile VRAM compression
+; - PC = dev/QA convenience only (same input map: kb/m + gamepad layouts)
+;
+; Autoloads: NONE yet (ADR-009 — each appears with its own system phase).
+
+config_version=5
+
+[application]
+
+config/name="AFTER YOU"
+config/description="3D third-person action roguelite — the world remembers your previous runs."
+run/main_scene="res://scenes/main.tscn"
+config/features=PackedStringArray("4.7", "Forward Plus")
+
+[display]
+
+window/size/viewport_width=1920
+window/size/viewport_height=1080
+window/handheld/orientation=0
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
+
+[input]
+
+move_up={
+"deadzone": 0.5,
+"events": [Object(InputEventKey,"physical_keycode":87)
+, Object(InputEventKey,"physical_keycode":4194320)
+]
+}
+move_down={
+"deadzone": 0.5,
+"events": [Object(InputEventKey,"physical_keycode":83)
+, Object(InputEventKey,"physical_keycode":4194322)
+]
+}
+move_left={
+"deadzone": 0.5,
+"events": [Object(InputEventKey,"physical_keycode":65)
+, Object(InputEventKey,"physical_keycode":4194319)
+]
+}
+move_right={
+"deadzone": 0.5,
+"events": [Object(InputEventKey,"physical_keycode":68)
+, Object(InputEventKey,"physical_keycode":4194321)
+]
+}
+sprint={
+"deadzone": 0.5,
+"events": [Object(InputEventKey,"physical_keycode":4194325)
+, Object(InputEventJoypadButton,"button_index":3)
+]
+}
+dodge={
+"deadzone": 0.5,
+"events": [Object(InputEventKey,"physical_keycode":32)
+, Object(InputEventJoypadButton,"button_index":1)
+]
+}
+attack={
+"deadzone": 0.5,
+"events": [Object(InputEventMouseButton,"button_index":1)
+, Object(InputEventJoypadButton,"button_index":2)
+]
+}
+ranged_attack={
+"deadzone": 0.5,
+"events": [Object(InputEventMouseButton,"button_index":2)
+, Object(InputEventJoypadMotion,"axis":5,"axis_value":1.0)
+]
+}
+interact={
+"deadzone": 0.5,
+"events": [Object(InputEventKey,"physical_keycode":69)
+, Object(InputEventJoypadButton,"button_index":0)
+]
+}
+inventory={
+"deadzone": 0.5,
+"events": [Object(InputEventKey,"physical_keycode":4194306)
+, Object(InputEventJoypadButton,"button_index":7)
+]
+}
+pause={
+"deadzone": 0.5,
+"events": [Object(InputEventKey,"physical_keycode":4194305)
+, Object(InputEventJoypadButton,"button_index":6)
+]
+}
+camera_left={
+"deadzone": 0.5,
+"events": [Object(InputEventJoypadButton,"button_index":12)
+]
+}
+camera_right={
+"deadzone": 0.5,
+"events": [Object(InputEventJoypadButton,"button_index":13)
+]
+}
+camera_up={
+"deadzone": 0.5,
+"events": [Object(InputEventJoypadButton,"button_index":10)
+]
+}
+camera_down={
+"deadzone": 0.5,
+"events": [Object(InputEventJoypadButton,"button_index":11)
+]
+}
+ui_left={
+"deadzone": 0.5,
+"events": [Object(InputEventKey,"physical_keycode":4194319)
+, Object(InputEventJoypadButton,"button_index":12)
+]
+}
+ui_right={
+"deadzone": 0.5,
+"events": [Object(InputEventKey,"physical_keycode":4194321)
+, Object(InputEventJoypadButton,"button_index":13)
+]
+}
+ui_up={
+"deadzone": 0.5,
+"events": [Object(InputEventKey,"physical_keycode":4194320)
+, Object(InputEventJoypadButton,"button_index":10)
+]
+}
+ui_down={
+"deadzone": 0.5,
+"events": [Object(InputEventKey,"physical_keycode":4194322)
+, Object(InputEventJoypadButton,"button_index":11)
+]
+}
+ui_accept={
+"deadzone": 0.5,
+"events": [Object(InputEventKey,"physical_keycode":4194309)
+, Object(InputEventKey,"physical_keycode":4194310)
+, Object(InputEventJoypadButton,"button_index":0)
+, Object(InputEventMouseButton,"button_index":1)
+]
+}
+ui_cancel={
+"deadzone": 0.5,
+"events": [Object(InputEventKey,"physical_keycode":4194305)
+, Object(InputEventJoypadButton,"button_index":6)
+]
+}
+debug_f1={
+"deadzone": 0.5,
+"events": [Object(InputEventKey,"physical_keycode":4194332)
+]
+}
+debug_f2={
+"deadzone": 0.5,
+"events": [Object(InputEventKey,"physical_keycode":4194333)
+]
+}
+debug_f3={
+"deadzone": 0.5,
+"events": [Object(InputEventKey,"physical_keycode":4194334)
+]
+}
+debug_f4={
+"deadzone": 0.5,
+"events": [Object(InputEventKey,"physical_keycode":4194335)
+]
+}
+debug_f5={
+"deadzone": 0.5,
+"events": [Object(InputEventKey,"physical_keycode":4194336)
+]
+}
+debug_f6={
+"deadzone": 0.5,
+"events": [Object(InputEventKey,"physical_keycode":4194337)
+]
+}
+debug_f7={
+"deadzone": 0.5,
+"events": [Object(InputEventKey,"physical_keycode":4194338)
+]
+}
+debug_f8={
+"deadzone": 0.5,
+"events": [Object(InputEventKey,"physical_keycode":4194339)
+]
+}
+debug_f9={
+"deadzone": 0.5,
+"events": [Object(InputEventKey,"physical_keycode":4194340)
+]
+}
+
+[internationalization]
+
+locale/fallback="en"
+
+[rendering]
+
+renderer/rendering_method="forward_plus"
+textures/vram_compression/import_etc2_astc=true

@@ -17,8 +17,10 @@ boss (THE FIRST), run-recording + Echo-система (5 типов), world memo
 
 **Phase 0 (pre-production) — завершена** (технический + креативный
 дизайн, v2.0). **Дизайн-фаза (Story & World) — завершена** (15
-документов + критический self-review). Следующая — **Phase 1**
-(runnable project) по `docs/ROADMAP.md`.
+документов + критический self-review). **Phase 1 (runnable project) —
+завершена** (project.godot 4.7.2 Forward+/landscape, hub-заглушка,
+input map, smoke-тесты 39/39 в риге). Следующая — **Phase 2**
+(Player) по `docs/ROADMAP.md`.
 
 Документы в `docs/`:
 - `GDD.md` — GDD v2.0: концепт, геймплей-ядро, MVP-объём, метрики

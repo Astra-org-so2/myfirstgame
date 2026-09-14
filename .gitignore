@@ -13,3 +13,7 @@ tools/godot-node/package-lock.json
 .DS_Store
 Thumbs.db
 *.swp
+
+# Test harness transient files
+project.godot.aybak
+tests/.test_filter

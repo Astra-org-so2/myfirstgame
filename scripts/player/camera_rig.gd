@@ -35,6 +35,21 @@ var _ray: RayCast3D
 var _initialized: bool = false
 var _mouse_dragging: bool = false
 
+# Impact shake (Phase 4 feel): impulse adds amplitude, exponential decay.
+var _shake_amp: float = 0.0
+var _shake_time: float = 0.0
+const SHAKE_DECAY: float = 8.0  # 1/s
+const SHAKE_MAX: float = 0.5
+
+
+func add_shake(impulse: float) -> void:
+	if impulse > 0.0:
+		_shake_amp = minf(_shake_amp + impulse, SHAKE_MAX)
+
+
+func get_shake_amplitude() -> float:
+	return _shake_amp
+
 
 func _ready() -> void:
 	_cam = $Camera3D
@@ -132,6 +147,12 @@ func _update_camera(delta: float) -> void:
 		desired = head_local + (desired - head_local).normalized() * dist
 
 	var cam_target: Vector3 = desired
+	if _shake_amp > 0.0005:
+		_shake_time += delta
+		cam_target += Vector3(
+				cos(_shake_time * 47.0), sin(_shake_time * 53.0),
+				cos(_shake_time * 41.0)) * _shake_amp
+		_shake_amp *= exp(-SHAKE_DECAY * delta)
 	if not _initialized:
 		_cam.position = cam_target
 		_initialized = true

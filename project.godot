@@ -7,9 +7,14 @@
 ; - ETC2/ASTC texture import for mobile VRAM compression
 ; - PC = dev/QA convenience only (same input map: kb/m + gamepad layouts)
 ;
-; Autoloads: NONE yet (ADR-009 — each appears with its own system phase).
+; Autoloads (ADR-009 — each appears with its own system phase):
+; EventBus — Phase 4 (combat events; RunManager/WorldDirector follow).
 
 config_version=5
+
+[autoload]
+
+EventBus="*res://scripts/core/event_bus.gd"
 
 [application]
 
@@ -74,6 +79,12 @@ ranged_attack={
 "deadzone": 0.5,
 "events": [Object(InputEventMouseButton,"button_index":2)
 , Object(InputEventJoypadMotion,"axis":5,"axis_value":1.0)
+]
+}
+special={
+"deadzone": 0.5,
+"events": [Object(InputEventKey,"physical_keycode":82)
+, Object(InputEventJoypadButton,"button_index":5)
 ]
 }
 interact={

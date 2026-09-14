@@ -20,6 +20,9 @@ const _PORT = preload("res://scripts/player/movement_port.gd")
 const _VISUAL = preload("res://scripts/player/placeholder_visual_anim.gd")
 const _JOY = preload("res://scripts/utilities/joystick_provider.gd")
 const _CAM_RIG = preload("res://scripts/player/camera_rig.gd")
+const _CT = preload("res://scripts/gameplay/combat/combat_target.gd")
+const _WEAPON = preload("res://scripts/gameplay/combat/weapon_controller.gd")
+const _DREQ = preload("res://scripts/gameplay/combat/damage_request.gd")
 
 signal state_changed(new_state: int)
 signal dodge_started()
@@ -28,6 +31,11 @@ signal stamina_changed(value: float, max_value: float)
 
 var data: _DATA
 var camera_rig: _CAM_RIG
+var weapon: _WEAPON
+
+# Combat (Phase 4): hp/i-frames/stun live in the CombatTarget; damage is
+# applied ONLY through the DamageResolver (ARCHITECTURE §3.2).
+var combat: _CT
 
 var _logic: _LOGIC
 var _port: _PORT
@@ -37,6 +45,10 @@ var _prev_state: int = _STATE.State.IDLE
 var _last_stamina_emit: float = -1.0
 # Dodge edge state (pressed this tick vs last tick; see _physics_process).
 var _dodge_held: bool = false
+var _dead: bool = false
+var _respawn_timer: float = 0.0
+var _respawn_pos: Vector3 = Vector3.ZERO
+var _has_respawn_pos: bool = false
 
 
 func _ready() -> void:
@@ -54,17 +66,39 @@ func _ready() -> void:
 	if _port == null:
 		_port = _PORT.new(self, data.gravity, data.max_fall_speed)
 	_visual = $Visual
+	if weapon == null:
+		weapon = $Weapon
+	combat = _CT.new(self, float(data.health_max))
+	combat.combat_id = &"player"
+	combat.damaged.connect(_on_combat_damaged)
+	combat.killed.connect(_on_combat_killed)
 
 
 func _physics_process(delta: float) -> void:
+	# Combat target tick (stun decay) + push the dodge i-frame state into
+	# it (the resolver reads it; no cross-script Callable — ADR-022).
+	combat.update(delta)
+	combat.invulnerable = _logic.is_invulnerable()
+
+	# Death: countdown to auto-respawn (RunManager owns the flow from
+	# Phase 8; this is the Phase 4 MVP behavior).
+	if _dead:
+		# No control, no physics: the body stands still until respawn.
+		_respawn_timer -= delta
+		if _respawn_timer <= 0.0:
+			_do_respawn()
+		return
+
 	_port.apply_gravity(delta)
+
+	var can: bool = can_act()
 
 	# Dodge input (edge-triggered). Held-edge (pressed this tick, not on the
 	# previous one) instead of is_action_just_pressed: identical semantics in
 	# the engine, plus it survives frames skipped over the press and works in
 	# the headless rig, whose just-pressed state is only cleared by real
 	# frame boundaries (ADR-022).
-	var dodge_pressed: bool = Input.is_action_pressed("dodge")
+	var dodge_pressed: bool = can and Input.is_action_pressed("dodge")
 	if dodge_pressed and not _dodge_held:
 		var dir: Vector3 = _world_input_dir()
 		if dir == Vector3.ZERO:
@@ -73,9 +107,13 @@ func _physics_process(delta: float) -> void:
 			dodge_started.emit()
 	_dodge_held = dodge_pressed
 
+	# Stunned = no control: feed zero (deceleration skids the body to a
+	# stop in the logic, no special state needed).
+	var input_dir: Vector3 = _world_input_dir() if can else Vector3.ZERO
+	var want_sprint: bool = can and Input.is_action_pressed("sprint")
+
 	var desired: Vector3 = _logic.update(
-			delta, _world_input_dir(),
-			Input.is_action_pressed("sprint"), _port.is_on_ground())
+			delta, input_dir, want_sprint, _port.is_on_ground())
 
 	var velocity: Vector3
 	if _logic.is_hurt():
@@ -84,6 +122,11 @@ func _physics_process(delta: float) -> void:
 		velocity = Vector3(desired.x, _port.get_velocity().y, desired.z)
 	_port.move(velocity)
 	_port.integrate(delta)
+
+	# Combat weapon (same clock: freezes under the scene HitStop with
+	# movement; ADR-023).
+	if weapon != null:
+		weapon.update(delta)
 
 	# State + visual.
 	var state: int = _logic.state
@@ -143,8 +186,10 @@ func set_touch_provider(provider: _JOY) -> void:
 
 # --- Public API (used by combat/run systems from Phase 4+) ---
 
+# Hitstun-only entry (e.g. scripted/Phase-2-compat): applies the hurt
+# state + knockback WITHOUT damage. Damage itself flows through the
+# DamageResolver -> CombatTarget.damaged -> _on_combat_damaged.
 func take_hit(direction: Vector3) -> void:
-	# Phase 2: state + knockback only (damage/HP — Phase 4, DamageResolver).
 	if _logic.state != _STATE.State.HURT:
 		_logic.apply_hurt(direction)
 
@@ -159,6 +204,74 @@ func get_state() -> int:
 
 func get_stamina() -> float:
 	return _logic.stamina
+
+
+# --- Combat (Phase 4) ---
+
+# Can the player act (attack/interact)? False when dead, stunned, or in
+# hitstun.
+func can_act() -> bool:
+	return not _dead \
+			and not combat.is_stunned() \
+			and _logic.state != _STATE.State.HURT
+
+
+func get_facing() -> Vector3:
+	return _logic.facing
+
+
+func spend_stamina(amount: float) -> bool:
+	return _logic.spend_stamina(amount)
+
+
+func get_combat_target() -> _CT:
+	return combat
+
+
+func is_dead() -> bool:
+	return _dead
+
+
+func set_respawn_position(pos: Vector3) -> void:
+	_respawn_pos = pos
+	_has_respawn_pos = true
+
+
+# --- Combat event handlers (resolver-driven) ---
+
+func _on_combat_damaged(req: Variant) -> void:
+	if _dead:
+		return
+	var r: _DREQ = req
+	if not r.blocked:
+		if _logic.state != _STATE.State.HURT:
+			_logic.apply_hurt(r.knockback_direction)
+
+
+func _on_combat_killed() -> void:
+	if _dead:
+		return
+	_dead = true
+	_respawn_timer = 2.0  # MVP flow; RunManager takes over in Phase 8
+	_logic.reset()
+	_dodge_held = false
+	var bus: Node = get_node_or_null("/root/EventBus")
+	if bus != null:
+		bus.player_died.emit(get_body_position())
+
+
+func _do_respawn() -> void:
+	if not _has_respawn_pos:
+		push_error("PlayerController: respawn requested without a spawn position")
+		return
+	respawn(_respawn_pos)
+	combat.reset()
+	if weapon != null:
+		weapon.reset()
+	_dead = false
+	var bus: Node = get_node_or_null("/root/EventBus")
+	if bus != null:
+		bus.player_spawned.emit(_respawn_pos)
 
 
 # World position from the movement port (node position in engine mode,

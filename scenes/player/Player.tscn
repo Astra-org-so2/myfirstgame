@@ -1,9 +1,10 @@
-[gd_scene load_steps=9 format=3]
+[gd_scene load_steps=10 format=3]
 
 [ext_resource type="Script" path="res://scripts/player/player_controller.gd" id="1_player"]
 [ext_resource type="Script" path="res://scripts/player/placeholder_visual_anim.gd" id="2_anim"]
 [ext_resource type="PackedScene" path="res://scenes/player/CameraRig.tscn" id="3_cam"]
 [ext_resource type="Resource" path="res://data/player/player_data.tres" id="4_data"]
+[ext_resource type="Script" path="res://scripts/gameplay/combat/weapon_controller.gd" id="5_weapon"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_1"]
 radius = 0.35
@@ -51,3 +52,6 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.42, -0.28)
 mesh = SubResource("BoxMesh_visor")
 
 [node name="CameraRig" parent="." instance=ExtResource("3_cam")]
+
+[node name="Weapon" type="Node" parent="."]
+script = ExtResource("5_weapon")

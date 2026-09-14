@@ -10,6 +10,7 @@ dodge_center = Vector2(0.86, 0.78)
 attack_center = Vector2(0.76, 0.6)
 interact_center = Vector2(0.92, 0.52)
 inventory_center = Vector2(0.96, 0.36)
+special_center = Vector2(0.66, 0.78)
 button_radius = 0.075
 camera_zone = Rect2(0.5, 0, 0.5, 1)
 safe_margin_px = 16

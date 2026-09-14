@@ -359,7 +359,19 @@ iOS-совместимость — держим (общая архитектур
 15. **`PackedVector3Array`** — без varargs-конструктора из floats (только
     из массива `Vector3`); **`Node.find_children`** — иная сигнатура
     (arg 2 — String); для поиска по имени — `find_child(String, bool,
-    bool)` (работает) или явные имена нод.
+    bool)` (работает) или явные имена нод;
+16. **`class_name` с именем autoload — parse error**
+    («Class "X" hides an autoload singleton») — autoload-скрипты
+    объявляются без class_name (доступ = `/root/X`);
+17. **GDScript-lambda захватывает value-типы по КОПИИ** (float/int/
+    bool): запись в переменную из lambda снаружи не видна;
+    reference-типы (Array/объекты) — по ссылке (мутация видна).
+    Pattern «lambda возвращает значение» не работает — мутировать
+    общий объект или читать состояние извне;
+18. **аудио в риге — dummy-драйвер**: `AudioStreamPlayer.play()`
+    работает, но печатает WARNING «driver doesn't support sample
+    playback» (не ошибка, звук не слышен) — тесты SFX проверяют
+    роутинг/генерацию, не саму playback.
 Сборка (custom build 4.7.2) — не наш артефакт; пересборка/апгрейд рига
 вне фазы (R5).
 Решение (единственный рабочий контракт кросс-файл-ссылок в проекте):
@@ -395,6 +407,51 @@ Godot-редакторе `class_name`-декларации в файлах ос�
 бэкендами вместо иерархии портов); все Phase-2+ скрипты пишутся по
 контракту; при смене/апгрейде рига (R5) контракт можно упростить —
 проверяется smoke-тестом.
+
+---
+
+## ADR-023. Бой без Area3D: hitbox = sector-sampling, hit-stop = delta-scaler, EventBus с Phase 4
+Статус: ACCEPTED (Phase 4, 2026-09)
+Контекст: ARCHITECTURE §5 описывает hitbox как Area3D на layer
+`player_hitbox`, включаемом на кадр удара. В wasm-риге нет 3D-физики
+(ADR-002/ADR-022) — Area3D-мониторинг не работает, и тесты боя
+невозможны. Плюс мобайл-бюджет (ADR-021): Area3D-поиск каждый активный
+кадр — лишняя физ-работа на SD7.
+Решение (реализовано в Phase 4, `scripts/gameplay/combat/`):
+1. **Hitbox = sector-sampling** (чистая математика): на каждом активном
+   тике свинга WeaponController проверяет зарегистрированные в
+   DamageResolver цели: горизонтальное расстояние ≤ range И угол между
+   facing и направлением на цель ≤ arc/2. Цель бьётся ОДИН раз за
+   свинг (per-swing hit set). Детерминировано, тестировано в риге
+   (37 integration-проверок), без Area3D.
+   Layers §5 остаются зарезервированными (projectiles Phase 6+,
+   interactables Phase 7+) — для melee hitbox Area3D не используется.
+2. **HitStop = delta-scaler, не SceneTree time scaling**: узел сцены
+   (main) гонит игрока с `hitstop.update(real_delta)` (0.0 пока
+   заморожено); движение + оружие замораживаются вместе, камера живёт
+   (shake во время hit-stop = осознанный feel). Не трогает pump рига
+   (ADR-022: engine-время тестам не доверяется). Длительности —
+   данные оружия (blade: 0.05 s hit / 0.1 s kill — baseline, тюнинг
+   по feel-чек-листу).
+3. **EventBus-autoload создан в Phase 4** (ADR-009: autoload
+   появляется с фазой своей системы): сигналы `player_died /
+   player_spawned / target_killed` (только built-in типы параметров —
+   ADR-022). Run/World/Audio/UI-системы (Phase 8+) подписываются
+   сюда; DamageResolver эмитит `target_killed` в EventBus
+   толерантно (get_node_or_null — юнит-тесты без autoload).
+4. **Состояние оружия сбрасывается на respawn** (weapon_logic.reset):
+   combo-окно/рипост-CD не утекают через смерть (поймано
+   integration-тестом: combo-окно из сценария N влияло на сценарий
+   N+1).
+5. **SFX Phase 4 = процедурные заглушки (prototype-статус)** по
+   ROADMAP: AudioStreamWAV генерируется из математики (SfxLibrary:
+   swing/hit/riposte/hurt, детерминированные сиды, unit-тесты на
+   байты), проигрываются пулом из 3 AudioStreamPlayer (SfxBus).
+   Финальный аудио-пайплайн (buses, settings) — AudioManager, Phase 14.
+Последствия: damage-поток — единственный через DamageResolver
+(ARCHITECTURE §3.2); player-сцена получает Weapon-узел (bind из main);
+main-сцена владеет боевыми сервисами (состав, не autoload'ы);
+test-мишени — только в tests/ (не в игре, по ROADMAP Phase 4).
 
 ---
 

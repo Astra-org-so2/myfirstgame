@@ -63,6 +63,20 @@ func start_dodge(dir: Vector3) -> bool:
 	return true
 
 
+# Instant stamina spend (combat swings, Phase 4). Respects the same
+# floor/exhaustion rules as sprint. Returns false when not enough.
+func spend_stamina(amount: float) -> bool:
+	if amount <= 0.0:
+		return true
+	if stamina < amount:
+		return false
+	stamina = maxf(0.0, stamina - amount)
+	_regen_delay = _data.stamina_regen_delay
+	if stamina <= 0.0:
+		_exhausted = true
+	return true
+
+
 # I-frames: only inside [dodge_iframe_start, dodge_iframe_end] of the dodge.
 func is_invulnerable() -> bool:
 	if state != _STATE.State.DODGE:

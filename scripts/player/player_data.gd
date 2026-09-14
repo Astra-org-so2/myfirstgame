@@ -22,6 +22,10 @@ extends Resource
 @export var gravity: float = 24.0
 @export var max_fall_speed: float = 20.0
 
+# --- Health (Phase 4: combat; baseline value, tuned by the feel/perf
+#     checklists) ---
+@export var health_max: int = 100
+
 # --- Stamina ---
 @export var stamina_max: float = 100.0
 @export var sprint_drain_per_sec: float = 25.0
@@ -59,4 +63,6 @@ func validate() -> Array[String]:
 		problems.append("sprint drain must be > 0")
 	if gravity <= 0.0:
 		problems.append("gravity must be > 0")
+	if health_max <= 0:
+		problems.append("health_max must be > 0")
 	return problems

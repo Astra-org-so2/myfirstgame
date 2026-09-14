@@ -1,6 +1,6 @@
 # AFTER YOU — Roadmap (фазы, вехи, exit-criteria)
 
-Версия: 0.3 (Phase 3 закрыта, GDD v2.0). Формат статуса фазы
+Версия: 0.4 (Phase 4 закрыта, GDD v2.0). Формат статуса фазы
 (обязателен при закрытии):
 `STATUS / IMPLEMENTED / TESTED / KNOWN ISSUES / NEXT`.
 
@@ -182,6 +182,54 @@ SFX (генеративные заглушки, prototype-статус), 1-2 tes
 Unit: damage math, combo timing. Integration: hit → damage → death.
 Manual: qa_phase4_combat.md (feel-матрица).
 Exit: «бой ощущается хорошо» (чек-лист) — критерий, не мнение.
+STATUS: COMPLETE (риг-часть) — см. отчёт ниже.
+IMPLEMENTED: BLADE (data/weapons/blade.tres по WEAPON_DESIGN §1:
+25/25/30 dmg, 1.2/1.2/1.5 s, U3-thrust 2.6 m, Riposte 0.5 s окно /
+30 s CD / stun 1.5 s / 15 dmg) + WeaponData/WeaponHit (schema
+покрывает все 3 архетипа + FIRST BLADE — новые оружия = data),
+WeaponLogic (чистая combo-машина: buffer, combo-окно 0.5 s, special;
+reset на respawn), WeaponController (held-edge input, sector-hitbox
+на активных тиках — АDR-023, per-swing hit set, stamina-косты,
+riposte-counter), DamageResolver (единственная точка урона:
+DamageRequest → DamageResult, registry, i-frame/dead/unknown
+guards, EventBus.target_killed), CombatTarget (hp/invuln/stun,
+сигналы), HitStop (delta-scaler: движение+оружие.freeze вместе,
+камера живёт), VfxPool (8 flash-инстансов, reuse без роста),
+SfxLibrary (процедурные WAV: swing/hit/riposte/hurt — детерм.,
+prototype-статус) + SfxBus (пул 3 player), HurtVignette (fade),
+EventBus-autoload (player_died/player_spawned/target_killed —
+ADR-023), CameraRig.add_shake (impulse + exp decay), PlayerController:
+CombatTarget + can_act/get_facing/spend_stamina + смерть → EventBus
+→ auto-respawn 2 s (RunManager заберёт в Phase 8) + weapon-reset на
+respawn + spawn-позиция игрока из CampLayout (починка Phase 3:
+игрок стоял в origin, не на спавне), input: action `special`
+(R/тач SPC, 5-я кнопка touch_layout), MovementLogic.spend_stamina.
+TESTED: риг — 325/325 PASS (43 smoke + EventBus + special-action;
+player_data 16 + movement_logic 29 + camera_rig 14 + touch_layout
+4 + camp_layout 15 + weapon_data 14 + weapon_logic 13 +
+damage_resolver 11 + combat_utils 14 (hitstop/vfx-pool/SFX-байты) +
+player_scene 15 + camp_scene 14 + combat_scene 37: одиночный удар
+25 (source/target/result/сигнал), full combo 80 (buffer-цепочка),
+урон по игроку (hp/hitstun/vignette/hurt-cue), i-frame block
+(no hp loss), Riposte (stun 1.5 s + 15 counter + CD 30 s + cues),
+смерть (EventBus.player_died 1x) → respawn (hp 100, spawn-pos,
+player_spawned 1x), stun-блок атак). Риг поймал production-баги:
+combo-окно/CD утекали через respawn (→ weapon reset), игрок не
+ставился на spawn (→ main_scene).
+KNOWN ISSUES: риг без рендера/звука/физики: feel-матрица
+(hit-stop/shake/vignette/звук по каждому удару), 60 fps в бою,
+тач-эргоника SPC — только редактор/устройство (ADR-021);
+test-мишени не в игре (Phase 5 — живые враги); HP-UI/death screen
+— Phase 8/13; SFX/VFX — prototype (Phase 13/14); feel-цифры —
+baseline (blade.tres), тюнинг по feel-матрице.
+NEXT: чек-лист qa_phase4_combat.md владельцу (ПК + Android +
+feel-матрица), затем Phase 5 (Enemy system).
+**Чек-лист Phase 4 для владельца:** tests/qa/qa_phase4_combat.md —
+раздел A (редактор: U1/U2/U3/combo/reset, Riposte-тайминг, урон по
+игроку + i-frames, смерть/respawn; test-цель через debugger —
+референс combat_scene_test.gd), раздел B (Android: тач ATK/SPC/
+DODGE, 60 fps, звук, thermal), раздел C (feel-матрица — заполнить
+и зафиксировать в PERF_REPORT Phase 16).
 
 ## PHASE 5 — Enemy system (5 архетипов v2)
 Scope: EnemyController FSM-base + navigation (injectable navmesh-source,

@@ -1,4 +1,4 @@
-[gd_scene load_steps=6 format=3]
+[gd_scene load_steps=7 format=3]
 
 [ext_resource type="Script" path="res://scripts/ui/touch_controls.gd" id="1_root"]
 [ext_resource type="Script" path="res://scripts/ui/touch_joystick.gd" id="2_joy"]
@@ -35,6 +35,12 @@ mouse_filter = 2
 script = ExtResource("3_btn")
 
 [node name="Inventory" type="Control" parent="."]
+offset_right = 40.0
+offset_bottom = 40.0
+mouse_filter = 2
+script = ExtResource("3_btn")
+
+[node name="Special" type="Control" parent="."]
 offset_right = 40.0
 offset_bottom = 40.0
 mouse_filter = 2

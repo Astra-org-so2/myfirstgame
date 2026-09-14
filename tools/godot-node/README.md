@@ -63,6 +63,15 @@ Full register — docs/DECISIONS.md ADR-022 (every item reproduced in
   (`Basis(Vector3, Vector3, Vector3)`);
 - `PackedVector3Array` has no float-varargs constructor; `Node.find_children`
   has a different signature (arg 2 is a String) — use `find_child`;
+- **GDScript lambdas capture value types (float/int/bool) BY COPY**: a
+  lambda assigning to an outer float is not visible outside (reference
+  types like Array are shared). Lambdas are for fire-and-forget or
+  mutating shared objects, not for returning values;
+- `class_name` identical to an autoload name = parse error ("hides an
+  autoload singleton") — autoload scripts go without class_name;
+- audio: `AudioStreamPlayer.play()` runs but the dummy driver warns
+  "doesn't support sample playback" (harmless, no sound) — SFX tests
+  assert routing/generation, not playback;
 - no rendering, no audio output (expected for headless).
 
 ## Usage

@@ -27,9 +27,19 @@ const SUITES = [
 	["camera_rig", "res://tests/unit/camera_rig_test.gd", ["unit"]],
 	["touch_layout", "res://tests/unit/touch_layout_test.gd", ["unit"]],
 	["camp_layout", "res://tests/unit/camp_layout_test.gd", ["unit"]],
+	["weapon_data", "res://tests/unit/weapon_data_test.gd", ["unit"]],
+	["weapon_logic", "res://tests/unit/weapon_logic_test.gd", ["unit"]],
+	["damage_resolver", "res://tests/unit/damage_resolver_test.gd",
+			["unit"]],
+	["combat_utils", "res://tests/unit/combat_utils_test.gd", ["unit"]],
+	["damage_resolver", "res://tests/unit/damage_resolver_test.gd",
+			["unit"]],
+	["combat_utils", "res://tests/unit/combat_utils_test.gd", ["unit"]],
 	["player_scene", "res://tests/integration/player_scene_test.gd",
 			["integration"]],
 	["camp_scene", "res://tests/integration/camp_scene_test.gd",
+			["integration"]],
+	["combat_scene", "res://tests/integration/combat_scene_test.gd",
 			["integration"]],
 ]
 
@@ -99,7 +109,7 @@ func check(condition: bool, test_name: String) -> void:
 
 const EXPECTED_ACTIONS: Array[String] = [
 	"move_up", "move_down", "move_left", "move_right",
-	"sprint", "dodge", "attack", "ranged_attack",
+	"sprint", "dodge", "attack", "ranged_attack", "special",
 	"interact", "inventory", "pause",
 	"camera_left", "camera_right", "camera_up", "camera_down",
 	"ui_left", "ui_right", "ui_up", "ui_down", "ui_accept", "ui_cancel",
@@ -110,6 +120,14 @@ const EXPECTED_ACTIONS: Array[String] = [
 func suite_smoke() -> void:
 	# 1. The runner itself started (we are here) — engine booted headless.
 	check(true, "smoke: runner started (engine booted)")
+
+	# 1b. EventBus autoload is alive (Phase 4 combat events).
+	var bus: Node = get_tree().root.get_node_or_null("EventBus")
+	check(
+		bus != null and bus.has_signal("player_died")
+			and bus.has_signal("target_killed"),
+		"smoke: EventBus autoload registered (Phase 4)"
+	)
 
 	# 2. Input map is complete (TECHNICAL_DESIGN §7: touch actions are the
 	#    same actions; kb/m + gamepad layouts live in project.godot).

@@ -23,6 +23,7 @@ var _dodge_btn: _BTN
 var _attack_btn: _BTN
 var _interact_btn: _BTN
 var _inventory_btn: _BTN
+var _special_btn: _BTN
 var _camera_zone: _CAM_ZONE
 
 var _provider: _PROVIDER = _PROVIDER.new()
@@ -43,6 +44,7 @@ func _ready() -> void:
 	_attack_btn = $Attack
 	_interact_btn = $Interact
 	_inventory_btn = $Inventory
+	_special_btn = $Special
 	_camera_zone = $CameraZone
 	if layout == null:
 		layout = load("res://data/ui/touch_layout.tres")
@@ -58,6 +60,7 @@ func _ready() -> void:
 	_attack_btn.action = &"attack"
 	_interact_btn.action = &"interact"
 	_inventory_btn.action = &"inventory"
+	_special_btn.action = &"special"
 	_place()
 	_placed = true
 	get_viewport().size_changed.connect(_on_viewport_resized)
@@ -89,6 +92,9 @@ func _place() -> void:
 	_inventory_btn.set_placement(
 			_clamp_center(layout.inventory_center * screen.size, btn_r, safe),
 			btn_r, "INV")
+	_special_btn.set_placement(
+			_clamp_center(layout.special_center * screen.size, btn_r, safe),
+			btn_r, "SPC")
 
 	var z: Rect2 = Rect2(layout.camera_zone.position * screen.size,
 			layout.camera_zone.size * screen.size)

@@ -24,6 +24,13 @@ environmental storytelling.
 > AFTER YOU — это не «roguelite, у которого есть сюжет».
 > Это **мир, который помнит тебя, замаскированный под roguelite**.
 
+**Платформа (решение владельца, 2026-09): Android first** (mobile-first;
+iOS — позже, если архитектура и бюджет позволят). PC используется только
+для удобства разработки — **все технические решения принимаются с
+позиции «сможет ли это нормально работать на Android-смартфоне?»**
+(touch controls, aspect ratio, память, draw calls, thermal, батарея).
+ADR-021, TECHNICAL_DESIGN §15.
+
 ## 2. Тон и ощущения
 
 Мрачный, загадочный, атмосферный, **не** беспросветно депрессивный.
@@ -43,8 +50,8 @@ discovery → удивление → paranoia → надежда → ощуще�
 
 ## 3. Главный герой
 
-**Eli** (рабочее имя; ~25–30, пол выбирает игрок; нейтральная внешность
-для ассоциации). Наблюдательный, осторожный, иногда саркастичный; не знает
+**Eli** (~25–30, пол выбирает игрок; нейтральная внешность для
+ассоциации). Имя финальное (решение владельца, GDD §15). Наблюдательный, осторожный, иногда саркастичный; не знает
 прошлого; постепенно одержим тайной мира.
 Внутренний конфликт (эволюция вопроса):
 1. «Кто я?» → 2. «Почему мир помнит меня за меня?» → 3. «А если мои прошлые
@@ -79,6 +86,10 @@ Move, Sprint (stamina), Dodge (i-frames), Attack (melee-комбо), Ranged
 (Hand Cannon, ограниченный боезапас), Interaction, Inventory (12 слотов),
 Pause. HP / Stamina / Damage / Death. Урон по игроку: hit-stop, shake,
 vignette, knockback. Детали feel-бюджета — ARCHITECTURE + TEST_PLAN.
+**Touch (Android first):** виртуальный джойстик (лево) + кнопки
+(attack/dodge/interact/inventory) + drag-камера (право); landscape;
+safe area + aspect 16:9–20:9 (TECHNICAL_DESIGN §7/§10). Клавиатура/
+мышь и геймпад — для dev/QA (те же actions, два device-layout'а).
 
 ### 6.2 Бой
 Readability + feel. Hitbox/hurtbox, единый DamageResolver, telegraphs
@@ -243,8 +254,11 @@ discovery / interaction. Нет — комната не создаётся.
 **Stylized dark fantasy with grounded materials.** Не generic medieval,
 не oversaturated mobile-look, не photoreal AAA, не grimdark-everything.
 Цель: **красивый, атмосферный, немного странный мир.**
-- Текстуры PBR (CC0, Poly Haven), единая палитра биома, height-fog, 1
-  directional + ≤6 локальных источников (High), emissive-акценты.
+- **Mobile-first** (ADR-021): текстуры ASTC (Android), 512–1024 px;
+  height-fog; 1 directional (тени 1024/2048) + ≤6 локальных источников
+  (High, 3 — Medium/Low); **без тяжёлого post-process** (SSAO/SSR off;
+  MSAA ≤2× High); VFX — пулы (TECHNICAL_DESIGN §9); эмиссивные акценты
+  вместо «дорогого» света. Цели — TECHNICAL_DESIGN §12.
 - Color language слоёв (см. §7) — это нарратив, не стиль.
 - MVP-арт: text-first policy (ADR-005) — примитивы + .tres-материалы +
   генерируемые текстуры; каждый элемент со статусом final/prototype;
@@ -262,17 +276,25 @@ post-MVP) · 5 enemy archetypes · 1 boss (The First) · Echo-система
 на горизонте) · 1-я большая mystery-линия (Mystery 2 «почему мир помнит») ·
 first Echo reveal · first boss · first major world transformation ·
 10 signature moments (MVP-подмножество: #1–#6, #7, #10-подготовка).
+**Платформа:** Android (primary, mobile-first; ADR-021). iOS/PC —
+post-MVP (архитектура не блокирует: data-driven + порты ARCHITECTURE).
 **Системы (из Phase 0-архитектуры, без изменений):** run recording,
 ghost/passive echo, world memory + memory_stats, записки (note stands),
-save/load, UI, audio, VFX, settings, quality presets, debug tools.
+save/load, UI, audio, VFX, settings, quality presets (Low/Medium/High/
+Ultra — мобильные), debug tools (release-off).
 **Out of MVP (явно):** Act III–VI и endings A/B/C (архитектура готова,
 контент — post-MVP), Ancient Gate area (the town), 2-й boss, локализация
-RU (EN primary), Android, 2+ биома.
+RU (EN primary — data-ready), iOS/PC-билды, 2+ биома, геймпад-полиш.
 
 ## 12. Метрики успеха
 
 - Death → respawn ≤ 2s технически / ≤ 10s UX (с death screen).
-- 60 fps @High 1080p (GTX-1060-класс), 30 fps floor @Low (замер Phase 16).
+- **Мобильные цели (ADR-021):** 60 fps @Medium/High на mid-range Android
+  (1080×2400, Snapdragon 7-класс; референс — смартфон владельца);
+  30 fps floor @Low 720p на low-end (SD 6xx-класс) (замер Phase 16,
+  на реальном устройстве).
+- Thermal/батарея: 30-мин сессия без throttling-краха (Low/Medium);
+  нет sustained 100%-нагрузки (VFX/AI-бюджеты, TECHNICAL_DESIGN §12).
 - «Что изменилось» замечено без подсказки ≥70% тест-сессий (QA Phase 17).
 - Игрок задаёт «что будет, если я…» минимум раз в забег (наблюдение QA).
 - 0 unknown-лицензий (ASSET_LICENSES.md) · 0 critical bugs (Phase 19).
@@ -291,12 +313,14 @@ RU (EN primary), Android, 2+ биома.
 способность отпустить прошлое? — финальный выбор (A/B/C) — ответ на этот
 вопрос тремя способами.
 
-## 15. Открытые вопросы (не блокируют дизайн; требуют решения владельца)
+## 15. Решения владельца (закрыты, 2026-09)
 
-1. **Платформы PC-релиза:** Windows first + Linux позже (предложение) —
-   или одновременно?
-2. **Локализация:** EN-only в MVP, RU = data-only (предложение) — OK?
-3. **Имя Eli:** принять «Eli» как финальное или рассмотреть кандидаты
-   из CHARACTER_BIBLE §1.6 (рабочее имя по ТЗ — не менять автоматически)?
-4. **The Child неуязвим** (дизайн-решение, CHARACTER_BIBLE) — подтвердите
-   (альтернатива: убиваемый, но с уникальными последствиями).
+| # | Вопрос | Решение | Где зафиксировано |
+|---|---|---|---|
+| 1 | Платформа | **Android first** (iOS позже; PC — только dev). Mobile-first: touch, aspect, память, draw calls, thermal, батарея | ADR-021, TECHNICAL_DESIGN §12/§15 |
+| 2 | Локализация | **EN-only в MVP, RU = data-only** (все строки через localization layer) | ADR-013 |
+| 3 | Имя героя | **Eli** (финально) | §3, CHARACTER_BIBLE §1 |
+| 4 | The Child | **Неуязвим** (нельзя убить/повредить обычными действиями — часть загадки) | CHARACTER_BIBLE §5 |
+
+Дополнительно: бюджет — 0 ₽ (только бесплатные легальные ассеты —
+ADR-005/006); движок — Godot 4.7.2 stable (ADR-001).

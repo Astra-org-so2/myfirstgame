@@ -125,7 +125,7 @@ attack/hurt/dead) **не знает** про CharacterBody3D напрямую �
 
 Почему: wasm-тест-риг не имеет 3D-физики (ADR-002); логика движения
 (ускорение, dodge-окна, stamina-косты) тестируется в песочнице, физическое
-«ощущение» — на ПК (ручное QA).
+«ощущение» — на референс-устройстве (Android, ADR-021) + на ПК (dev-QA).
 
 ## 4. Ключевые системы (кратко; детали — TECHNICAL_DESIGN)
 
@@ -243,13 +243,15 @@ composition (сцена-локация содержит своих контро�
   touch-controls = отдельная UI-сцена, биндящая те же actions (добавление =
   сцена + данные, не код).
 - Quality settings (Low/Med/High/Ultra) покрывают мобильный Low.
-- Без editor-only фич; без тяжёлых шейдеров по умолчанию (forward+ на ПК;
-  mobile renderer = future flag, архитектура не зависит от renderer-выбора).
+- Без editor-only фич; без тяжёлых шейдеров по умолчанию (Forward+/Vulkan
+  mobile-first, ADR-021; mobile renderer = опция для слабых устройств,
+  архитектура не зависит от renderer-выбора — фиксация замерами Phase 16).
 - Файлы: scene-размер ≤ ~500 узлов/локация; текстуры — quality-scaled (отдельные
   `.import`-настройки per quality — tooling в tools/utils).
 
-## 11. Что здесь НЕ решение (см. ADR / открытые вопросы GDD §7)
+## 11. Что здесь НЕ решение (см. ADR / design-доки)
 
 - Выбор конкретного rigged-персонажа (Phase 2, ASSET_GUIDE).
-- Набор 3 оружия (GDD §7 Q1).
-- Платформы PC-релиза (GDD §7 Q2).
+- (Решено в design-фазе: 3 weapon-архетипа BLADE/HAND CANNON/ECHO STAFF —
+  WEAPON_DESIGN; платформа = **Android first** — ADR-021; имя = Eli —
+  CHARACTER_BIBLE; The Child = invulnerable — CHARACTER_BIBLE §5.)

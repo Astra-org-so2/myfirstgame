@@ -167,14 +167,35 @@ fallback + log), invalid world state (ручной битый save → recovery)
 Ghost: ghost без лога; ghost с несовпадающим seed (remap-путь); ghost
 в паузе; ghost + пауза + save.
 
-## 7. Performance-протокол (Phase 16)
+## 7. Performance-протокол (Phase 16) — mobile-first (ADR-021)
 
-- Замер: F1-overlay + `--benchmark` (60-с сессия в хабе / в бою / в
-  boss-арене; P50/P95 frame time, draw calls, AI budget, nodes, phys).
-- Референс-железо: GTX 1060-класс (цель High 60fps); iGPU-класс (цель
-  Low 30fps) — замеры у владельца (песочница без GPU).
+**Цели:** 60 fps (Med/High) на mid-range; 30 fps floor (Low) на low-end.
+Бюджеты — TECHNICAL_DESIGN §12.
+
+**Референс-железо (мобильное, ADR-021):**
+- **Целевое:** mid-range Android — Snapdragon 7-класс, 8 GB,
+  1080×2400 (смартфон владельца) → High 60 fps.
+- **Floor:** low-end Android — SD 6xx-класс, 4 GB, 720×1600 →
+  Low 30 fps.
+- ПК = dev/QA-замеры (не целевой; sanity-check только).
+
+**Протокол замера (на устройстве, ADB):**
+- `adb install` debug-экспорт; `adb logcat` — сбор Godot-логов.
+- F1-overlay (debug build) — визуальный замер: fps, frame P50/P95,
+  draw calls, AI budget, nodes, phys, RAM, tex mem.
+- **Сбор метрик в файл:** `--benchmark`-режим пишет P50/P95 frame time,
+  draw calls, nodes, phys, RAM в `user://perf_<scene>.txt` →
+  `adb pull` → в PERF_REPORT.md (не «на глаз»).
+- **Сценарии (30–60 c каждый):** хаб (idle-движение), бой (5 врагов),
+  boss-арена (Undercroft), **thermal-сессия 30 мин** (беспрерывный бой +
+  движение; фиксация fps-кривой для drop-анализа).
+- **Presets:** прогон на High (mid-range) И на Low (low-end);
+  render scale 0.75 — при просадках.
+- **Cold start:** замер time-to-playable (≤8 c High / ≤10 c Low).
+- **Save write:** ≤50/80 ms (debug-замер в SaveManager).
 - Report: `docs/PERF_REPORT.md` — до/после оптимизаций; каждый fix —
-  с замером (не «должно стать быстрее»).
+  с замером (не «должно стать быстрее»). Песочница — без GPU/устройства:
+  mobile-замеры = ручной шаг владельца (ADR-012, R9).
 
 ## 8. Статус-отчёты (по задаче)
 

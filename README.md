@@ -2,8 +2,11 @@
 
 3D third-person action roguelite: **мир помнит ваши предыдущие забеги**.
 
-PC first (Godot 4.7.2). Маленькая, но отполированная игра: один биом
-(The Forgotten Forest), 5 NPC, 5 архетипов врагов, 3 архетипа оружия,
+**Android first** (iOS позже; PC — только dev/QA), Godot 4.7.2.
+Mobile-first во всех технических решениях (touch, aspect, память,
+draw calls, thermal — ADR-021). Маленькая, но отполированная игра:
+один биом (The Forgotten Forest), 5 NPC, 5 архетипов врагов,
+3 архетипа оружия,
 boss (THE FIRST), run-recording + Echo-система (5 типов), world memory
 + memory_stats, 4 mystery-линии, 6 актов (MVP = Act I + начало Act II).
 
@@ -31,7 +34,7 @@ boss (THE FIRST), run-recording + Echo-система (5 типов), world memo
 - `ASSET_GUIDE.md` — источники/лицензии/пайплайн (CC0)
 - `TEST_PLAN.md` — headless-риг, unit/integration, ручные QA-чеклисты
 - `ROADMAP.md` — фазы 0–19 с exit-criteria (v0.2, v2-контент)
-- `DECISIONS.md` — ADR-001…020 + реестр рисков
+- `DECISIONS.md` — ADR-001…021 (вкл. Android first) + реестр рисков
 
 ## Development tooling (песочница)
 

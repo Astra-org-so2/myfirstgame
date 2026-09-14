@@ -317,11 +317,17 @@ RUN 1: 0, RUN 02: 2, RUN 03: 2, RUN 04+: до 3; post-boss: -2.)
 ## 7. Input
 
 Actions (InputMap): `move_up/down/left/right`, `sprint`, `dodge`,
-`attack`, `ranged_attack`, `interact`, `inventory`, `pause`, `ui_*`
-(navigation), `debug_*` (release-off). Gamepad: стандартные бинды
-(A=interact/attack по контексту? нет: A=interact, X=attack? — финальные
-бинды в Phase 2/13; архитектура: один набор actions, два device-layout'а).
-Touch (future): виртуальные кнопки = те же actions.
+`attack`, `ranged_attack`, `interact`, `inventory`, `pause`, `camera_*`,
+`ui_*` (navigation), `debug_*` (release-off).
+- **Touch (PRIMARY, Android first — ADR-021):** виртуальный джойстик
+  (левый нижний квадрант: move/sprint — по амплитуде) + кнопки (правый
+  нижний квадрант: attack — крупная, dodge, interact — контекстная,
+  inventory) + **drag-камера** (тач по свободной зоне справа). Layout —
+  data (`data/ui/touch_layout.tres`: позиции per aspect + safe area),
+  не хардкод. Финальная эргономика — Phase 2/13 (touch-тест на
+  устройстве).
+- **Keyboard/mouse + gamepad (dev/QA):** те же actions, отдельные
+  device-layout'ы (ARCHITECTURE §7: один набор actions, N layouts).
 
 ## 8. Audio
 
@@ -349,12 +355,16 @@ mystery glow (emissive pulse), boss telegraph (ground decal + particles).
 HUD (health bar, stamina bar, weapon icon, interact prompt, echo marker
 «след впереди»), Inventory (12 grid + equipment 3 slots), Dialogue
 (portrait, text, choices max 2), Pause (resume/settings/quit-to-hub),
-Settings (video: quality preset, resolution, vsync; audio: 3 vols + mute;
-controls remap `?`), DeathScreen («вы умерли. Мир запомнил.» +
+Settings (video: quality preset (Low/Med/High/Ultra — мобильные),
+render scale (0.75/1.0), vsync; audio: 3 vols + mute; controls remap
+`?` (keyboard/gamepad)), DeathScreen («вы умерли. Мир запомнил.» +
 Inheritance-карточки 1/3 (UX ≤10 s) + «Что изменилось» (≤5 строк) +
 continue → 1 нажатие), RunSummary (статистика забега + выбор
 Inheritance 1/3), Journal («Записки» — player notes (5-line pool) +
 найдённые world-notes), «Что изменилось» panel (WORLD_STATE_DESIGN §9.2).
+**Мобильная вёрстка (ADR-021):** landscape; aspect 16:9–20:9 + safe area
+(notch/punch-hole — safe-margin); UI scale по разрешению; touch-зоны в
+«thumb-зоне» (нижние углы); HUD не перекрывает критичную центр-зону боя.
 
 ## 11. Debug tools (F1–F8, release-off)
 
@@ -368,25 +378,41 @@ now); F8 clear temp run state; (F9, dev-only: set memory_stats —
 tune-инструмент, release-off).
 Все — через `DebugTools` autoload, feature-tag `Release` убирает autoload.
 
-## 12. Performance budget (цели; фактические замеры — Phase 16)
+## 12. Performance budget (mobile-first; замеры — Phase 16, на устройстве)
 
-| Метрика | Бюджет (High, 1080p) | Как меряем |
-|---|---|---|
-| Frame time | ≤ 16.6 ms (60fps), P95 ≤ 22 ms | F1 overlay + `--benchmark` режим (tools) |
-| Draw calls (хаб, полный) | ≤ 300 (env ≤150, chars ≤50, vfx ≤100) | F1 overlay (render-info из RenderingServer) + profiler |
-| AI budget | ≤ 4 ms/frame суммарно (staggered) | замер в AI-тиках (debug) |
-| Physics bodies (локация) | ≤ 40 | overlay |
-| Particles живых | ≤ 300 (на экране) | overlay |
-| Nodes (локация) | ≤ 2500 | overlay |
-| Texture memory | ≤ 512 MB (High) | overlay (VideoMode?) / `get_render_info` |
-| Load: cold start → title | ≤ 5 c (SSD, ПК-класс) | ручной замер (Phase 16) |
-| Death → respawn | ≤ 2 c (hard target; ≤10 c UX-цель с UI) | замер в RunManager |
-| Save write | ≤ 50 ms | замер в SaveManager (debug) |
-| Save size | ≤ 5 MB | assert в тестах |
-| Память процесса | ≤ 1.5 GB (High) | overlay/мониторинг |
+**Референс-железо (ADR-021):** mid-range Android (Snapdragon 7-класс,
+8 GB, 1080×2400 — смартфон владельца) = целевой; low-end (SD 6xx-класс,
+4 GB, 720×1600) = floor. Замеры — ADB + F1 overlay (сбор в файл).
 
-Low preset: shadows off, fog simple, particles 50%, no post, textures 512 →
-цель 30 fps floor (интеграционный GPU-класс), node count те же.
+| Метрика | Бюджет (High, 1080p, mid-range) | Бюджет (Low, 720p, low-end) | Как меряем |
+|---|---|---|---|
+| Frame time | ≤ 16.6 ms (60 fps), P95 ≤ 22 ms | ≤ 33.3 ms (30 fps), P95 ≤ 45 ms | F1 overlay + `--benchmark` (сбор в файл, Phase 16) |
+| Draw calls (локация, полная) | ≤ 150 (env ≤90, chars ≤30, vfx ≤30) | ≤ 120 | overlay (`get_render_info`) |
+| AI budget | ≤ 4 ms/frame (staggered) | ≤ 5 ms | замер в AI-тиках |
+| Physics bodies (локация) | ≤ 40 | ≤ 40 | overlay |
+| Particles живых | ≤ 200 (на экране) | ≤ 100 | overlay |
+| Nodes (локация) | ≤ 2000 | ≤ 2000 | overlay |
+| Texture memory | ≤ 256 MB (ASTC) | ≤ 192 MB | overlay |
+| RAM процесса | ≤ 1.2 GB | ≤ 1.0 GB | overlay / `dumpsys` |
+| Load: cold start → playable | ≤ 8 c (на устройстве) | ≤ 10 c | ручной замер (Phase 16) |
+| Death → respawn | ≤ 2 c (hard); ≤10 c UX (UI) | то же | замер в RunManager |
+| Save write | ≤ 50 ms | ≤ 80 ms | SaveManager (debug) |
+| Save size | ≤ 5 MB | ≤ 5 MB | assert в тестах |
+| Thermal (30-мин сессия) | без drop ниже 60 fps (High) / 55 fps (Med) | без drop ниже 30 fps | сессия на устройстве (Phase 16) |
+
+**Preset'ы (мобильные, data-driven `data/quality/*.tres`):**
+- **Low** (low-end): 720p, shadows off, fog simple, particles 50%,
+  no post, textures 512 ASTC, 3 local lights.
+- **Medium** (mid-range base): 1080p, shadows 1024, particles 75%,
+  textures 1024 ASTC, 4 local lights.
+- **High** (mid/high): 1080p, shadows 2048, particles 100%, MSAA 2×,
+  6 local lights, render scale 1.0.
+- **Ultra** (flagship): High + soft shadows + VFX 125% (опц.).
+- Render scale 0.75 — «performance mode» (Low/Med) при просадках.
+- **Тепло/батарея (ADR-021):** без sustained-100% нагрузки (VFX/AI-
+  бюджеты; idle-состояния мира «тихие»); auto-quality-drop — post-MVP
+  (MVP: preset по выбору + рекомендация по классу устройства на
+  старте: GPU-name → preset, data).
 
 ## 13. Headless-тест-риг (toolchain; подробно в TEST_PLAN)
 
@@ -440,3 +466,54 @@ ambiguity_frame: bool      # final-frame ambiguity (NARRATIVE §6)
 - MVP: только `ending_choice: null` + подготовка (K6-seed, boss
   death); Act V/VI — post-MVP (GDD v2.0 §11: «архитектура готова,
   контент — post-MVP»).
+## 15. Android-платформа (первичная цель; ADR-021)
+
+> **Android first** (GDD §11/§15): мобильная платформа — первичная цель
+> релиза. iOS — вторичная (если архитектура/бюджет позволяют). ПК —
+> только dev/QA-удобство. Все технические решения проверяются вопросом
+> «сможет ли это нормально работать на Android-смартфоне?».
+
+### 15.1 Рендерер и графика
+- **Renderer: Forward+ (Vulkan).** Не Mobile renderer для финального
+  качества (Mobile renderer — fallback/опция для очень слабых устройств;
+  Forward+ даёт нужные локальные источники света). Решение по
+  «Forward+ vs Mobile» фиксируется замерами Phase 16 на референс-железе.
+- **Формат текстур: ASTC** (стандарт для всех современных GPU Android);
+  BC7/DXT — не используются в релизе.
+- **Разрешение рендера** — от quality preset (720p/1080p) + render scale
+  (0.75/1.0). Не привязывать к нативному разрешению экрана «в лоб».
+- **Ориентация: landscape** (портрет — не поддерживается в MVP).
+
+### 15.2 Минимальная конфигурация (MVP)
+- **Android:** minSdk **API 26 (Android 8.0)**; target — актуальный.
+- **GPU:** Adreno 6xx / Mali G72+ / PowerVR (современные). Реальный
+  список — по результатам Phase 16 (GPU-name → preset).
+- **RAM:** 3 GB (низшая граница для Mid preset).
+- **Хранилище:** APK + данные ≤ ~2 GB (цель; ассеты — по ADR-017).
+
+### 15.3 Экспорт и CI (ADR-012 — Android)
+- Export preset `export/android/release` (debug — для ADB-QA).
+- **Signing:** keystore НЕ в git; секреты — env vars CI (Godot export
+  via `--export-release` CLI).
+- **CI:** headless-тесты (ADR-012) + **Android build (gradle)** как
+  отдельный job (нужен Android SDK; в песочнице — опционально, см. §15.5).
+- **Реальная ADB-QA** (запуск на устройстве, сбор логов/метрик) — на
+  устройстве владельца, не в CI.
+
+### 15.4 Сохранения и данные (мобильные особенности)
+- Save в `user://` (внутреннее хранилище; не external — права/доступ).
+- Атомарный write (tmp → rename) — обязателен на мобильном
+  (прерывание записи при сбое питания/low-memory).
+- Low-memory: OS может убить процесс — save пишется часто (автосейв) и
+  устойчив к повреждению (CRC, см. §11).
+
+### 15.5 Инструменты в песочнице (честные ограничения)
+- **Godot editor + headless-тесты** — работают (Linux).
+- **Android export (gradle/AAPT2)** — требует Android SDK + JDK; в
+  песочнице **не гарантирован**. Стратегия: export-конфиг и CI job
+  создаём и держим рабочими на уровне конфигурации; фактический сбор
+  APK и ADB-QA — на машине/устройстве владельца (документировано, не
+  притворяемся, что «собрали APK в песочнице»).
+- **Пересечение с ADR-003 (sandbox-ограничения):** Android-тулчейн —
+  расширение ограничений; фазы, где нужен реальный Android, помечены
+  «на устройстве» в ROADMAP.

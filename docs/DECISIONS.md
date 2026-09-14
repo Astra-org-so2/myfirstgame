@@ -148,19 +148,21 @@ dodge/ranged/melee); **The First** бьёт паттернами на основ
 Последствия: эти враги неразделимы с run-системой (зависимость
 enemies→run через данные, не код — ARCHITECTURE §7).
 
-## ADR-012. Release-экспорт выполняется на ПК владельца
-Статус: ACCEPTED
-Контекст: export templates (~1GB) недоступны в песочнице (см. ADR-002);
+## ADR-012. Release-экспорт (Android) выполняется на железе владельца
+Статус: ACCEPTED (updated: Android first, ADR-021)
+Контекст: Android-тулчейн (export templates, Android SDK, gradle/AAPT2,
+JDK) недоступен/не гарантирован в песочнице (см. ADR-002, §15.5);
 wasm-риг — не средство экспорта.
-Решение: песочница готовит всё (project, export_presets.cfg,
-docs/RELEASE_BUILD.md с пошаговой инструкцией: шаблон 4.7.2,
-feature Release, иконка, версия); владелец выполняет экспорт и
-проверяет по чек-листу Phase 18.
-Последствия: последний шаг релиза — ручной (задокументирован),
-всё до него — автоматизировано/проверено.
+Решение: песочница готовит всё (project, export_presets.cfg с Android
+preset, docs/RELEASE_BUILD.md с пошаговой инструкцией: шаблон 4.7.2,
+Android export (API 26+, landscape), feature Release, иконка, версия,
+signing via env); владелец выполняет экспорт APK и ADB-QA и проверяет
+по чек-листу Phase 18.
+Последствия: последний шаг релиза (сбор APK + запуск на устройстве) —
+ручной (задокументирован); всё до него — автоматизировано/проверено.
 
 ## ADR-013. Язык: EN primary, data-localizable
-Статус: PROPOSED (Q3 GDD)
+Статус: ACCEPTED (решение владельца, GDD §15 Q2)
 Решение: тексты — в DialogueData/UpgradeData (data-driven), EN —
 активный; RU-поддержка = добавление перевода в те же ресурсы (без
 кода). MVP — EN only.
@@ -252,6 +254,43 @@ NARRATIVE_STRUCTURE §4; карта — MYSTERY_REVEAL_MAP §3. First death
 Последствия: Phase 8 (run system) + Phase 11 (mystery) валидируют
 вехи по FIRST_30_MINUTES; QA-маршрут Phase 17 — по FIRST_3_RUNS.
 
+## ADR-021. Платформа: Android first (mobile-first для всех решений)
+Статус: ACCEPTED (решение владельца, GDD §15 Q1; 2026-09)
+Контекст: владелец скорректировал первоначальный «PC first»:
+«целевая платформа у нас мобильная… Не надо делать PC-версию первой,
+даже как основной target. Можно использовать PC для удобства разработки
+и тестирования, но все технические решения должны приниматься с позиции:
+«сможет ли это нормально работать на Android-смартфоне?»». 3D +
+динамический свет + VFX + AI + Echo-система легко перегружают
+мобильный GPU/CPU, если архитектура не мобильная с первого дня.
+Решение:
+- **Primary: Android.** Secondary: iOS позже (если архитектура/бюджет
+  позволяют). PC = только dev/QA-удобство (не target).
+- **Renderer: Forward+ (Vulkan)**, mobile-first (ASTC-текстуры,
+  texture-atlas, локальные источники света ≤6/preset, no heavy post,
+  draw calls ≤150/локацию). Mobile renderer = опция/fallback для очень
+  слабых устройств; фиксация «Forward+ vs Mobile» — замерами Phase 16.
+- **Минимальная конфигурация (MVP):** Android 8.0 (API 26), GPU
+  Adreno 6xx / Mali G72+ (современные; точный список — Phase 16), RAM
+  3 GB (низшая граница Mid), APK ≤ ~2 GB.
+- **Performance-политика (бюджеты — TECHNICAL_DESIGN §12):** 60 fps
+  (Med/High) на mid-range (SD 7-класс, 1080×2400 — смартфон владельца);
+  30 fps floor (Low, 720p) на low-end (SD 6xx-класс); frame P95 ≤22/45 ms;
+  particles ≤200/100; RAM ≤1.2/1.0 GB; tex ≤256/192 MB; cold start
+  ≤8/10 c; save ≤50/80 ms; thermal 30-мин сессия без drop ниже
+  60/55/30 fps.
+- **Тач-контролы первичны** (TECHNICAL_DESIGN §7): вирт. джойстик +
+  кнопки + drag-камера; layout — data (`data/ui/touch_layout.tres`).
+  Keyboard/mouse + gamepad = dev/QA.
+- **UI:** landscape, aspect 16:9–20:9 + safe area, thumb-зоны.
+- **Экспорт:** Android release (ADR-012); save — `user://` (внутреннее
+  хранилище), atomic write обязателен (low-memory/сбои питания).
+- **Auto-quality-drop: post-MVP** (MVP — preset по выбору +
+  рекомендация по GPU-name на старте).
+Последствия: все фазы ROADMAP с пометкой mobile (Phase 1/2/13/16/17/18);
+замеры Performance — на референс-устройстве (ADR-012, R9); риски R8/R9;
+iOS-совместимость — держим (общая архитектура), отдельный pass — post-MVP.
+
 ---
 
 ## Реестр рисков (Phase 0, живые)
@@ -265,3 +304,5 @@ NARRATIVE_STRUCTURE §4; карта — MYSTERY_REVEAL_MAP §3. First death
 | R5 | Тест-риг: ограничения wasm-сборки (физика/нав) расширяются/сужаются в других версиях | Тест-инфра | Пинг версии 4.7.2-626 (package.json); smoke-тест рига в run_tests.sh |
 | R6 | Владелец недоступен на ручной QA-шагах | Скорость | Все ручные шаги — компактные чек-листы с конкретными командами |
 | R7 | Мистика «объясняется слишком рано» | Нарратив | Mystery-прогресс по стадиям (2–3 фрагмента), qa-маршрут Phase 11 |
+| R8 | GPU-divergence: Adreno/Mali/PowerVR рендерят/перф-ведут себя по-разному (арт-артефакты, просадки на конкретном вендоре) | Визуал/перф релиза | Референс-железо = Adreno (владелец); Mali-проверка — Phase 16/17 (по доступности); консервативные шейдеры/бюджеты; fallback mobile renderer (ADR-021) |
+| R9 | Android-тулчейн (SDK/gradle/AAPT2/JDK) отсутствует в песочнице → APK не собирается/не проверяется здесь | Release-этап | Честное ограничение (ADR-012, §15.5): APK-сбор + ADB-QA — на железе владельца по чек-листу Phase 18; песочница готовит export-конфиг и RELEASE_BUILD.md; headless-тесты покрывают логику |

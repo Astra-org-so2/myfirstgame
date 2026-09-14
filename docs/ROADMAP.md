@@ -21,31 +21,40 @@ Scope: GDD, Architecture, Technical Design, Asset Guide, Test Plan,
 Roadmap, Decisions + self-review.
 Exit: документы согласованы; открытые вопросы (GDD §15) — на решении
 владельца; инструментальный вопрос (движок в песочнице) решён (ADR-002).
-STATUS: DOCS COMPLETE (15/15, GDD v2.0 + docs/design/*); открытые
-вопросы GDD §15 Q1–Q4 — на решении владельца (не блокируют Phase 1).
+STATUS: DOCS COMPLETE (15/15, GDD v2.0 + docs/design/*); вопросы GDD
+§15 Q1–Q4 — **решены владельцем** (платформа = Android first → ADR-021;
+локализация = EN-only MVP → ADR-013; имя = Eli; The Child = invulnerable;
+см. GDD §15).
 
 ## PHASE 1 — Empty runnable project
-Scope: project.godot (4.7.2, input map, layers, rendering defaults,
-fog), main scene (пустой хаб-заглушка с камерой), структура папок;
+Scope: project.godot (4.7.2, **renderer Forward+ (mobile-first, ADR-021)**,
+**screen: landscape + stretch (aspect/safe area)**, input map (touch +
+kb/m + gamepad actions), layers, rendering defaults, fog),
+main scene (пустой хаб-заглушка с камерой), структура папок;
 `tools/run_tests.sh` + `tests/runner.tscn|gd` + 1 smoke-тест (runner
 стартует, печатает, quit(0)); harness-режим `--tests` (main-scene swap).
 Autoload'ы НЕ создаются заранее — каждый появляется с фазой своей
 системы (ADR-009).
 Exit: проект стартует в редакторе (владелец) И в риге (песочница) без
-ошибок; input map полный; структура по ARCHITECTURE.
+ошибок; input map полный (touch + dev); landscape/stretch на месте;
+структура по ARCHITECTURE.
 Risks: — (инфраструктура проверена в Phase 0 spike).
 
 ## PHASE 2 — Player
-Scope: PlayerController + camera rig (orbit, collision, distance FOV),
-movement (run/sprint/dodge со stamina, MockMovementPort + EngineMovementPort),
-CharacterBody3D, animation state machine (idle/walk/run/dodge/hurt),
+Scope: PlayerController + camera rig (orbit, collision, distance FOV,
+**drag-камера (touch)**), movement (run/sprint/dodge со stamina,
+MockMovementPort + EngineMovementPort), CharacterBody3D, animation state
+machine (idle/walk/run/dodge/hurt), **touch controls (вирт. джойстик +
+кнопки + drag-камера; layout `data/ui/touch_layout.tres` — ADR-021)**,
 placeholder-персонаж (примитивы, ADR-005) или rigged-CC0 (если найден —
 ASSET_GUIDE §4).
 Unit: movement logic (ускорение/затухание, dodge-окна, stamina-косты),
-camera math. Integration: respawn-позиция.
-Manual: qa_phase2_movement.md.
+camera math, touch-layout (позиции per aspect). Integration:
+respawn-позиция.
+Manual: qa_phase2_movement.md (+ touch-чек-лист на устройстве).
 Exit: движение «приятное» (чек-лист), dodge i-frames работают
-(замер окна), 60fps в риге-тиках, 0 ошибок.
+(замер окна), 60fps в риге-тиках, touch-контролы играбельны (на
+устройстве, ADR-021), 0 ошибок.
 
 ## PHASE 3 — First environment (The Forgotten Forest)
 Scope: camp-hub (WORLD_BIBLE §4.1): floor, paths, 8–12 деревьев
@@ -183,10 +192,14 @@ Exit: boss побеждаем (оба варианта: с/без FIRST BLADE); 
 ## PHASE 13 — Visual polish
 Scope: визуальный pass по всем сценам (материалы/свет/композиция),
 замена prototype-элементов (по ASSET_STATUS.md — все «prototype»
-закрыты или явно приняты), UI-отделка (все экраны, не Godot-дефолт),
+закрыты или явно приняты), UI-отделка (все экраны, не Godot-дефолт,
+**mobile-вёрстка: aspect 16:9–20:9, safe area, thumb-зоны — ADR-021**),
+**mobile-графика: ASTC-текстуры, texture-atlas (draw calls ≤150),
+локальные источники света ≤6/preset, no heavy post (TECH_DESIGN §12)**,
 camera polish, color grade.
-Manual: qa_phase13_visual.md.
-Exit: «никаких prototype-элементов» (чек по списку).
+Manual: qa_phase13_visual.md (+ мобильные чек-листы).
+Exit: «никаких prototype-элементов» (чек по списку); mobile-графика
+в бюджете §12 (ASTC, draw calls, lights).
 
 ## PHASE 14 — Audio polish
 Scope: все категории по GDD §8 (финальные лицензии или осознанные
@@ -204,27 +217,36 @@ Unit: migration, corrupt matrix. Integration: death→save→reload.
 Exit: crash/invalid/old-version/missing-asset — без loss core-
 прогрессии, без crash (матрица 100%).
 
-## PHASE 16 — Performance
-Scope: audit по TEST_PLAN §7 (замеры: до/после), fixes (draw calls,
-AI, particles, textures, nodes), quality presets (Low/Med/High/Ultra)
-проверены, PERF_REPORT.md.
-Exit: бюджет §12 TECH_DESIGN по High; Low floor — замер (владелец,
-референс-железо).
+## PHASE 16 — Performance (mobile-first)
+Scope: audit по TEST_PLAN §7 (**замеры на референс-устройстве — ADR-021**:
+ADB + F1 overlay → файл), fixes (draw calls, AI, particles, textures,
+nodes, RAM), quality presets (Low/Med/High/Ultra, data-driven) проверены
+на mid-range (High, 60 fps) + low-end (Low, 30 fps floor),
+**thermal-сессия 30 мин (без drop)**, cold start ≤8 c, save write,
+PERF_REPORT.md.
+Exit: бюджет §12 TECH_DESIGN по High (mid-range) И Low (low-end) —
+замеры на устройстве (владелец).
 
 ## PHASE 17 — QA
 Scope: полный sweep по TEST_PLAN §5/§6 (включая edge-cases матрицу),
+**mobile-QA на устройстве (ADR-021): touch-эргоника, aspect 16:9–20:9,
+safe area (notch), rotation-lock (landscape), battery/thermal-наблюдение,
+connectivity-пауза/резюме, low-memory-поведение (save-устойчивость)**,
 fixes, regression-прогон.
-Exit: 0 known critical; 0 known non-critical без решения.
+Exit: 0 known critical; 0 known non-critical без решения; mobile-QA
+чек-лист пройден (на устройстве).
 
-## PHASE 18 — Release build
-Scope: export presets (Windows x86_64 — primary; Linux — по решению
-владельца, GDD v2.0 §15 Q1),
-Release-feature (без DebugTools), проверка: нет debug/overlay/test-
-ассетов/placeholder UI/broken refs; icon; version strings.
-Ограничение (ADR-012): export-templates недоступны в песочнице →
-финальный экспорт выполняет владелец (по инструкции в
-docs/RELEASE_BUILD.md, создаётся в этой фазе).
-Exit: exe стартует, проигрывает, save/load OK, 0 debug-остатков.
+## PHASE 18 — Release build (Android)
+Scope: export presets (**Android release — primary (ADR-021)**; Windows —
+dev/QA-экспорт, по решению владельца), Release-feature (без DebugTools),
+проверка: нет debug/overlay/test-ассетов/placeholder UI/broken refs;
+icon; version strings; **APK-size ≤ ~2 GB (TECH_DESIGN §15.2)**;
+landscape-lock; safe area в финальном APK.
+Ограничение (ADR-012/§15.5): Android-тулчейн (SDK/gradle) в песочнице
+не гарантирован → финальный экспорт APK выполняет владелец (по
+инструкции в docs/RELEASE_BUILD.md, создаётся в этой фазе).
+Exit: APK стартует на устройстве, проигрывает, save/load OK,
+0 debug-остатков; ADB-QA-прогон пройден.
 
 ## PHASE 19 — Final review
 Scope: независимый review (роль senior reviewer), FINAL_REVIEW.md по

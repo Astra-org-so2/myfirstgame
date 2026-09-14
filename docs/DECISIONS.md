@@ -339,7 +339,27 @@ iOS-совместимость — держим (общая архитектур
     времени» может протечь во время boot, до старта pump (ноды тогда
     молчат) → integration-тесты ведут детерминированную ручную
     «часовую стрелку»: `node._physics_process(DT)`, `DT = 1/60`
-    (tests/integration/player_scene_test.gd).
+    (tests/integration/player_scene_test.gd);
+12. **частичная регистрация геометрии** (Phase 3): `ConeMesh`,
+    `NavMeshData`/`NavMeshInstance3D` отсутствуют в wasm-сборке
+    (проверено `strings` по .wasm + runtime: «Cannot get class»).
+    `BoxMesh/CylinderMesh/SphereMesh/CapsuleMesh` — работают.
+    Конус = `CylinderMesh(radial_segments=3, top_radius≈0)`.
+    **`.ts`-декларации `@ringozz/godot/gen` описывают полный API, а не
+    то, что зарегистрировано в этой сборке** — источник правды =
+    сам .wasm + прогон;
+13. **`MultiMesh.transform_format` по умолчанию `TRANSFORM_2D`** —
+    3D-инстансы требуют `transform_format = 1` (TRANSFORM_3D);
+    enum-константы классов не всегда связаны в runtime → именованные
+    int-константы;
+14. **конструкторы `Basis` частичные**: работает только axes-конструктор
+    `Basis(Vector3, Vector3, Vector3)`; `Basis(Vector3)` (scale) и
+    `Basis(float, float, float)` (диагональ) — «No constructor matches».
+    `Transform3D(Basis, Vector3)` — работает;
+15. **`PackedVector3Array`** — без varargs-конструктора из floats (только
+    из массива `Vector3`); **`Node.find_children`** — иная сигнатура
+    (arg 2 — String); для поиска по имени — `find_child(String, bool,
+    bool)` (работает) или явные имена нод.
 Сборка (custom build 4.7.2) — не наш артефакт; пересборка/апгрейд рига
 вне фазы (R5).
 Решение (единственный рабочий контракт кросс-файл-ссылок в проекте):
@@ -358,6 +378,10 @@ iOS-совместимость — держим (общая архитектур
   — `global_position` (не `get_global_origin()`);
 - имена методов: без пересечения с built-in методами базового класса
   (тень `Node3D.rotate` = FATAL кросс-скрипт-вызова);
+- геометрия — только проверенно-присутствующие классы
+  (`BoxMesh/CylinderMesh/SphereMesh/CapsuleMesh`); конус = 3-ребёрный
+  цилиндр; `MultiMesh` — всегда `transform_format = 1`; `Basis` —
+  axes-конструктор;
 - `.tscn`: NodePath-свойства на сценарные типы не используются
   (lookup через `$` в `_ready`); ресурсы (`.tres`) — через ext_resource.
 Контракт тестов в риге (см. ограничения 8–11): ввод =

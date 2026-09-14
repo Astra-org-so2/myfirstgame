@@ -1,14 +1,15 @@
 [gd_scene load_steps=11 format=3]
 
 [ext_resource type="Script" path="res://scripts/world/main_scene.gd" id="1_main"]
-[ext_resource type="PackedScene" path="res://scenes/player/Player.tscn" id="2_player"]
-[ext_resource type="PackedScene" path="res://scenes/ui/TouchControls.tscn" id="3_touch"]
+[ext_resource type="Script" path="res://scripts/world/camp_world.gd" id="2_camp"]
+[ext_resource type="PackedScene" path="res://scenes/player/Player.tscn" id="3_player"]
+[ext_resource type="PackedScene" path="res://scenes/ui/TouchControls.tscn" id="4_touch"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_1"]
-sky_top_color = Color(0.16, 0.18, 0.24, 1)
-sky_horizon_color = Color(0.4, 0.39, 0.37, 1)
+sky_top_color = Color(0.15, 0.17, 0.22, 1)
+sky_horizon_color = Color(0.38, 0.36, 0.34, 1)
 ground_bottom_color = Color(0.09, 0.09, 0.1, 1)
-ground_horizon_color = Color(0.4, 0.39, 0.37, 1)
+ground_horizon_color = Color(0.36, 0.34, 0.32, 1)
 
 [sub_resource type="Sky" id="Sky_1"]
 sky_material = SubResource("ProceduralSkyMaterial_1")
@@ -19,28 +20,26 @@ sky = SubResource("Sky_1")
 tonemap_mode = 2
 tonemap_exposure = 0.9
 fog_enabled = true
-fog_light_color = Color(0.34, 0.37, 0.42, 1)
+fog_light_color = Color(0.32, 0.34, 0.38, 1)
 fog_light_energy = 0.5
-fog_density = 0.012
-fog_aerial_perspective = 0.2
-fog_sky_affect = 0.6
-fog_height = 14.0
-fog_height_density = 0.15
+fog_density = 0.02
+fog_aerial_perspective = 0.25
+fog_sky_affect = 0.7
+fog_height = 18.0
+fog_height_density = 0.14
 
 [sub_resource type="PlaneMesh" id="PlaneMesh_1"]
 size = Vector2(40, 40)
 
-[sub_resource type="BoxMesh" id="BoxMesh_wall"]
-size = Vector3(24.5, 1.5, 0.5)
+[sub_resource type="StandardMaterial3D" id="m_ground"]
+albedo_color = Color(0.16, 0.185, 0.145, 1)
+roughness = 1
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_wall"]
 size = Vector3(24.5, 1.5, 0.5)
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_ground"]
 size = Vector3(40, 1, 40)
-
-[sub_resource type="BoxMesh" id="BoxMesh_marker"]
-size = Vector3(2, 1, 2)
 
 [node name="Main" type="Node3D"]
 script = ExtResource("1_main")
@@ -50,11 +49,12 @@ environment = SubResource("Environment_1")
 
 [node name="Sun" type="DirectionalLight3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 0.707107, 0.707107, 0, -0.707107, 0.707107, 0, 12, 0)
-light_color = Color(0.85, 0.88, 0.95, 1)
-light_energy = 0.8
+light_color = Color(1, 0.85, 0.72, 1)
+light_energy = 0.55
 shadow_enabled = true
 
 [node name="Ground" type="MeshInstance3D" parent="."]
+material = SubResource("m_ground")
 mesh = SubResource("PlaneMesh_1")
 
 [node name="GroundBody" type="StaticBody3D" parent="."]
@@ -63,21 +63,17 @@ mesh = SubResource("PlaneMesh_1")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, 0)
 shape = SubResource("BoxShape3D_ground")
 
-[node name="HubMarker" type="MeshInstance3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.5, 0.5, -2)
-mesh = SubResource("BoxMesh_marker")
+[node name="CampWorld" type="Node3D" parent="."]
+script = ExtResource("2_camp")
 
 [node name="SpawnPoint" type="Marker3D" parent="."]
 
-[node name="Player" parent="." instance=ExtResource("2_player")]
+[node name="Player" parent="." instance=ExtResource("3_player")]
 
-[node name="TouchControls" parent="." instance=ExtResource("3_touch")]
+[node name="TouchControls" parent="." instance=ExtResource("4_touch")]
 
 [node name="Wall_N" type="StaticBody3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.75, -12)
-
-[node name="Mesh" type="MeshInstance3D" parent="Wall_N"]
-mesh = SubResource("BoxMesh_wall")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Wall_N"]
 shape = SubResource("BoxShape3D_wall")
@@ -85,26 +81,17 @@ shape = SubResource("BoxShape3D_wall")
 [node name="Wall_S" type="StaticBody3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.75, 12)
 
-[node name="Mesh" type="MeshInstance3D" parent="Wall_S"]
-mesh = SubResource("BoxMesh_wall")
-
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Wall_S"]
 shape = SubResource("BoxShape3D_wall")
 
 [node name="Wall_W" type="StaticBody3D" parent="."]
 transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, -12, 0.75, 0)
 
-[node name="Mesh" type="MeshInstance3D" parent="Wall_W"]
-mesh = SubResource("BoxMesh_wall")
-
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Wall_W"]
 shape = SubResource("BoxShape3D_wall")
 
 [node name="Wall_E" type="StaticBody3D" parent="."]
 transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 12, 0.75, 0)
-
-[node name="Mesh" type="MeshInstance3D" parent="Wall_E"]
-mesh = SubResource("BoxMesh_wall")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Wall_E"]
 shape = SubResource("BoxShape3D_wall")

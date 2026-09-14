@@ -1,0 +1,29 @@
+[gd_scene load_steps=4 format=3]
+
+[sub_resource type="BoxMesh" id="pillar"]
+size = Vector3(2.6, 12, 2.6)
+
+[sub_resource type="BoxMesh" id="lintel"]
+size = Vector3(17, 2.2, 2.6)
+
+[sub_resource type="StandardMaterial3D" id="m_sil"]
+albedo_color = Color(0.1, 0.11, 0.13, 1)
+roughness = 0.95
+shading_mode = 1024
+
+[node name="GateSilhouette" type="Node3D"]
+
+[node name="PillarL" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7, 6, 0)
+material = SubResource("m_sil")
+mesh = SubResource("pillar")
+
+[node name="PillarR" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7, 6, 0)
+material = SubResource("m_sil")
+mesh = SubResource("pillar")
+
+[node name="Lintel" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 12.6, 0)
+material = SubResource("m_sil")
+mesh = SubResource("lintel")

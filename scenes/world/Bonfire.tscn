@@ -1,0 +1,108 @@
+[gd_scene load_steps=10 format=3]
+
+[sub_resource type="BoxMesh" id="stone"]
+size = Vector3(0.34, 0.3, 0.34)
+
+[sub_resource type="StandardMaterial3D" id="m_stone"]
+albedo_color = Color(0.33, 0.345, 0.37, 1)
+roughness = 0.95
+shading_mode = 1024
+
+[sub_resource type="BoxMesh" id="log_z"]
+size = Vector3(0.16, 0.16, 1.15)
+
+[sub_resource type="BoxMesh" id="log_x"]
+size = Vector3(1.15, 0.16, 0.16)
+
+[sub_resource type="StandardMaterial3D" id="m_wood"]
+albedo_color = Color(0.27, 0.215, 0.155, 1)
+roughness = 0.9
+shading_mode = 1024
+
+[sub_resource type="CylinderMesh" id="flame"]
+top_radius = 0.02
+bottom_radius = 0.34
+height = 0.9
+radial_segments = 3
+
+[sub_resource type="StandardMaterial3D" id="m_flame"]
+albedo_color = Color(1, 0.5, 0.15, 1)
+emission_enabled = true
+emission = Color(1, 0.45, 0.1, 1)
+emission_energy_multiplier = 2.5
+
+[sub_resource type="CylinderMesh" id="flame_inner"]
+top_radius = 0.015
+bottom_radius = 0.19
+height = 0.55
+radial_segments = 3
+
+[sub_resource type="StandardMaterial3D" id="m_flame_inner"]
+albedo_color = Color(1, 0.75, 0.3, 1)
+emission_enabled = true
+emission = Color(1, 0.7, 0.25, 1)
+emission_energy_multiplier = 3
+
+[node name="Bonfire" type="Node3D"]
+
+[node name="Stone1" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.75, 0.15, 0)
+material = SubResource("m_stone")
+mesh = SubResource("stone")
+
+[node name="Stone2" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.375, 0.15, 0.65)
+material = SubResource("m_stone")
+mesh = SubResource("stone")
+
+[node name="Stone3" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.375, 0.15, 0.65)
+material = SubResource("m_stone")
+mesh = SubResource("stone")
+
+[node name="Stone4" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.75, 0.15, 0)
+material = SubResource("m_stone")
+mesh = SubResource("stone")
+
+[node name="Stone5" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.375, 0.15, -0.65)
+material = SubResource("m_stone")
+mesh = SubResource("stone")
+
+[node name="Stone6" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.375, 0.15, -0.65)
+material = SubResource("m_stone")
+mesh = SubResource("stone")
+
+[node name="LogA" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.16, 0)
+material = SubResource("m_wood")
+mesh = SubResource("log_z")
+
+[node name="LogB" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.05, 0.16, 0.05)
+material = SubResource("m_wood")
+mesh = SubResource("log_x")
+
+[node name="LogC" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.08, 0.3, -0.05)
+material = SubResource("m_wood")
+mesh = SubResource("log_z")
+
+[node name="Flame" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.55, 0)
+material = SubResource("m_flame")
+mesh = SubResource("flame")
+
+[node name="FlameInner" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.45, 0)
+material = SubResource("m_flame_inner")
+mesh = SubResource("flame_inner")
+
+[node name="FireLight" type="OmniLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, 0)
+light_color = Color(1, 0.62, 0.3, 1)
+light_energy = 2.2
+omni_range = 7.0
+omni_attenuation = 1.2

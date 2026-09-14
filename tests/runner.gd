@@ -26,7 +26,10 @@ const SUITES = [
 	["movement_logic", "res://tests/unit/movement_logic_test.gd", ["unit"]],
 	["camera_rig", "res://tests/unit/camera_rig_test.gd", ["unit"]],
 	["touch_layout", "res://tests/unit/touch_layout_test.gd", ["unit"]],
+	["camp_layout", "res://tests/unit/camp_layout_test.gd", ["unit"]],
 	["player_scene", "res://tests/integration/player_scene_test.gd",
+			["integration"]],
+	["camp_scene", "res://tests/integration/camp_scene_test.gd",
 			["integration"]],
 ]
 
@@ -160,6 +163,10 @@ func suite_smoke() -> void:
 	check(
 		scene.find_child("TouchControls", true, false) is CanvasLayer,
 		"smoke: main scene has TouchControls"
+	)
+	check(
+		scene.find_child("CampWorld", true, false) != null,
+		"smoke: main scene has CampWorld (Phase 3)"
 	)
 	scene.free()
 

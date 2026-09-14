@@ -53,6 +53,16 @@ Full register — docs/DECISIONS.md ADR-022 (every item reproduced in
   `tests/integration/player_scene_test.gd`);
 - navigation classes partially absent → pathfinding logic is plain code with
   an injectable navmesh source;
+- **geometry is partially registered** (Phase 3): `ConeMesh` (and the
+  NavMesh pair) are absent from the wasm build; `BoxMesh/CylinderMesh/
+  SphereMesh/CapsuleMesh` work. A cone = `CylinderMesh(radial_segments=3,
+  top_radius≈0)`. The `.ts` declarations in `@ringozz/godot/gen` describe
+  the FULL API, not what this build registers — verify against the .wasm;
+- `MultiMesh` defaults to `TRANSFORM_2D` — set `transform_format = 1`
+  for 3D instances; `Basis` only exposes the axes constructor
+  (`Basis(Vector3, Vector3, Vector3)`);
+- `PackedVector3Array` has no float-varargs constructor; `Node.find_children`
+  has a different signature (arg 2 is a String) — use `find_child`;
 - no rendering, no audio output (expected for headless).
 
 ## Usage

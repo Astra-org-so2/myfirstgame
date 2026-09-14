@@ -161,6 +161,14 @@ func get_stamina() -> float:
 	return _logic.stamina
 
 
+# World position from the movement port (node position in engine mode,
+# mock position in headless tests). Named get_body_position (not
+# get_position) to avoid shadowing the Node3D built-in — cross-script
+# calls to shadowed built-ins crash the headless rig (ADR-022).
+func get_body_position() -> Vector3:
+	return _port.get_position()
+
+
 # Respawn (Phase 2 integration target; RunManager drives it from Phase 8).
 func respawn(pos: Vector3) -> void:
 	_port.set_position(pos)

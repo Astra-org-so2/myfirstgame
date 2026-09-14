@@ -1,6 +1,7 @@
 # AFTER YOU — Roadmap (фазы, вехи, exit-criteria)
 
-Версия: 0.2 (Phase 0, GDD v2.0). Формат статуса фазы (обязателен при закрытии):
+Версия: 0.3 (Phase 3 закрыта, GDD v2.0). Формат статуса фазы
+(обязателен при закрытии):
 `STATUS / IMPLEMENTED / TESTED / KNOWN ISSUES / NEXT`.
 
 ## Вехи (milestones)
@@ -126,6 +127,50 @@ Unit: room/area data-валидация.
 Manual: qa_phase3_world.md (визуал, FPS, load, палитра/слои).
 Exit: «выглядит красиво» за 30 c (скриншоты-референсы), FPS по
 бюджету; палитра/слои по WORLD_BIBLE §1/§1.1.
+STATUS: COMPLETE (риг-часть) — см. отчёт ниже.
+IMPLEMENTED: data-driven лагерь: `CampLayout`
+(`data/world/camp_layout.tres`: 10 деревьев, 3 палатки, 8 зон с
+углами, тропа, спавн, landmarks, validate() с 12 правилами),
+`CampWorld` (собирает сцену из данных: MultiMesh-деревья (3 draw
+calls), тропа-сегменты, костёр + тёплый OmniLight (единственный
+тёплый свет), 3 палатки (повёрнуты к огню, per-tent-материал),
+4 интерактивных предмета, пассивный стол с кружками, 8
+zone-monoliths (silhouette, Phase 7 заменит), landmarks
+watchtower/gate), `Interactable` (poll расстояния, radius 2.4 m,
+Label3D-промпт, held-edge «interact», сигнал `interacted(Node3D)`,
+0.5 s pulse — без Area3D: rig-safe), 10 template-сцен
+(`scenes/world/*.tscn` — примитивы по палитре WORLD_BIBLE §1,
+axis-aligned: вращения — в коде), `player.get_body_position()`
+(duck-typed позиция для Interactable, mock-safe). main.tscn:
+CampWorld вместо hub-заглушки, туман 0.02/18, sun (1, 0.85, 0.72)
+4000K, стены — collision-only.
+TESTED: риг — 150/150 PASS (43 smoke (+CampWorld) + player_data
+16 + movement_logic 29 + camera_rig 14 + touch_layout 4 +
+camp_layout 15: .tres-валидация, 8–12 деревьев, 3 палатки, 8 зон,
+наративные якоря (Mara у огня <2.5 m, чайник ≤2.0 m, столб на
+подходе), 7 negative-путей + player_scene 15 + camp_scene 14:
+сборка из данных (10 деревьев, 8 zone-gates на данных углах, 3
+палатки, FireLight, спавн из данных), interactable-прототип
+(промпт рядом, edge-сигнал ровно 1 раз при удержании, скрытие
+при уходе) — через mock-порт, детерминированный ручной clock).
+Риг выявил и пойман production-баги: MultiMesh TRANSFORM_2D по
+умолчанию (деревья были бы в origin), double add_child в _place.
+ADR-022 дополнен пунктами 12–15 (ConeMesh/Basis-конструкторы/
+PackedVector3Array/find_children — частичная регистрация).
+KNOWN ISSUES: риг без рендера (ADR-002/ADR-022): «красота» 30 c,
+туман/свет/палитра, FPS на GPU, палитровые артефакты — только
+редактор/устройство (ADR-021); интеракты — прототипы (эффект —
+Phase 4/10/11); 8 зон — silhouette (Phase 7); деревья/предметы —
+примитивы (art-pass — Phase 13); draw calls ~60 оценочно
+(формальный замер — Phase 16).
+NEXT: чек-лист qa_phase3_world.md владельцу (ПК-редактор +
+Android + дизайн-чек), затем Phase 4 (Combat).
+**Чек-лист Phase 3 для владельца:** tests/qa/qa_phase3_world.md —
+раздел A (редактор: запуск без ошибок, лагерь читается, огонь —
+единственный тёплый свет, интеракты-прототипы, landmarks в тумане),
+раздел B (Android: смена/туман без артефактов, USE-интеракты,
+60 fps, thermal), раздел C (дизайн: мотив «дом», no-filler,
+сезы A2/A8/A9).
 
 ## PHASE 4 — Combat
 Scope: weapon (1: BLADE, WEAPON_DESIGN §1: combo 3 + Riposte),

@@ -22,6 +22,7 @@ const _LOGIC = preload("res://scripts/gameplay/combat/weapon_logic.gd")
 const _DATA = preload("res://scripts/gameplay/combat/weapon_data.gd")
 const _HIT = preload("res://scripts/gameplay/combat/weapon_hit.gd")
 const _DREQ = preload("res://scripts/gameplay/combat/damage_request.gd")
+const _DRES = preload("res://scripts/gameplay/combat/damage_result.gd")
 const _CT = preload("res://scripts/gameplay/combat/combat_target.gd")
 
 var _player: Node = null
@@ -34,6 +35,9 @@ var _cam_rig: Node = null
 var _atk_held: bool = false
 var _special_held: bool = false
 var _swing_hit: Array = []  # targets already hit by the current swing
+# Landed (unblocked) hits this session — MemoryStats.dominant_style
+# (melee verb). Reset with the weapon on respawn.
+var hits_landed: int = 0
 
 
 func bind(player: Node, data: _DATA, resolver: Node) -> void:
@@ -68,6 +72,7 @@ func reset() -> void:
 	_atk_held = false
 	_special_held = false
 	_swing_hit = []
+	hits_landed = 0
 
 
 # One player tick (the player drives this; see class doc).
@@ -91,6 +96,12 @@ func update(delta: float) -> void:
 			_on_swing_started()
 	if _logic.is_active():
 		_sample_hitbox()
+	# An enemy hit that stuns the player breaks the swing in windup —
+	# the Mimic's melee punish (ENEMY_DESIGN §4) and the general
+	# "stagger stops you mid-swing" rule.
+	if not can and (_logic.phase() == _LOGIC.Phase.WINDUP
+			or _logic.phase() == _LOGIC.Phase.ACTIVE):
+		_logic.cancel_hit()
 
 
 # --- Internals ---
@@ -158,7 +169,9 @@ func _hit_target(t: Node, hit: _HIT, rel: Vector3, facing: Vector3) -> void:
 	req.knockback_direction = (
 			rel.normalized() if rel.length() > 0.01 else facing)
 	req.weapon = _data
-	_resolver.resolve(req)
+	var res: _DRES = _resolver.resolve(req)
+	if not res.blocked:
+		hits_landed += 1
 
 
 # Riposte counter: damage lands on the player inside the window.

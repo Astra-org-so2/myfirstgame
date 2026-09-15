@@ -1,6 +1,6 @@
 # AFTER YOU — Roadmap (фазы, вехи, exit-criteria)
 
-Версия: 0.4 (Phase 4 закрыта, GDD v2.0). Формат статуса фазы
+Версия: 0.5 (Phase 5 закрыта, GDD v2.0). Формат статуса фазы
 (обязателен при закрытии):
 `STATUS / IMPLEMENTED / TESTED / KNOWN ISSUES / NEXT`.
 
@@ -245,6 +245,51 @@ Mimic-style resolve, anchor-set.
 Integration: spawn-таблица, staggered slots.
 Manual: qa_phase5_enemies.md (15-мин сессия/архетип).
 Exit: 5 разных на поведение врагов; AI-бюджет ≤4ms.
+STATUS: COMPLETE (2026-09-15). ADR-024 (code-built визуал +
+staggered-бюджет).
+IMPLEMENTED: `scripts/gameplay/enemies/` — EnemyData (11 .tres:
+3 Hollow + 2 Remnant + 1 Watcher + 3 Mimic + 2 Forgotten),
+EnemyLogic (чистая FSM: IDLE/CHASE/WINDUP/ACTIVE/RECOVERY/HURT +
+OBSERVING/FOLLOW/VANISH (Watcher) + WANDER (Forgotten) +
+RETREAT/LEAVE/SPEAK, telegraph-пол 0.3 s, EPS на float-границах),
+EnemyController (визуал-примитив + combat-target + атаки через
+DamageResolver + Label3D-реплики), EnemyDirector (staggered-
+бюджет: 10 Hz/враг, шаг = фактическое игровое время, якорь
+count*period без дрейфа, spawn-таблица, anchor ≤2/run,
+remnant_met, enemy_killed → EventBus), NavGraph (A* на графе
+лагеря 17 узлов/32 рёбер из camp_nav.tres), MemoryPath
+(ring-buffer); `scripts/gameplay/memory_stats*.gd` —
+dominance-статистика (slayer/runner/explorer, ENEMY_DESIGN §7) +
+пороги-данные + tracker (kills/fled/style); data:
+data/enemies/*.tres + attacks/*.tres + camp_spawn_table.tres
+(`Array[SpawnEntry]` — ADR-022/024) + camp_nav.tres +
+memory_stats_thresholds.tres; main_scene: `_setup_enemies`
+(director + tracker + nav + player-noise подписки).
+TESTED: риг — 478/478 PASS, из них новые 193 (enemy_data 46 +
+enemy_logic 65 + nav_memory 23 + memory_stats 28 + enemy_scene
+31: spawn 5/5, stagger ≤2/кадр, Hollow chase+hit 15, i-frames
+блок вражеской атаки, Watcher 999/anchor, Remnant encounter→
+leave→flag, Forgotten wander, kill→bus→MemoryStats→despawn).
+Риг поймал production-баги: enemy-логика шла в 1/6 времени
+(stagger-шаг = кадр-дельта, не бюджет врага), дрейф фазы
+`next += period`, i-frame-пуш игрока на тик устаревший (→ push
+после logic-update), EV_SPEECH не эмитился, memory_path ring
+терял данные на wrap, preload-путь enemy_state.gd.
+KNOWN ISSUES: визуал = примитивы (ADR-024; финальный облик +
+feel-телеграфы — Phase 13/feel-матрица); AI ≤4 ms — риг не
+меряет устройство: замера нет, чек-лист C (qa_phase5_enemies) —
+обязательный device-шаг; шёпот Forgotten — data-pool (3 фразы),
+история-контекст — Phase 10 (world memory); Remnant-builder
+(run-данные) — данные + builder-ядро есть (memory_stats),
+«бьёт как игрок» — Phase 9 (best-run); nav-граф — Phase 3 layout
+(navmesh-источник injectable).
+NEXT: чек-лист qa_phase5_enemies.md владельцу (ПК + Android +
+AI-бюджет §C), затем Phase 6 (Progression, no currency).
+**Чек-лист Phase 5 для владельца:** tests/qa/qa_phase5_enemies.md —
+раздел A (редактор: 5 архетипов по одному, telegraphs, i-frames
+vs враг, Watcher-наблюдение, kill→MemoryStats), раздел B (Android:
+60 fps с 5 врагами, thermal, тач), раздел C (AI-бюджет ≤4 ms —
+замер ОБЯЗАТЕЛЕН, цифры в PERF_REPORT Phase 16).
 
 ## PHASE 6 — Progression (no currency)
 Scope: inventory (12 slots + equipment), weapons ×3 (BLADE/HAND

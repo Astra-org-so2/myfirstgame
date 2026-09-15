@@ -1,0 +1,43 @@
+[gd_resource type="Resource" script_class="SpawnTable" load_steps=8 format=3]
+
+[ext_resource type="Script" path="res://scripts/gameplay/enemies/spawn_table.gd" id="1_tbl"]
+[ext_resource type="Script" path="res://scripts/gameplay/enemies/spawn_entry.gd" id="2_ent"]
+[ext_resource type="Resource" path="res://data/enemies/hollow_base.tres" id="3_hollow"]
+[ext_resource type="Resource" path="res://data/enemies/remnant_mirror.tres" id="4_remnant"]
+[ext_resource type="Resource" path="res://data/enemies/watcher_base.tres" id="5_watcher"]
+[ext_resource type="Resource" path="res://data/enemies/mimic_combo.tres" id="6_mimic"]
+[ext_resource type="Resource" path="res://data/enemies/forgotten_wanderer.tres" id="7_forgotten"]
+
+[sub_resource type="Resource" id="SpawnEntry_hollow"]
+script = ExtResource("2_ent")
+enemy = ExtResource("3_hollow")
+position = Vector3(6, 0, -6)
+condition = "always"
+
+[sub_resource type="Resource" id="SpawnEntry_remnant"]
+script = ExtResource("2_ent")
+enemy = ExtResource("4_remnant")
+position = Vector3(-6, 0, -4)
+condition = "always"
+
+[sub_resource type="Resource" id="SpawnEntry_watcher"]
+script = ExtResource("2_ent")
+enemy = ExtResource("5_watcher")
+position = Vector3(8, 0, 6)
+condition = "always"
+
+[sub_resource type="Resource" id="SpawnEntry_mimic"]
+script = ExtResource("2_ent")
+enemy = ExtResource("6_mimic")
+position = Vector3(-8, 0, 2)
+condition = "always"
+
+[sub_resource type="Resource" id="SpawnEntry_forgotten"]
+script = ExtResource("2_ent")
+enemy = ExtResource("7_forgotten")
+position = Vector3(0, 0, -9)
+condition = "always"
+
+[resource]
+script = ExtResource("1_tbl")
+entries = Array[SpawnEntry]([SubResource("SpawnEntry_hollow"), SubResource("SpawnEntry_remnant"), SubResource("SpawnEntry_watcher"), SubResource("SpawnEntry_mimic"), SubResource("SpawnEntry_forgotten")])

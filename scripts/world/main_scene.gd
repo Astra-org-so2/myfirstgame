@@ -25,6 +25,11 @@ const _VIG = preload("res://scripts/gameplay/combat/hurt_vignette.gd")
 const _SFX = preload("res://scripts/audio/sfx_bus.gd")
 const _DREQ = preload("res://scripts/gameplay/combat/damage_request.gd")
 const _BLADE = preload("res://data/weapons/blade.tres")
+const _DIRECTOR = preload("res://scripts/gameplay/enemies/enemy_director.gd")
+const _TRACKER = preload("res://scripts/gameplay/memory_stats_tracker.gd")
+const _THR_DATA = preload("res://data/memory_stats_thresholds.tres")
+const _NAV_DATA = preload("res://data/world/camp_nav.tres")
+const _SPAWN_TABLE = preload("res://data/enemies/camp_spawn_table.tres")
 
 var player: _PLAYER
 var resolver: _RESOLVER
@@ -32,6 +37,10 @@ var hitstop: _HITSTOP
 var vfx: _VFX
 var sfx: _SFX
 var vignette: _VIG
+# Phase 5: the enemy system (director = budget/anchors/spawn rules;
+# tracker = MemoryStats from real signals).
+var director: _DIRECTOR
+var tracker: _TRACKER
 
 
 func _ready() -> void:
@@ -65,6 +74,7 @@ func _ready() -> void:
 		ia.set_target(player)
 
 	_setup_combat(layout)
+	_setup_enemies()
 
 
 func _setup_combat(layout: _LAYOUT) -> void:
@@ -98,12 +108,46 @@ func _setup_combat(layout: _LAYOUT) -> void:
 	player.set_physics_process(false)
 
 
+func _setup_enemies() -> void:
+	# MemoryStats: filled from real signals (kills/deaths/dodges/hits;
+	# explored + the rest — their phases, Phase 7/8/10).
+	tracker = _TRACKER.new()
+	tracker.name = "MemoryStatsTracker"
+	add_child(tracker)
+	tracker.bind_player(player)
+	# EnemyDirector: the staggered AI budget, spawn rules, anchors,
+	# and the Watcher's run cap (TECHNICAL_DESIGN / ENEMY_DESIGN §7).
+	director = _DIRECTOR.new()
+	director.name = "EnemyDirector"
+	add_child(director)
+	director.setup(player, tracker.stats, _THR_DATA, resolver)
+	director.load_nav(_NAV_DATA)
+	# Aggression profile from the session stats (ENEMY_DESIGN §7).
+	director.apply_aggression(
+			tracker.stats.aggression_profile(_THR_DATA))
+	tracker.sync_player_hits(player.weapon.hits_landed)
+	director.start(_SPAWN_TABLE)
+	# Player noise wakes enemies within hear_range (dodge + hits).
+	player.connect("dodge_started", _on_player_noise)
+
+
 # Hitstop clock: one place where gameplay time is scaled (ADR-023).
+# The enemies run on the SAME scaled clock — hitstop is a global
+# micro-freeze (the camera keeps running, as in Phase 4).
 func _physics_process(delta: float) -> void:
 	if player == null or hitstop == null:
 		return
 	var d: float = hitstop.update(delta)
 	player._physics_process(d)
+	if director != null:
+		director.update(d)
+		director.record_player_position(player.get_body_position())
+		tracker.sync_player_hits(player.weapon.hits_landed)
+
+
+func _on_player_noise() -> void:
+	if director != null:
+		director.mark_player_noise()
 
 
 # --- Combat feel routing (single wiring point) ---
@@ -111,6 +155,10 @@ func _physics_process(delta: float) -> void:
 func _on_damage_applied(res: Variant) -> void:
 	# Offensive (player swung): hitstop + hit VFX/SFX + camera shake.
 	if res.source == player:
+		# A landed swing is NOISE — enemies within hear_range wake
+		# (ENEMY_DESIGN §0.3).
+		if director != null:
+			director.mark_player_noise()
 		var weapon: Resource = res.weapon
 		if weapon != null:
 			var freeze: float = weapon.hitstop_hit

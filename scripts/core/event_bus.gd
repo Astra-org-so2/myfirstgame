@@ -17,3 +17,4 @@ extends Node
 signal player_died(position: Vector3)
 signal player_spawned(position: Vector3)
 signal target_killed(combat_id: StringName, position: Vector3)
+signal enemy_killed(enemy_id: StringName, position: Vector3)

@@ -1,0 +1,29 @@
+[gd_resource type="Resource" script_class="EnemyData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/gameplay/enemies/enemy_data.gd" id="1_data"]
+[ext_resource type="Resource" path="res://data/enemies/attacks/mimic_range_atk.tres" id="2_atk"]
+
+[resource]
+script = ExtResource("1_data")
+id = &"mimic_range"
+display_name = "Mimic"
+archetype = 3
+variant = &"range-mirror"
+health = 50
+unkillable = false
+speed = 2.4
+sight_range = 10.0
+fov = 130.0
+hear_range = 7.0
+aggro_radius = 12.0
+attack = ExtResource("2_atk")
+update_hz = 10.0
+path_update_hz = 5.0
+hitstun = 0.4
+mirror_style = 2
+punish_dodge = 0.8
+punish_range = 1.2
+punish_melee = 0.6
+punish_window = 0.4
+spawn_line = "I know how you do it."
+dissolve_time = 0.3

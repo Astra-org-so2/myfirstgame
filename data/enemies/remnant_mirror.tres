@@ -1,0 +1,27 @@
+[gd_resource type="Resource" script_class="EnemyData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/gameplay/enemies/enemy_data.gd" id="1_data"]
+[ext_resource type="Resource" path="res://data/enemies/attacks/remnant_mirror_atk.tres" id="2_atk"]
+
+[resource]
+script = ExtResource("1_data")
+id = &"remnant_mirror"
+display_name = "Remnant"
+archetype = 1
+variant = &"mirror"
+health = 60
+unkillable = false
+speed = 2.0
+sight_range = 12.0
+fov = 130.0
+hear_range = 7.0
+aggro_radius = 12.0
+attack = ExtResource("2_atk")
+update_hz = 10.0
+path_update_hz = 5.0
+hitstun = 0.4
+first_encounter_lines = PackedStringArray("You're early.", "You usually take longer.")
+first_encounter_leaves = true
+note_on_death = true
+mirror_style = 1
+dissolve_time = 0.3

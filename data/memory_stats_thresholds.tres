@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="MemoryStatsThresholds" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/gameplay/memory_stats_thresholds.gd" id="1_thr"]
+
+[resource]
+script = ExtResource("1_thr")
+slayer_kills = 20
+runner_fled = 10
+explorer_explored_pct = 50
+explorer_strange_actions = 5
+style_min_actions = 10
+style_dominance_pct = 50

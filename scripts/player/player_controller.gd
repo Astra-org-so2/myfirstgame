@@ -75,10 +75,11 @@ func _ready() -> void:
 
 
 func _physics_process(delta: float) -> void:
-	# Combat target tick (stun decay) + push the dodge i-frame state into
-	# it (the resolver reads it; no cross-script Callable — ADR-022).
+	# Combat target tick (stun decay). The i-frame state is pushed
+	# AFTER the logic update below — the dodge state can end inside the
+	# update, and a pre-update push would leave the resolver one tick
+	# stale at the i-frame boundary.
 	combat.update(delta)
-	combat.invulnerable = _logic.is_invulnerable()
 
 	# Death: countdown to auto-respawn (RunManager owns the flow from
 	# Phase 8; this is the Phase 4 MVP behavior).
@@ -114,6 +115,9 @@ func _physics_process(delta: float) -> void:
 
 	var desired: Vector3 = _logic.update(
 			delta, input_dir, want_sprint, _port.is_on_ground())
+	# Push the dodge i-frame state (the resolver reads it; the value
+	# reflects this tick's state transitions).
+	combat.invulnerable = _logic.is_invulnerable()
 
 	var velocity: Vector3
 	if _logic.is_hurt():

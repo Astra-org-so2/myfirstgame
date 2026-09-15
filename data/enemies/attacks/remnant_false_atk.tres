@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="AttackData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/gameplay/enemies/attack_data.gd" id="1_atk"]
+
+[resource]
+script = ExtResource("1_atk")
+windup = 0.5
+active = 0.15
+recovery = 1.55
+damage = 15
+knockback = 4.5
+range = 1.8
+arc = 180
+noise_radius = 7

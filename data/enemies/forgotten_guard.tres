@@ -1,0 +1,27 @@
+[gd_resource type="Resource" script_class="EnemyData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/gameplay/enemies/enemy_data.gd" id="1_data"]
+[ext_resource type="Resource" path="res://data/enemies/attacks/forgotten_guard_atk.tres" id="2_atk"]
+
+[resource]
+script = ExtResource("1_data")
+id = &"forgotten_guard"
+display_name = "Forgotten"
+archetype = 4
+variant = &"guard"
+health = 150
+unkillable = false
+speed = 0.8
+sight_range = 5.0
+fov = 120.0
+hear_range = 4.0
+aggro_radius = 12.0
+attack = ExtResource("2_atk")
+update_hz = 10.0
+path_update_hz = 5.0
+hitstun = 0.4
+wander_radius = 0.0
+whisper_pool = PackedStringArray("...where...?")
+spawn_line = "...where...?"
+fragment_on_death = true
+dissolve_time = 3.0

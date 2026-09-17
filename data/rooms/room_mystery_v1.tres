@@ -1,0 +1,52 @@
+[gd_resource type="Resource" script_class="RoomData" load_steps=8 format=3]
+
+[ext_resource type="Script" path="res://scripts/gameplay/rooms/room_data.gd" id="1_rd"]
+[ext_resource type="Script" path="res://scripts/gameplay/rooms/doorway_def.gd" id="2_dw"]
+[ext_resource type="Script" path="res://scripts/gameplay/rooms/obstacle_box.gd" id="3_ob"]
+
+[sub_resource type="Resource" id="door_a"]
+script = ExtResource("2_dw")
+anchor = &"door_a"
+local_pos = Vector3(0.0, 0.0, 6.0)
+facing = Vector3(0.0, 0.0, -1.0)
+
+[sub_resource type="Resource" id="door_b"]
+script = ExtResource("2_dw")
+anchor = &"door_b"
+local_pos = Vector3(0.0, 0.0, -6.0)
+facing = Vector3(0.0, 0.0, 1.0)
+
+[sub_resource type="Resource" id="ob_0"]
+script = ExtResource("3_ob")
+position = Vector3(3.5, 0.5, 3.0)
+size = Vector3(1.4, 1.0, 1.4)
+
+[sub_resource type="Resource" id="ob_1"]
+script = ExtResource("3_ob")
+position = Vector3(0.0, 0.3, 0.5)
+size = Vector3(1.6, 0.6, 1.6)
+
+
+[resource]
+script = ExtResource("1_rd")
+
+id = &"room_mystery"
+areas = PackedStringArray("the_mine", "old_shrine")
+variant = 1
+handcrafted = false
+role = 4
+size = Vector2(10.0, 12.0)
+doorways = Array[DoorwayDef]([SubResource("door_a"), SubResource("door_b")])
+enemy_spots = PackedVector3Array()
+loot_spots = PackedVector3Array()
+event_spots = PackedVector3Array(0.0, 0.0, -3.0)
+obstacles = Array[ObstacleBox]([SubResource("ob_0"), SubResource("ob_1")])
+ambient_fog = 1.0
+light_color = Color(0.5, 0.55, 0.55, 1.0)
+light_energy = 0.45
+fixed_loot = &""
+gameplay = ""
+visual = "The light is wrong here — a memory layer."
+narrative = "The scripted mystery beat (M1-M4, the zone's beat map)."
+discovery = ""
+interaction = ""

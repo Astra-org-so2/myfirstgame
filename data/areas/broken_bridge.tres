@@ -1,0 +1,27 @@
+[gd_resource type="Resource" script_class="AreaData" load_steps=11 format=3]
+
+[ext_resource type="Script" path="res://scripts/gameplay/areas/area_data.gd" id="1_ad"]
+[ext_resource type="Script" path="res://scripts/gameplay/areas/area_connection.gd" id="2_ac"]
+[ext_resource type="Resource" path="res://data/rooms/bridge_entry.tres" id="r3"]
+[ext_resource type="Resource" path="res://data/rooms/corridor_bridge_v0.tres" id="r4"]
+[ext_resource type="Resource" path="res://data/rooms/corridor_bridge_v1.tres" id="r5"]
+[ext_resource type="Resource" path="res://data/rooms/room_note_v0.tres" id="r6"]
+[ext_resource type="Resource" path="res://data/rooms/room_note_v1.tres" id="r7"]
+[ext_resource type="Resource" path="res://data/rooms/room_combat_v0.tres" id="r8"]
+[ext_resource type="Resource" path="res://data/rooms/room_combat_v1.tres" id="r9"]
+[ext_resource type="Resource" path="res://data/enemies/zone_spawn_table_bridge.tres" id="st10"]
+
+[resource]
+script = ExtResource("1_ad")
+
+id = &"broken_bridge"
+name = "The Broken Bridge"
+theme = "the map of the routes"
+rooms = Array[RoomData]([ExtResource("r3"), ExtResource("r4"), ExtResource("r5"), ExtResource("r6"), ExtResource("r7"), ExtResource("r8"), ExtResource("r9")])
+room_weights = PackedFloat64Array(1.0, 2.0, 2.0, 1.0, 1.0, 1.5, 1.5)
+connections = Array[AreaConnection]([])
+boss_arena = false
+entry_anchor = &"entry"
+fog_density = 0.8
+light_color = Color(0.55, 0.6, 0.55, 1.0)
+spawn_table = ExtResource("st10")

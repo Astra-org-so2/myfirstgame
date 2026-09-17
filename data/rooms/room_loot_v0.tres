@@ -1,0 +1,47 @@
+[gd_resource type="Resource" script_class="RoomData" load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://scripts/gameplay/rooms/room_data.gd" id="1_rd"]
+[ext_resource type="Script" path="res://scripts/gameplay/rooms/doorway_def.gd" id="2_dw"]
+[ext_resource type="Script" path="res://scripts/gameplay/rooms/obstacle_box.gd" id="3_ob"]
+
+[sub_resource type="Resource" id="door_a"]
+script = ExtResource("2_dw")
+anchor = &"door_a"
+local_pos = Vector3(0.0, 0.0, 5.0)
+facing = Vector3(0.0, 0.0, -1.0)
+
+[sub_resource type="Resource" id="door_b"]
+script = ExtResource("2_dw")
+anchor = &"door_b"
+local_pos = Vector3(0.0, 0.0, -5.0)
+facing = Vector3(0.0, 0.0, 1.0)
+
+[sub_resource type="Resource" id="ob_0"]
+script = ExtResource("3_ob")
+position = Vector3(0.0, 0.5, -3.5)
+size = Vector3(2.4, 1.0, 1.0)
+
+
+[resource]
+script = ExtResource("1_rd")
+
+id = &"room_loot"
+areas = PackedStringArray("ruined_village", "broken_bridge")
+variant = 0
+handcrafted = false
+role = 3
+size = Vector2(10.0, 10.0)
+doorways = Array[DoorwayDef]([SubResource("door_a"), SubResource("door_b")])
+enemy_spots = PackedVector3Array()
+loot_spots = PackedVector3Array(-3.0, 0.0, -2.5, 3.0, 0.0, 2.5)
+event_spots = PackedVector3Array()
+obstacles = Array[ObstacleBox]([SubResource("ob_0")])
+ambient_fog = 0.8
+light_color = Color(0.55, 0.6, 0.55, 1.0)
+light_energy = 0.6
+fixed_loot = &""
+gameplay = ""
+visual = "A pile of things left in a hurry."
+narrative = ""
+discovery = "Find spots (loot, or the weapon in a production room)."
+interaction = ""

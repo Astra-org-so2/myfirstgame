@@ -1,0 +1,32 @@
+[gd_resource type="Resource" script_class="AreaData" load_steps=10 format=3]
+
+[ext_resource type="Script" path="res://scripts/gameplay/areas/area_data.gd" id="1_ad"]
+[ext_resource type="Script" path="res://scripts/gameplay/areas/area_connection.gd" id="2_ac"]
+[ext_resource type="Resource" path="res://data/rooms/mine_entry.tres" id="r3"]
+[ext_resource type="Resource" path="res://data/rooms/corridor_stairs_v0.tres" id="r4"]
+[ext_resource type="Resource" path="res://data/rooms/corridor_stairs_v1.tres" id="r5"]
+[ext_resource type="Resource" path="res://data/rooms/room_combat_v0.tres" id="r6"]
+[ext_resource type="Resource" path="res://data/rooms/room_combat_v1.tres" id="r7"]
+[ext_resource type="Resource" path="res://data/enemies/zone_spawn_table_mine.tres" id="st8"]
+
+[sub_resource type="Resource" id="ac0"]
+script = ExtResource("2_ac")
+to = &"undercroft"
+door = &"door_b"
+condition = &""
+target_door = &"entry_mine"
+
+[resource]
+script = ExtResource("1_ad")
+
+id = &"the_mine"
+name = "The Mine"
+theme = "the light that went out"
+rooms = Array[RoomData]([ExtResource("r3"), ExtResource("r4"), ExtResource("r5"), ExtResource("r6"), ExtResource("r7")])
+room_weights = PackedFloat64Array(1.0, 2.0, 2.0, 2.0, 2.0)
+connections = Array[AreaConnection]([SubResource("ac0")])
+boss_arena = false
+entry_anchor = &"entry"
+fog_density = 0.9
+light_color = Color(0.5, 0.55, 0.5, 1.0)
+spawn_table = ExtResource("st8")

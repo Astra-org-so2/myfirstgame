@@ -1,6 +1,6 @@
 # AFTER YOU — Roadmap (фазы, вехи, exit-criteria)
 
-Версия: 0.6 (Phase 6 закрыта, GDD v2.0). Формат статуса фазы
+Версия: 0.7 (Phase 7 закрыта, GDD v2.0). Формат статуса фазы
 (обязателен при закрытии):
 `STATUS / IMPLEMENTED / TESTED / KNOWN ISSUES / NEXT`.
 
@@ -364,6 +364,67 @@ Unit: детерминизм, изоляты, двери, spawn-пробы.
 Integration: room transitions (прохождение графа).
 Exit: 100 сгенерированных seeds проходят валидацию (тест-прогон),
 нет «невозможных» раскладок; no-filler чек-лист пройден (13 rooms).
+STATUS: COMPLETE (2026-09-17). ADR-026 (геометрический
+спавн-проф + walk-through-двери в headless-риге; generator =
+чистая функция (seed, ws, pool) → RunLayout).
+IMPLEMENTED: RngStreams (4 независимых потока world/encounter/
+loot/event от master-seed, splitmix64 — signed-децимальные
+константы: GDScript не принимает hex > INT64_MAX) + данные:
+35 RoomData (9 handcrafted: camp-hub с 8 круговыми гейтами,
+8 zone-entries, boss-арена + **13 modular × 2 варианта** —
+коридоры/перекрёстки/комнаты боя/лута/загадок/укрытий;
+ADR-003: doorway-якоря идентичны между вариантами, варианты
+дифференцируются obstacle/ambient; no-filler: ≥1 из 5 полей
+gameplay/visual/narrative/discovery/interaction на каждую —
+GDD §9) + 9 AreaData (pool + weights + connections; DAG:
+camp → 7 зон → undercroft (единственный sink); mine/gate →
+undercroft, camp-гейт подcroft sealed — ADR-016) + 7
+spawn-таблиц зон. RunGenerator: 1–3 комнаты на зону
+(взвешенный сэмпл по room-id без повтора; вариант по
+world-потоку), цепочка entry→exit, все двери RESOLVED
+(кросс-зона: to_area+entry / to_room+to_room_area — boss
+entry-двери на последнюю комнату источника), раскладка вдоль
+−Z (door_b↔door_a совпадают), spawны = КОПИИ таблиц (.tres
+неизменяемы) по encounter-потоку на enemy_spots.
+LayoutValidator (обязательный): hub+boss, двери резолвятся,
+BFS-достижимость (boss IFF открыт вход; sealed undercroft =
+валидно), изоляты, **геометрический spawn-проф** (footprint/
+obstacle/дверной проём — ADR-026), монотонность сложности
+(нет шортката в boss из camp), no-filler в глубину.
+Fail → seed+1 ≤8 → reference layout + log. Сцена: RoomNode
+(примитивы: пол/стены с проёмами/монолитные рамы/obstacles/
+ролевая прореха/PointLight без теней — мобильный бюджет) +
+ZoneWorld (уровень = цепочка комнат уровня; nav = центры +
+точки дверей; **walk-through** триггер: дистанция до проёма
+<1.05 м + cooldown 1 с — ADR-026) + main: _enter_level
+(director.clear → load_nav → start(таблица уровня) →
+визуалы → fixed_loot-оружие → туман зоны); **production
+оружие: cannon → Mine, staff → Old Shrine (fixed_loot;
+демо-позиции лагеря удалены)**; CampLayer (NPC/костёр/drops —
+скрыты в зонах); respawn → camp.
+TESTED: риг — **668/668 PASS** (unit 506 + integration 162).
+Unit: rooms сьют — RngStreams (детерминизм/независимость/
+interleave), данные (35 комнат валидны, 13×2 варианта,
+ADR-003-якоря, no-filler, 9 зон), генератор (seed-1 валиден,
+детерминизм A/B/A', **100/100 сидов валидны, 0 fallback**,
+ws-механизм условных рёбер, spawны на спотах, .tres
+неизменяемы), валидатор (отказы: сломанная дверь, спот в
+obstacle, no-filler). Integration: progression_scene —
+zone transitions (camp→Mine walk-through → camp_exit → Mine;
+**Mine→Undercroft forward-дверь → entry_mine назад**;
+nav-радиус 26→~33 м при смене; explored_pct = 2/8 = 25),
+cannon pickup в Mine
+(данные + сцена, перманентно, выход → пьедестал исчезает),
+staff — данные Shrine; camp/NPC/костёр/touch — без
+регрессий. Exit-критерии: 100 сидов ✓ (unit-прогон),
+no-filler 13 ✓ (валидатор + данные), transitions ✓. Manual:
+tests/qa/qa_phase7_rooms.md.
+KNOWN ISSUES: seed сессии фиксирован (20260917) — RunManager
+принесёт seed ранa (Phase 8); loot_spots кроме fixed_loot —
+пусты до LootTable (Phase 8); event_spots — визуальные
+(Phase 8/10); физ-проф по collision-mesh — в реальном
+движке (ADR-026 п.1).
+NEXT: PHASE 8 — Run system (scripted first 10 min).
 
 ## PHASE 8 — Run system (scripted first 10 min)
 Scope: RunManager (states), RunRecorder (EventBus → RunEvent[],

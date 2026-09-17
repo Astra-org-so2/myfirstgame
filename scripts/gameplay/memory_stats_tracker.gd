@@ -7,7 +7,7 @@
 #   fled         <- the director: a Hollow retreated (the player fled)
 #   dodge_count  <- player.dodge_started
 #   melee_hits   <- synced from the player weapon (landed hits)
-#   explored     <- 0 until zone tracking exists (Phases 7/8/10)
+#   explored     <- Phase 7: the level layer (main -> explore_zone)
 #   strange/notes/npc/child/runs <- their systems (Phases 8/10/11)
 #
 # Cross-run accumulation + persistence: Phase 10 (World memory).
@@ -16,7 +16,11 @@ extends Node
 
 const _STYLE = preload("res://scripts/gameplay/memory_stats.gd")
 
+# The explorable zones (FIRST_3_RUNS: run 1 ≈ 30–60% = 3–5 of 8).
+const TOTAL_ZONES: int = 8
+
 var stats: _STYLE = _STYLE.new()
+var _explored_zones: Dictionary = {}
 
 
 func _ready() -> void:
@@ -54,3 +58,13 @@ func _on_player_died(_pos: Vector3) -> void:
 
 func _on_dodge() -> void:
 	stats.dodge_count += 1
+
+
+# The level layer calls on each zone entry (Phase 7). The camp is
+# the home, not an exploration; the pct = distinct zones visited.
+func explore_zone(area_id: StringName) -> void:
+	if area_id == &"camp":
+		return
+	_explored_zones[area_id] = true
+	stats.explored_pct = int(float(_explored_zones.size())
+			/ float(TOTAL_ZONES) * 100.0)

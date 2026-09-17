@@ -94,6 +94,16 @@ func start(table: _TABLE) -> void:
 		_slots.append({"ctrl": ctrl, "phase": phase, "count": 0, "last": 0.0})
 
 
+# Free all spawned enemies (level changes, Phase 7). The run-level
+# anchor store survives (it records the run, not the level).
+func clear() -> void:
+	for slot in _slots:
+		var ctrl: _CTRL = slot["ctrl"]
+		if ctrl != null and is_instance_valid(ctrl):
+			ctrl.queue_free()
+	_slots.clear()
+
+
 # Pure rule (unit-tested): does this entry spawn for this run?
 func should_spawn(entry: _ENTRY) -> bool:
 	var c: String = entry.condition.strip_edges()

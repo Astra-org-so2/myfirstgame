@@ -1,0 +1,78 @@
+[gd_resource type="Resource" script_class="RoomData" load_steps=12 format=3]
+
+[ext_resource type="Script" path="res://scripts/gameplay/rooms/room_data.gd" id="1_rd"]
+[ext_resource type="Script" path="res://scripts/gameplay/rooms/doorway_def.gd" id="2_dw"]
+[ext_resource type="Script" path="res://scripts/gameplay/rooms/obstacle_box.gd" id="3_ob"]
+
+[sub_resource type="Resource" id="gate_ruined_village"]
+script = ExtResource("2_dw")
+anchor = &"gate_ruined_village"
+local_pos = Vector3(3.933, 0.0, 9.735)
+facing = Vector3(0.375, 0.0, 0.927)
+
+[sub_resource type="Resource" id="gate_watchtower"]
+script = ExtResource("2_dw")
+anchor = &"gate_watchtower"
+local_pos = Vector3(-0.366, 0.0, -10.494)
+facing = Vector3(-0.035, 0.0, -0.999)
+
+[sub_resource type="Resource" id="gate_the_mine"]
+script = ExtResource("2_dw")
+anchor = &"gate_the_mine"
+local_pos = Vector3(-9.665, 0.0, -4.103)
+facing = Vector3(-0.921, 0.0, -0.391)
+
+[sub_resource type="Resource" id="gate_old_shrine"]
+script = ExtResource("2_dw")
+anchor = &"gate_old_shrine"
+local_pos = Vector3(5.091, 0.0, -9.184)
+facing = Vector3(0.485, 0.0, -0.875)
+
+[sub_resource type="Resource" id="gate_broken_bridge"]
+script = ExtResource("2_dw")
+anchor = &"gate_broken_bridge"
+local_pos = Vector3(-3.591, 0.0, 9.867)
+facing = Vector3(-0.342, 0.0, 0.94)
+
+[sub_resource type="Resource" id="gate_mysterious_lake"]
+script = ExtResource("2_dw")
+anchor = &"gate_mysterious_lake"
+local_pos = Vector3(9.0, 0.0, 5.408)
+facing = Vector3(0.857, 0.0, 0.515)
+
+[sub_resource type="Resource" id="gate_ancient_gate"]
+script = ExtResource("2_dw")
+anchor = &"gate_ancient_gate"
+local_pos = Vector3(9.735, 0.0, -3.933)
+facing = Vector3(0.927, 0.0, -0.375)
+
+[sub_resource type="Resource" id="gate_undercroft"]
+script = ExtResource("2_dw")
+anchor = &"gate_undercroft"
+local_pos = Vector3(-9.735, 0.0, 3.933)
+facing = Vector3(-0.927, 0.0, 0.375)
+
+
+[resource]
+script = ExtResource("1_rd")
+
+id = &"camp_room"
+areas = PackedStringArray("camp")
+variant = 0
+handcrafted = true
+role = 5
+size = Vector2(21.0, 21.0)
+doorways = Array[DoorwayDef]([SubResource("gate_ruined_village"), SubResource("gate_watchtower"), SubResource("gate_the_mine"), SubResource("gate_old_shrine"), SubResource("gate_broken_bridge"), SubResource("gate_mysterious_lake"), SubResource("gate_ancient_gate"), SubResource("gate_undercroft")])
+enemy_spots = PackedVector3Array()
+loot_spots = PackedVector3Array()
+event_spots = PackedVector3Array()
+obstacles = Array[ObstacleBox]([])
+ambient_fog = 0.85
+light_color = Color(0.55, 0.6, 0.55, 1.0)
+light_energy = 0.5
+fixed_loot = &""
+gameplay = ""
+visual = ""
+narrative = "The camp: home, the roster, the map. (the hub)"
+discovery = ""
+interaction = ""

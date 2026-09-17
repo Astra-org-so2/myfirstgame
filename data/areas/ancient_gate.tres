@@ -1,0 +1,34 @@
+[gd_resource type="Resource" script_class="AreaData" load_steps=12 format=3]
+
+[ext_resource type="Script" path="res://scripts/gameplay/areas/area_data.gd" id="1_ad"]
+[ext_resource type="Script" path="res://scripts/gameplay/areas/area_connection.gd" id="2_ac"]
+[ext_resource type="Resource" path="res://data/rooms/gate_approach.tres" id="r3"]
+[ext_resource type="Resource" path="res://data/rooms/junction_cross_v0.tres" id="r4"]
+[ext_resource type="Resource" path="res://data/rooms/junction_cross_v1.tres" id="r5"]
+[ext_resource type="Resource" path="res://data/rooms/room_note_v0.tres" id="r6"]
+[ext_resource type="Resource" path="res://data/rooms/room_note_v1.tres" id="r7"]
+[ext_resource type="Resource" path="res://data/rooms/room_echo_v0.tres" id="r8"]
+[ext_resource type="Resource" path="res://data/rooms/room_echo_v1.tres" id="r9"]
+[ext_resource type="Resource" path="res://data/enemies/zone_spawn_table_gate.tres" id="st10"]
+
+[sub_resource type="Resource" id="ac0"]
+script = ExtResource("2_ac")
+to = &"undercroft"
+door = &"door_b"
+condition = &""
+target_door = &"entry_gate"
+
+[resource]
+script = ExtResource("1_ad")
+
+id = &"ancient_gate"
+name = "The Ancient Gate"
+theme = "the seal with three notches"
+rooms = Array[RoomData]([ExtResource("r3"), ExtResource("r4"), ExtResource("r5"), ExtResource("r6"), ExtResource("r7"), ExtResource("r8"), ExtResource("r9")])
+room_weights = PackedFloat64Array(1.0, 2.0, 2.0, 1.0, 1.0, 1.5, 1.5)
+connections = Array[AreaConnection]([SubResource("ac0")])
+boss_arena = false
+entry_anchor = &"entry"
+fog_density = 0.95
+light_color = Color(0.5, 0.55, 0.6, 1.0)
+spawn_table = ExtResource("st10")

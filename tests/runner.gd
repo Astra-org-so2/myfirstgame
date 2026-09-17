@@ -39,6 +39,7 @@ const SUITES = [
 	["inheritance", "res://tests/unit/inheritance_test.gd", ["unit"]],
 	["inventory", "res://tests/unit/inventory_test.gd", ["unit"]],
 	["inheritance_effects", "res://tests/unit/inheritance_effects_test.gd", ["unit"]],
+	["rooms", "res://tests/unit/rooms_test.gd", ["unit"]],
 	["player_scene", "res://tests/integration/player_scene_test.gd",
 			["integration"]],
 	["camp_scene", "res://tests/integration/camp_scene_test.gd",

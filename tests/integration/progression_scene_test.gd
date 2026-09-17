@@ -61,12 +61,15 @@ func run(ctx: Variant) -> void:
 	for id in [&"mara", &"orren", &"nia", &"cartographer"]:
 		var n: Node = scene.find_child("NPC_" + String(id), true, false)
 		ctx.check(n != null, "progression: NPC_%s placed" % id)
-	ctx.check(scene.find_child("WeaponPickup_cannon", true, false) != null
-			and scene.find_child("WeaponPickup_staff", true, false) != null,
-			"progression: both weapon pickups placed")
 	ctx.check(scene.find_child("CampFire", true, false) != null,
 			"progression: the camp fire is an interactable")
-
+	# Phase 7: the production weapons are NO LONGER at the camp — the
+	# layout data carries them (fixed_loot: cannon -> Mine, staff ->
+	# Shrine, WEAPON_DESIGN §5); _test_weapon_pickup enters the Mine.
+	ctx.check(scene.find_child("WeaponPickup_cannon", true, false) == null
+			and scene.find_child("WeaponPickup_staff", true, false) == null,
+			"progression: no demo pickups at the camp (Phase 7)")
+	_test_zone_transition(ctx)
 	_test_weapon_pickup(ctx)
 	_test_npc_trust_and_death(ctx)
 	_test_campfire(ctx)
@@ -99,9 +102,110 @@ func _damage_player(amount: float) -> void:
 	_main.resolver.resolve(req)
 
 
+# Phase 7: the walk-through door trigger (the camp gate -> the zone,
+# the camp_exit door -> back). The trigger logic is driven manually
+# (the cooldown is a real-time guard against double switches).
+func _test_zone_transition(ctx: Variant) -> void:
+	var zw: Node = _main.zone_world
+	if zw == null or _main.run_layout == null:
+		ctx.check(false, "zones: the level layer is composed")
+		return
+	zw.enter(&"camp")
+	ctx.check(zw.is_camp(), "zones: the session starts at the camp")
+	# The mine gate door (the layout's camp room).
+	var camp_ap = _main.run_layout.get_area(&"camp")
+	var camp_rp = camp_ap.rooms[0]
+	var gate = camp_rp.door(&"gate_the_mine")
+	ctx.check(gate != null, "zones: the camp layout resolves the mine gate")
+	if gate == null:
+		return
+	zw._cooldown = 0.0
+	_mock.set_position(gate.local_pos)
+	zw._physics_process(DT)
+	ctx.check(zw.current == &"the_mine",
+			"zones: crossing the mine gate enters the Mine")
+	# The camp nav ring is 24 m (+pad 2); the Mine chain reaches
+	# ~31 m — the radius change proves the level nav was loaded.
+	ctx.check(_main.director.hub_radius() > 30.0,
+			"zones: the director re-loaded the level nav")
+	# Back: the Mine's entry room, its camp_exit door.
+	var mine_ap = _main.run_layout.get_area(&"the_mine")
+	var mine_rp = mine_ap.rooms[0]
+	var back = mine_rp.door(&"camp_exit")
+	ctx.check(back != null, "zones: the Mine entry has the camp_exit door")
+	if back == null:
+		return
+	zw._cooldown = 0.0
+	_mock.set_position(mine_rp.origin + back.local_pos)
+	zw._physics_process(DT)
+	ctx.check(zw.is_camp(),
+			"zones: the camp_exit door returns to the camp")
+
+	# The forward edge: the Mine's last room -> the Undercroft (the
+	# DAG sink). Enter the Mine, walk the chain, cross the forward
+	# door, come back through the arena's entry_mine door.
+	zw._cooldown = 0.0
+	_mock.set_position(gate.local_pos)
+	zw._physics_process(DT)
+	ctx.check(zw.current == &"the_mine", "zones: back in the Mine")
+	var last_rp = mine_ap.rooms.back()
+	var fwd = null
+	for d in last_rp.doors:
+		var rd = d
+		if rd.to_area == &"undercroft":
+			fwd = rd
+			break
+	ctx.check(fwd != null,
+			"zones: the Mine's last room leads to the Undercroft")
+	if fwd == null:
+		return
+	zw._cooldown = 0.0
+	_mock.set_position(last_rp.origin + fwd.local_pos)
+	zw._physics_process(DT)
+	ctx.check(zw.current == &"undercroft",
+			"zones: crossing the forward door enters the Undercroft")
+	# Back: the arena's entry_mine door -> the Mine's last room.
+	var boss_ap = _main.run_layout.get_area(&"undercroft")
+	var boss_rp = boss_ap.rooms[0]
+	var home = boss_rp.door(&"entry_mine")
+	ctx.check(home != null, "zones: the arena has the entry_mine door")
+	if home == null:
+		return
+	zw._cooldown = 0.0
+	_mock.set_position(boss_rp.origin + home.local_pos)
+	zw._physics_process(DT)
+	ctx.check(zw.current == &"the_mine",
+			"zones: the entry_mine door returns to the Mine")
+	# memory_stats: the two visited zones = 2/8 = 25% explored.
+	ctx.check(_main.tracker.stats.explored_pct == 25,
+			"zones: explored_pct = 25 after Mine + Undercroft")
+	# And home to the camp (the test flow ends camp-side).
+	_main._enter_level(&"camp")
+
+
+func _fixed_loot_of(ap) -> StringName:
+	for r in ap.rooms:
+		var rp = r
+		if rp.room.fixed_loot != &"":
+			return rp.room.fixed_loot
+	return &""
+
+
 func _test_weapon_pickup(ctx: Variant) -> void:
-	var pickup: _PICKUP = _main.find_child("WeaponPickup_cannon", true, false)
+	# The data first: the cannon is the Mine's fixed find (the staff
+	# — the Shrine's).
+	var mine_ap = _main.run_layout.get_area(&"the_mine")
+	var shrine_ap = _main.run_layout.get_area(&"old_shrine")
+	ctx.check(_fixed_loot_of(mine_ap) == &"weapon_cannon",
+			"pickup: the Mine carries the HAND CANNON (data)")
+	ctx.check(_fixed_loot_of(shrine_ap) == &"weapon_staff",
+			"pickup: the Shrine carries the ECHO STAFF (data)")
+	# Enter the Mine (the production level switch) and find the cannon.
+	_main._enter_level(&"the_mine")
+	var pickup: _PICKUP = _main.find_child("WeaponPickup_cannon",
+			true, false)
 	if pickup == null:
+		ctx.check(false, "pickup: the cannon is placed in the Mine")
 		return
 	var ia: _IA = pickup.find_child("IA_pickup_weapon_cannon", true, false)
 	_ticks = [ia]
@@ -136,6 +240,10 @@ func _test_weapon_pickup(ctx: Variant) -> void:
 	_interact_once()
 	ctx.check(_main.loadout.count() == count_before,
 			"pickup: re-picking does not duplicate")
+	# Back to camp (the rest of the flow is camp-side).
+	_main._enter_level(&"camp")
+	ctx.check(_main.find_child("WeaponPickup_cannon", true, false) == null,
+			"pickup: leaving the Mine clears the zone pickup")
 
 
 func _test_npc_trust_and_death(ctx: Variant) -> void:

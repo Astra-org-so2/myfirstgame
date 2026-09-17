@@ -21,6 +21,9 @@ const _ENEMY_DATA = preload("res://scripts/gameplay/enemies/enemy_data.gd")
 # Spawn noise (m): a spawn burst this loud is HEARD by enemies this
 # far (0 = silent placement — Watcher, Forgotten guards).
 @export var noise_radius: float = 0.0
+# The area this run spawn belongs to ("" = table-level, camp; the
+# generator fills it for the zone spawns, Phase 7).
+@export var area: StringName = &""
 
 
 func validate() -> Array[String]:

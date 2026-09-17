@@ -46,6 +46,21 @@ const _ITEM_DATA = preload("res://scripts/gameplay/progression/item_data.gd")
 const _CAMP_ITEM = preload("res://data/items/camp_fire.tres")
 const _CANNON_DATA = preload("res://data/weapons/hand_cannon.tres")
 const _STAFF_DATA = preload("res://data/weapons/echo_staff.tres")
+# Phase 7 — Procedural rooms (the DAG level layer, TECHNICAL_DESIGN §6):
+const _ZONE_WORLD = preload("res://scripts/world/zone_world.gd")
+const _AREA = preload("res://scripts/gameplay/areas/area_data.gd")
+const _ROOM_GEN = preload("res://scripts/gameplay/rooms/run_generator.gd")
+const _RUN_LAYOUT = preload("res://scripts/gameplay/rooms/run_layout.gd")
+const _AP = preload("res://scripts/gameplay/rooms/area_placement.gd")
+const _RP = preload("res://scripts/gameplay/rooms/room_placement.gd")
+const _RD = preload("res://scripts/gameplay/rooms/resolved_door.gd")
+const _TABLE = preload("res://scripts/gameplay/enemies/spawn_table.gd")
+const _ENTRY = preload("res://scripts/gameplay/enemies/spawn_entry.gd")
+
+const AREA_FILES := [
+	"camp", "ruined_village", "watchtower", "the_mine", "old_shrine",
+	"broken_bridge", "mysterious_lake", "ancient_gate", "undercroft",
+]
 
 var player: _PLAYER
 var resolver: _RESOLVER
@@ -71,6 +86,11 @@ var _drop_rng: RandomNumberGenerator
 var _fired_connected: Array = []
 var _staff_connected: Array = []
 var _inv_held: bool = false
+# Phase 7: the level layer (generated layout + zone visuals + doors).
+var zone_world: _ZONE_WORLD
+var run_layout: _RUN_LAYOUT
+var camp_layer: Node3D
+var _zone_weapons: Dictionary = {}  # weapon id -> pickup node
 
 
 func _ready() -> void:
@@ -106,6 +126,7 @@ func _ready() -> void:
 	_setup_combat(layout)
 	_setup_enemies()
 	_setup_progression(layout, camp)
+	_setup_zones()
 
 
 func _setup_combat(layout: _LAYOUT) -> void:
@@ -152,12 +173,12 @@ func _setup_enemies() -> void:
 	director.name = "EnemyDirector"
 	add_child(director)
 	director.setup(player, tracker.stats, _THR_DATA, resolver)
-	director.load_nav(_NAV_DATA)
 	# Aggression profile from the session stats (ENEMY_DESIGN §7).
 	director.apply_aggression(
 			tracker.stats.aggression_profile(_THR_DATA))
 	tracker.sync_player_hits(player.weapon.hits_landed)
-	director.start(_SPAWN_TABLE)
+	# Phase 7: the level (nav + spawn table) is owned by _enter_level —
+	# the camp is the first level, the zones are the rest.
 	# Player noise wakes enemies within hear_range (dodge + hits).
 	player.connect("dodge_started", _on_player_noise)
 
@@ -210,8 +231,14 @@ func _setup_progression(layout: _LAYOUT, camp: _CAMP) -> void:
 	_drop_rng = RandomNumberGenerator.new()
 	_drop_rng.seed = 20260916
 
+	# Phase 7: the camp-only nodes live in CampLayer (hidden with the
+	# camp when a zone level is active).
+	camp_layer = Node3D.new()
+	camp_layer.name = "CampLayer"
+	add_child(camp_layer)
+
 	# NPCs (PROGRESSION_DESIGN §3): Mara stays at her camp spot; the
-	# other three get camp positions (Phase 7 moves them to the
+	# other three get camp positions (Phase 10 moves them to the
 	# village/brothel/studio zones).
 	var npc_positions: Dictionary = {
 		"mara": layout.mara_pos,
@@ -223,7 +250,7 @@ func _setup_progression(layout: _LAYOUT, camp: _CAMP) -> void:
 		var pos: Vector3 = npc_positions.get(d.npc_id, Vector3.ZERO)
 		var npc: _NPC_NODE = _NPC_NODE.new()
 		npc.name = "NPC_" + String(d.npc_id)
-		add_child(npc)
+		camp_layer.add_child(npc)
 		npc.global_position = pos
 		# Mara keeps her Phase 3 look (the camp's anchor, reparented:
 		# add_child does NOT move a node with a parent).
@@ -237,20 +264,10 @@ func _setup_progression(layout: _LAYOUT, camp: _CAMP) -> void:
 		npc.setup(d, progress, resolver, player, custom)
 		_npcs.append(npc)
 
-	# Weapon pickups (WEAPON_DESIGN: the line you read when you find
-	# it). Demo camp positions; permanent per world-state.
-	var cannon: _WEAPON_PICKUP = _WEAPON_PICKUP.new()
-	cannon.name = "WeaponPickup_cannon"
-	add_child(cannon)
-	cannon.global_position = Vector3(-3.4, 0.0, 3.0)
-	cannon.setup(_CANNON_DATA, progress, loadout, player,
-			"It's heavy. Use it once. — E.")
-	var staff: _WEAPON_PICKUP = _WEAPON_PICKUP.new()
-	staff.name = "WeaponPickup_staff"
-	add_child(staff)
-	staff.global_position = Vector3(4.3, 0.0, 2.6)
-	staff.setup(_STAFF_DATA, progress, loadout, player,
-			"It sees what you left. Use it gently. — E.")
+	# Phase 7: the production weapon pickups are NO LONGER at the
+	# camp — they sit in their zones (fixed_loot data, WEAPON_DESIGN
+	# §5: cannon in the Mine, staff in the Shrine). _place_weapons
+	# builds them on zone entry.
 
 	# The camp fire (EMBER): the camp becomes a healing ground if the
 	# Inheritance was chosen; otherwise it's a cold line.
@@ -258,7 +275,7 @@ func _setup_progression(layout: _LAYOUT, camp: _CAMP) -> void:
 	campfire.name = "CampFire"
 	campfire.prompt = "The camp fire (E)"
 	campfire.interact_radius = 2.5
-	add_child(campfire)
+	camp_layer.add_child(campfire)
 	campfire.global_position = layout.bonfire_pos
 	campfire.set_target(player)
 	campfire.interacted.connect(_on_campfire)
@@ -273,6 +290,184 @@ func _setup_progression(layout: _LAYOUT, camp: _CAMP) -> void:
 		bus.weapon_found.connect(_on_weapon_found)
 	# Initial per-run state (a respawn re-applies it on the bus).
 	_apply_per_run_effects()
+
+
+# ---------------------------------------------------------------------------
+# Phase 7 — the level layer (TECHNICAL_DESIGN §6).
+#
+# The run layout is generated ONCE per session (fixed session seed —
+# RunManager brings the run seed in Phase 8, same API). The camp is
+# level 1 (CampWorld visuals); a zone door crossing switches the
+# level: the director re-loads the level's nav + spawn table, the
+# zone visuals are built from the placement, the production weapon
+# pickups appear in their rooms (fixed_loot).
+# ---------------------------------------------------------------------------
+
+const CAMP_FOG_DENSITY: float = 0.02  # main.tscn Environment value
+const CAMP_FOG_COLOR: Color = Color(0.32, 0.34, 0.38)
+const WEAPON_LINES: Dictionary = {
+	&"weapon_cannon": "It's heavy. Use it once. — E.",
+	&"weapon_staff": "It sees what you left. Use it gently. — E.",
+}
+
+
+func _setup_zones() -> void:
+	var pool: Dictionary = {}
+	for f in AREA_FILES:
+		var res: Resource = load("res://data/areas/%s.tres" % f)
+		if res == null:
+			push_error("Main scene: area data missing: " + f)
+			return
+		pool[(res as _AREA).id] = res
+	var gen: _ROOM_GEN = _ROOM_GEN.new()
+	gen.set_pool(pool)
+	run_layout = gen.generate(20260917, progress.ws.flags)
+	zone_world = _ZONE_WORLD.new()
+	zone_world.name = "ZoneWorld"
+	add_child(zone_world)
+	zone_world.setup(run_layout)
+	zone_world.set_player(player)
+	zone_world.door_crossed.connect(_on_door_crossed)
+	_enter_level(&"camp")
+
+
+# Switch the gameplay level: visuals + nav + spawns + fog + weapons.
+func _enter_level(area_id: StringName) -> void:
+	if zone_world == null:
+		return
+	if tracker != null:
+		tracker.explore_zone(area_id)
+	var is_camp: bool = area_id == &"camp"
+	$CampWorld.visible = is_camp
+	if camp_layer != null:
+		camp_layer.visible = is_camp
+	director.clear()
+	zone_world.enter(area_id)
+	if is_camp:
+		director.load_nav(_NAV_DATA)
+		director.start(_SPAWN_TABLE)
+	else:
+		if zone_world.nav != null:
+			director.load_nav(zone_world.nav)
+		var table: _TABLE = _TABLE.new()
+		table.entries = _table_for_area(area_id)
+		director.start(table)
+	_place_weapons(area_id)
+	_set_fog(area_id)
+
+
+# The layout spawns of one area (copies from the generator).
+func _table_for_area(area_id: StringName) -> Array:
+	var out: Array = []
+	for e in run_layout.spawns:
+		var entry: _ENTRY = e
+		if entry.area == area_id:
+			out.append(entry)
+	return out
+
+
+# Walk-through door crossing (ZoneWorld): a door to ANOTHER area
+# switches the level and drops the player at the destination door;
+# same-area doors are just walking (the whole area is built at once).
+# Two target forms: an AREA entry (zone gates, the boss's forward
+# doors) and a cross-area ROOM (the boss arena's entry doors point
+# back at the source's last room).
+func _on_door_crossed(area_id: StringName, room_id: StringName,
+		anchor: StringName) -> void:
+	var rp: _RP = run_layout.find_room(area_id, room_id)
+	if rp == null:
+		return
+	var rd: _RD = rp.door(anchor)
+	if rd == null:
+		return
+	var target: StringName
+	var t_rp: _RP
+	var td: _RD
+	if rd.to_room != &"":
+		target = rd.to_room_area if rd.to_room_area != &"" else area_id
+		var t_area: _AP = run_layout.get_area(target)
+		if t_area == null:
+			push_error("Main scene: door target area missing: "
+					+ String(target))
+			return
+		t_rp = t_area.find(rd.to_room)
+		if t_rp == null:
+			push_error("Main scene: door target room missing: "
+					+ String(rd.to_room))
+			return
+		td = t_rp.door(rd.to_anchor)
+	else:
+		target = rd.to_area
+		var t_area2: _AP = run_layout.get_area(target)
+		if t_area2 == null:
+			push_error("Main scene: door target area missing: "
+					+ String(target))
+			return
+		t_rp = t_area2.rooms[0]
+		td = t_rp.door(rd.to_anchor)
+	if target == area_id:
+		return  # walking within this level (no switch)
+	if td == null:
+		push_error("Main scene: door target anchor missing: "
+				+ String(rd.to_anchor))
+		return
+	_enter_level(target)
+	player.get_port().set_position(t_rp.origin + td.local_pos)
+
+
+# Production weapon pickups (fixed_loot data, WEAPON_DESIGN §5): the
+# cannon in the Mine, the staff in the Shrine — permanent per
+# world-state (a found weapon does not reappear).
+func _place_weapons(area_id: StringName) -> void:
+	for id in _zone_weapons:
+		var n: Node = _zone_weapons[id]
+		if n != null and is_instance_valid(n) \
+				and n.get_parent() == null:
+			_zone_weapons.erase(id)
+	var a: _AP = run_layout.get_area(area_id)
+	if a == null:
+		return
+	for r in a.rooms:
+		var rp: _RP = r
+		var wid: StringName = rp.room.fixed_loot
+		if wid == &"" or rp.room.loot_spots.size() < 1:
+			continue
+		if progress.ws.is_weapon_found(wid):
+			continue
+		var data: Resource
+		var line: String
+		if wid == &"weapon_cannon":
+			data = _CANNON_DATA
+			line = WEAPON_LINES[wid]
+		elif wid == &"weapon_staff":
+			data = _STAFF_DATA
+			line = WEAPON_LINES[wid]
+		else:
+			push_error("Main scene: unknown fixed_loot weapon: "
+					+ String(wid))
+			continue
+		var short: String = String(wid).replace("weapon_", "")
+		var pickup: _WEAPON_PICKUP = _WEAPON_PICKUP.new()
+		pickup.name = "WeaponPickup_" + short
+		zone_world.level.add_child(pickup)
+		pickup.position = rp.origin + rp.room.loot_spots[0]
+		pickup.setup(data, progress, loadout, player, line)
+		_zone_weapons[wid] = pickup
+
+
+# Per-area fog (the area's data drives the shared environment).
+func _set_fog(area_id: StringName) -> void:
+	var we: WorldEnvironment = $WorldEnvironment
+	var e: Environment = we.environment
+	if area_id == &"camp":
+		e.fog_density = CAMP_FOG_DENSITY
+		e.fog_light_color = CAMP_FOG_COLOR
+		return
+	var a: _AP = run_layout.get_area(area_id)
+	if a == null:
+		return
+	e.fog_density = 0.01 + a.area.fog_density * 0.025
+	e.fog_light_color = a.area.light_color
 
 
 func _on_weapon_found(_id: StringName, _pos: Vector3) -> void:
@@ -292,6 +487,10 @@ func _apply_per_run_effects() -> void:
 
 func _on_player_spawned(_pos: Vector3) -> void:
 	_apply_per_run_effects()
+	# A respawn is back at the camp (Phase 7): re-enter the camp
+	# level if the death happened in a zone.
+	if zone_world != null and not zone_world.is_camp():
+		_enter_level(&"camp")
 
 
 func _on_player_died(_pos: Vector3) -> void:
@@ -348,7 +547,7 @@ func _on_enemy_killed(_enemy_id: StringName, pos: Vector3) -> void:
 		return
 	var drop: _CAMP_DROP = _CAMP_DROP.new()
 	drop.name = "CampDrop"
-	add_child(drop)
+	(camp_layer if camp_layer != null else self).add_child(drop)
 	drop.global_position = Vector3(pos.x, 0.0, pos.z)
 	drop.setup(_CAMP_ITEM, self)
 	drop.interacted.connect(func(_ia: Node) -> void:

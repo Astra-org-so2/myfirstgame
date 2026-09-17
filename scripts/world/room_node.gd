@@ -1,0 +1,207 @@
+# RoomNode — one room's visuals, built from RoomData (code-built
+# primitives, ADR-005 text-first: no asset spam, mobile budget).
+#
+# The room's origin is the floor center (y = 0). Floor + 4 walls
+# (a gap + a monolith frame at each doorway, the camp's ZoneMarker
+# language), the obstacles as boxes, one role prop, one PointLight
+# (shadows OFF — the mobile light budget, ADR-021).
+class_name RoomNode
+extends Node3D
+
+const _ROOM = preload("res://scripts/gameplay/rooms/room_data.gd")
+const _OB = preload("res://scripts/gameplay/rooms/obstacle_box.gd")
+const _DW = preload("res://scripts/gameplay/rooms/doorway_def.gd")
+
+const WALL_H: float = 3.0
+const WALL_T: float = 0.4
+const DOOR_GAP: float = 1.7  # the doorway mouth (matches the data)
+const DOOR_H: float = 2.4
+
+var room: _ROOM
+
+
+func _ready() -> void:
+	if room != null:
+		name = "Room_%s" % room.id
+		_build()
+
+
+func _build() -> void:
+	var w: float = room.size.x
+	var d: float = room.size.y
+	# Floor.
+	var floor: MeshInstance3D = _box(Vector3(w, 0.2, d),
+			Vector3(0.0, -0.1, 0.0), _mat(0.16, 0.17, 0.16))
+	floor.name = "Floor"
+	add_child(floor)
+	# Walls with doorway gaps.
+	var doors_by_side: Dictionary = {"n": [], "s": [], "w": [], "e": []}
+	for dw in room.doorways:
+		var dd: _DW = dw
+		var p: Vector3 = dd.local_pos
+		if absf(p.z) > absf(p.x):
+			if p.z < 0.0:
+				doors_by_side["n"].append(p.x)
+			else:
+				doors_by_side["s"].append(p.x)
+		else:
+			if p.x < 0.0:
+				doors_by_side["w"].append(p.z)
+			else:
+				doors_by_side["e"].append(p.z)
+	var walls: Node3D = Node3D.new()
+	walls.name = "Walls"
+	add_child(walls)
+	_wall(walls, "n", w, -d * 0.5, doors_by_side["n"], 0.0)
+	_wall(walls, "s", w, d * 0.5, doors_by_side["s"], 0.0)
+	_wall(walls, "e", d, w * 0.5, doors_by_side["e"], 1.0)
+	_wall(walls, "w", d, -w * 0.5, doors_by_side["w"], 1.0)
+	# Doorway frames (the monolith pair + lintel, the camp language).
+	for dw in room.doorways:
+		var dd: _DW = dw
+		_doorframe(walls, dd.local_pos)
+	# Obstacles (the same boxes the spawn probe uses — ADR-002).
+	var oi: int = 0
+	for o in room.obstacles:
+		var ob: _OB = o
+		var box: MeshInstance3D = _box(ob.size,
+				Vector3(ob.position.x, ob.size.y * 0.5, ob.position.z),
+				_mat(0.2, 0.2, 0.21))
+		box.name = "Obstacle_%d" % oi
+		oi += 1
+		add_child(box)
+	# The role prop (one idea per room, the no-filler line made
+	# visible — ENV_STORYTELLING §3).
+	_prop()
+	# The room's light (data color/energy; shadows off, mobile).
+	var light: OmniLight3D = OmniLight3D.new()
+	light.name = "RoomLight"
+	light.position = Vector3(0.0, WALL_H - 0.6, 0.0)
+	light.light_color = room.light_color
+	light.light_energy = room.light_energy * 2.2
+	light.omni_range = maxf(w, d) * 1.1
+	light.shadow = false
+	add_child(light)
+
+
+func _wall(parent: Node3D, _side: String, len: float, at: float,
+		gaps: Array, axis: float) -> void:
+	# axis 0 = wall runs along X at z = at; axis 1 = along Z at x = at.
+	# gaps: centers of the doorway mouths along the wall.
+	var segs: Array = []  # [start, end] in wall coordinates
+	var sorted: Array = gaps.duplicate()
+	sorted.sort()
+	var cursor: float = -len * 0.5
+	for g in sorted:
+		var gs: float = maxf(g - DOOR_GAP * 0.5, -len * 0.5)
+		if gs > cursor + 0.05:
+			segs.append([cursor, gs])
+		cursor = minf(g + DOOR_GAP * 0.5, len * 0.5)
+	if cursor < len * 0.5 - 0.05:
+		segs.append([cursor, len * 0.5])
+	for s in segs:
+		var a: float = s[0]
+		var b: float = s[1]
+		var seg_len: float = b - a
+		if seg_len < 0.05:
+			continue
+		var c: float = (a + b) * 0.5
+		if axis == 0.0:
+			var m: MeshInstance3D = _box(Vector3(seg_len, WALL_H, WALL_T),
+					Vector3(c, WALL_H * 0.5, at), _mat(0.22, 0.22, 0.2))
+			parent.add_child(m)
+		else:
+			var m2: MeshInstance3D = _box(Vector3(WALL_T, WALL_H, seg_len),
+					Vector3(at, WALL_H * 0.5, c), _mat(0.22, 0.22, 0.2))
+			parent.add_child(m2)
+	# The lintel above each gap (the door is open, the frame remains).
+	for g in gaps:
+		var lintel: MeshInstance3D
+		if axis == 0.0:
+			lintel = _box(Vector3(DOOR_GAP + 0.6, WALL_H - DOOR_H, WALL_T),
+					Vector3(g, DOOR_H + (WALL_H - DOOR_H) * 0.5, at),
+					_mat(0.22, 0.22, 0.2))
+		else:
+			lintel = _box(Vector3(WALL_T, WALL_H - DOOR_H, DOOR_GAP + 0.6),
+					Vector3(at, DOOR_H + (WALL_H - DOOR_H) * 0.5, g),
+					_mat(0.22, 0.22, 0.2))
+		parent.add_child(lintel)
+
+
+func _doorframe(parent: Node3D, p: Vector3) -> void:
+	# Two monoliths at the mouth edges (the camp's ZoneMarker look).
+	var off: Vector3
+	if absf(p.z) > absf(p.x):
+		off = Vector3(DOOR_GAP * 0.5 + 0.25, 0.0, 0.0)
+	else:
+		off = Vector3(0.0, 0.0, DOOR_GAP * 0.5 + 0.25)
+	for sgn in [-1.0, 1.0]:
+		var post: MeshInstance3D = _box(
+				Vector3(0.5, DOOR_H + 0.4, 0.5),
+				p + off * sgn, _mat(0.3, 0.3, 0.34))
+		parent.add_child(post)
+
+
+# One prop per role (the room's idea, visible at a glance).
+func _prop() -> void:
+	var root: Node3D = Node3D.new()
+	root.name = "Prop"
+	add_child(root)
+	match room.role:
+		_ROOM.Role.JUNCTION:
+			var disc: MeshInstance3D = MeshInstance3D.new()
+			var cm: CylinderMesh = CylinderMesh.new()
+			cm.top_radius = 1.6
+			cm.bottom_radius = 1.6
+			cm.height = 0.08
+			disc.mesh = cm
+			disc.position = Vector3(0.0, 0.04, 0.0)
+			disc.material = _mat(0.3, 0.3, 0.34)
+			root.add_child(disc)
+		_ROOM.Role.MYSTERY:
+			var beam: MeshInstance3D = MeshInstance3D.new()
+			var bm: BoxMesh = BoxMesh.new()
+			bm.size = Vector3(0.35, 3.4, 0.35)
+			beam.mesh = bm
+			beam.position = Vector3(0.0, 1.7, 0.0)
+			var em: StandardMaterial3D = _mat(0.5, 0.55, 0.7)
+			em.emission_enabled = true
+			em.emission = Color(0.5, 0.55, 0.75)
+			em.emission_energy_multiplier = 1.6
+			beam.material = em
+			root.add_child(beam)
+		_ROOM.Role.SHELTER:
+			var table: MeshInstance3D = _box(Vector3(1.6, 0.7, 1.0),
+					Vector3(-room.size.x * 0.25, 0.35, 0.0),
+					_mat(0.32, 0.28, 0.22))
+			root.add_child(table)
+		_ROOM.Role.COMBAT:
+			var slab: MeshInstance3D = _box(Vector3(2.4, 0.18, 1.2),
+					Vector3(0.0, 0.09, 0.0), _mat(0.2, 0.2, 0.22))
+			root.add_child(slab)
+		_ROOM.Role.LOOT:
+			var crate: MeshInstance3D = _box(Vector3(0.7, 0.7, 0.7),
+					Vector3(room.size.x * 0.2, 0.35, 0.0),
+					_mat(0.3, 0.27, 0.2))
+			root.add_child(crate)
+		_:
+			pass  # CORRIDOR: the obstacles ARE the props
+
+
+func _box(sz: Vector3, pos: Vector3, material: StandardMaterial3D) \
+		-> MeshInstance3D:
+	var mi: MeshInstance3D = MeshInstance3D.new()
+	var bm: BoxMesh = BoxMesh.new()
+	bm.size = sz
+	mi.mesh = bm
+	mi.position = pos
+	mi.material = material
+	return mi
+
+
+func _mat(r: float, g: float, b: float) -> StandardMaterial3D:
+	var m: StandardMaterial3D = StandardMaterial3D.new()
+	m.albedo_color = Color(r, g, b)
+	m.roughness = 0.9
+	m.metallic = 0.0
+	return m

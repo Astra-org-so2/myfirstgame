@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="InheritanceData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/gameplay/progression/inheritance_data.gd" id="1_data"]
+
+[resource]
+script = ExtResource("1_data")
+id = &"slow_burn"
+display_name = "SLOW BURN"
+ui_line = "Two shots — more often."
+layer = 0
+in_mvp_pool = true
+effect_target = 1
+effect_stat = &"break_cd"
+effect_value_1 = 40.0
+effect_value_2 = 30.0
+effect_value_3 = 25.0

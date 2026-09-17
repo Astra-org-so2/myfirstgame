@@ -1,0 +1,75 @@
+[gd_resource type="Resource" script_class="NpcRoster" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/gameplay/progression/npc_data.gd" id="1_data"]
+[ext_resource type="Script" path="res://scripts/gameplay/progression/npc_roster.gd" id="2_roster"]
+
+[sub_resource type="Resource" id="Resource_1_npc"]
+script = ExtResource("1_data")
+npc_id = &"mara"
+display_name = "Mara"
+visual_color = Color(0.72, 0.55, 0.42, 1)
+trust_1_interactions = 2
+trust_2_interactions = 4
+help_action = "bring_wood"
+trust_2_stat = &"notes_written"
+trust_2_threshold = 2.0
+gift_id = &"ember"
+dialogue_0 = "The fire is cold. So are you."
+dialogue_1 = "You keep coming back. The kettle's almost warm."
+dialogue_2 = "The fire keeps your place. So do I."
+death_flag = &"npc_mara_dead"
+death_consequence = "The camp goes dark; the field stays dead."
+
+[sub_resource type="Resource" id="Resource_2_npc"]
+script = ExtResource("1_data")
+npc_id = &"orren"
+display_name = "Orren"
+visual_color = Color(0.45, 0.55, 0.68, 1)
+trust_1_interactions = 2
+trust_2_interactions = 4
+help_action = "look_tower"
+trust_2_stat = &"explored_pct"
+trust_2_threshold = 30.0
+gift_id = &"the_track"
+dialogue_0 = "The tower sees everything. I don't."
+dialogue_1 = "You walk like someone who's been here before."
+dialogue_2 = "The trails don't lie. Neither do I."
+death_flag = &"npc_orren_dead"
+death_consequence = "The tower is empty; the trails never fade."
+
+[sub_resource type="Resource" id="Resource_3_npc"]
+script = ExtResource("1_data")
+npc_id = &"nia"
+display_name = "Nia"
+visual_color = Color(0.55, 0.68, 0.5, 1)
+trust_1_interactions = 2
+trust_2_interactions = 4
+help_action = "read_page"
+trust_2_stat = &"strange_actions"
+trust_2_threshold = 3.0
+gift_id = &"the_page"
+dialogue_0 = "The book is open. So are you."
+dialogue_1 = "You write like someone is following you."
+dialogue_2 = "Your page is almost ready."
+death_flag = &"npc_nia_dead"
+death_consequence = "The book is open on your page."
+
+[sub_resource type="Resource" id="Resource_4_npc"]
+script = ExtResource("1_data")
+npc_id = &"cartographer"
+display_name = "The Cartographer"
+visual_color = Color(0.75, 0.68, 0.5, 1)
+trust_1_interactions = 2
+trust_2_interactions = 4
+help_action = "compare_maps"
+trust_2_stat = &"explored_pct"
+trust_2_threshold = 50.0
+gift_id = &"the_compass"
+dialogue_0 = "Your route repeats. The map disagrees."
+dialogue_1 = "You walk it the same way. I see the rest."
+dialogue_2 = "I mark what you won't."
+death_flag = &"npc_cartographer_dead"
+death_consequence = "The map points at what isn't there."
+[resource]
+script = ExtResource("2_roster")
+npcs = Array[NpcData]([SubResource("Resource_1_npc"), SubResource("Resource_2_npc"), SubResource("Resource_3_npc"), SubResource("Resource_4_npc")])

@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="InheritanceData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/gameplay/progression/inheritance_data.gd" id="1_data"]
+
+[resource]
+script = ExtResource("1_data")
+id = &"flow"
+display_name = "FLOW"
+ui_line = "A fourth strike is waiting."
+layer = 0
+in_mvp_pool = true
+effect_target = 0
+effect_stat = &"extra_combo_hits"
+effect_value_1 = 1.0
+effect_value_2 = 2.0
+effect_value_3 = 3.0

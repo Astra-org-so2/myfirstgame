@@ -1,0 +1,158 @@
+# NpcNode — one of the four trust NPCs of the camp (Phase 6).
+#
+# A primitive capsule (ADR-024: code-built visuals, per-NPC color) +
+# a name label + the Interactable pattern (distance poll, held-edge,
+# rig-safe). The NPC is KILLABLE (a combat target) — killing one is
+# the permanent price: its Inheritance leaves the death-screen pool
+# forever and the consequence becomes visible (the death line, the
+# camp reaction wired by the main scene).
+#
+# Trust flow (PROGRESSION_DESIGN §4, the data says the thresholds):
+#   talk (E): an interaction + a line for the current trust level;
+#   when the NPC has met the trust-1 interactions WITHOUT the help,
+#   the next (E) completes the scripted help (1 action per NPC).
+# The logic is pure (NpcTrust, unit-tested); this node is the body.
+class_name NpcNode
+extends Node3D
+
+const _DATA = preload("res://scripts/gameplay/progression/npc_data.gd")
+const _STATE = preload("res://scripts/gameplay/progression/progression_state.gd")
+const _INTERACTABLE = preload("res://scripts/world/interactable.gd")
+const _CT = preload("res://scripts/gameplay/combat/combat_target.gd")
+const _DREQ = preload("res://scripts/gameplay/combat/damage_request.gd")
+
+const HP: float = 50.0
+
+var _data: _DATA
+var _state: _STATE
+var _resolver: Node
+var _ia: _INTERACTABLE
+var _target: _CT
+var _label: Label3D
+var _line_left: float = 0.0
+var _dead: bool = false
+
+
+# `custom_visual` (optional): a richer look to adopt (Mara keeps her
+# Phase 3 model) instead of the generic capsule.
+func setup(data: _DATA, state: _STATE, resolver: Node, player: Node,
+		custom_visual: Node = null) -> void:
+	_data = data
+	_state = state
+	_resolver = resolver
+	if custom_visual != null:
+		add_child(custom_visual)  # reparent: keeps the global position
+	else:
+		_build_visual_body()
+	_build_label()
+	_ia = _INTERACTABLE.new()
+	_ia.name = "IA_" + String(_data.npc_id)
+	_ia.prompt = "Talk to %s (E)" % _data.display_name
+	_ia.interact_radius = 2.4
+	add_child(_ia)
+	_ia.set_target(player)
+	_ia.interacted.connect(_on_interacted)
+	# The NPC is a combat target (killable — the price is permanent).
+	_target = _CT.new(self, HP)
+	_target.combat_id = &"npc_" + String(_data.npc_id)
+	if resolver != null:
+		resolver.register(self, _target)
+		_target.killed.connect(_on_killed)
+
+
+func get_data() -> _DATA:
+	return _data
+
+
+func is_dead() -> bool:
+	return _dead
+
+
+func get_trust() -> int:
+	var e: Dictionary = _state.ws.npc_entry(_data.npc_id)
+	return _state.trust.trust_level(e, _data, _state.stats)
+
+
+func _build_visual_body() -> void:
+	var mi: MeshInstance3D = MeshInstance3D.new()
+	var cm: CapsuleMesh = CapsuleMesh.new()
+	cm.radius = 0.35
+	cm.height = 1.7
+	mi.mesh = cm
+	mi.position = Vector3(0.0, 0.85, 0.0)
+	var mat: StandardMaterial3D = StandardMaterial3D.new()
+	mat.albedo_color = _data.visual_color
+	mi.material_override = mat
+	add_child(mi)
+
+
+func _build_label() -> void:
+	_label = Label3D.new()
+	_label.text = _data.display_name
+	_label.position = Vector3(0.0, 2.2, 0.0)
+	_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	_label.outline_size = 4
+	_label.modulate = Color(0.95, 0.93, 0.88, 0.95)
+	add_child(_label)
+
+
+func _on_interacted(_ia_node: Node) -> void:
+	var e: Dictionary = _state.ws.npc_entry(_data.npc_id)
+	if not bool(e.alive):
+		_show_line(_data.death_consequence)
+		return
+	# The scripted help: it opens once the interactions are in and the
+	# help hasn't been given (the data says when).
+	var needs_help: bool = not bool(e.help_done) \
+			and int(e.interactions) >= _data.trust_1_interactions
+	if needs_help:
+		var level: int = _state.trust.complete_help(e, _data, _state.stats)
+		_show_line(_help_line(level))
+		return
+	var level: int = _state.trust.interact(e, _data, _state.stats)
+	_show_line(_data.dialogue_for(level))
+
+
+func _help_line(new_level: int) -> String:
+	# One line for the favor (dry, no exposition; the CHARACTER_BIBLE
+	# owns the deep lines, these are the camp stubs for the MVP).
+	match String(_data.npc_id):
+		&"mara":
+			return "The wood. There. ...Thank you. (the fire takes it easy)"
+		&"orren":
+			return "One watch, together. The trails will remember."
+		&"nia":
+			return "Any page. All pages. ...I read them with you."
+		&"cartographer":
+			return "The lie was a road I drew twice. Fixed."
+		_:
+			return _data.dialogue_for(new_level)
+
+
+func _show_line(text: String) -> void:
+	_label.text = text
+	_line_left = 3.0
+
+
+func _physics_process(delta: float) -> void:
+	if _line_left > 0.0:
+		_line_left -= delta
+		if _line_left <= 0.0:
+			_label.text = _data.display_name
+
+
+func _on_killed() -> void:
+	if _dead:
+		return
+	_dead = true
+	# The PERMANENT price (GDD §9): trust resets and the Inheritance
+	# leaves the pool forever (the pool reads this state on every
+	# death screen).
+	var e: Dictionary = _state.ws.npc_entry(_data.npc_id)
+	_state.trust.kill(e)
+	_state.ws.set_flag(_data.death_flag)
+	_label.text = _data.death_consequence
+	_line_left = 6.0
+	var bus: Node = get_tree().root.get_node_or_null("EventBus")
+	if bus != null and bus.has_signal("npc_died"):
+		bus.npc_died.emit(_data.npc_id, global_position)

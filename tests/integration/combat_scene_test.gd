@@ -14,6 +14,7 @@ const _MAIN = preload("res://scripts/world/main_scene.gd")
 const _CT = preload("res://scripts/gameplay/combat/combat_target.gd")
 const _DREQ = preload("res://scripts/gameplay/combat/damage_request.gd")
 const _STATE = preload("res://scripts/player/player_state.gd")
+const _DS = preload("res://scripts/ui/death_screen.gd")
 
 const DT: float = 1.0 / 60.0
 
@@ -253,7 +254,23 @@ func _test_death_respawn(ctx: Variant) -> void:
 	ctx.check(_player.is_dead(), "combat: player dead at 0 hp")
 	ctx.check(died.size() == 1,
 			"combat: EventBus.player_died emitted once")
-	_tick(150)  # 2.0 s respawn + hitstop margin
+	# Phase 6: death pauses the respawn until the 1-of-3 choice (the
+	# death screen). The test makes the pick through the public API —
+	# the same path a finger tap takes (gui_input -> press()).
+	var screen: _DS = _main.get_node_or_null("DeathScreen")
+	ctx.check(screen != null, "combat: death screen composed")
+	if screen != null:
+		ctx.check(_player.death_choice_pending,
+				"combat: respawn waits for the choice")
+		var owned_before: Array = _main.progress.ws.owned_inheritances()
+		screen.press(0)
+		var owned_after: Array = _main.progress.ws.owned_inheritances()
+		ctx.check(owned_after.size() == owned_before.size() + 1,
+				"combat: the pick is PERMANENT (owned %d -> %d)"
+				% [owned_before.size(), owned_after.size()])
+		ctx.check(not _player.death_choice_pending,
+				"combat: the choice unblocks the respawn")
+	_tick(150)  # respawn on the next tick + margin
 	ctx.check(not _player.is_dead(), "combat: player respawned")
 	ctx.check(_player.get_combat_target().hp == 100.0,
 			"combat: hp restored on respawn")

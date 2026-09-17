@@ -73,10 +73,17 @@ func run(ctx: Variant) -> void:
 	ctx.check(not bad_arc.validate().is_empty(),
 			"weapon_data: arc > 360 rejected")
 
-	var no_window: _DATA = _copy(w)
-	no_window.special_window = 0.0
-	ctx.check(not no_window.validate().is_empty(),
-			"weapon_data: zero riposte window rejected")
+	# Phase 6: a ZERO window is valid for burst specials (cannon
+	# Break); only a NEGATIVE window is malformed.
+	var neg_window: _DATA = _copy(w)
+	neg_window.special_window = -1.0
+	ctx.check(not neg_window.validate().is_empty(),
+			"weapon_data: negative special window rejected")
+	var burst_window: _DATA = _copy(w)
+	burst_window.special_window = 0.0
+	ctx.check(burst_window.validate().is_empty(),
+			"weapon_data: zero window allowed (burst special, cannon "
+					+ "Break)")
 
 	var zero_combo: _DATA = _copy(w)
 	zero_combo.combo_window = 0.0

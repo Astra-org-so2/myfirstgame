@@ -29,9 +29,14 @@ signal dodge_started()
 signal dodge_ended()
 signal stamina_changed(value: float, max_value: float)
 
+const _LOADOUT = preload("res://scripts/gameplay/combat/weapon_loadout.gd")
+
 var data: _DATA
 var camera_rig: _CAM_RIG
 var weapon: _WEAPON
+# Phase 6: the found weapons + the equipped one (the blade is adopted
+# into it; the cannon/staff controllers join on pickup).
+var loadout: _LOADOUT
 
 # Combat (Phase 4): hp/i-frames/stun live in the CombatTarget; damage is
 # applied ONLY through the DamageResolver (ARCHITECTURE §3.2).
@@ -48,6 +53,9 @@ var _dodge_held: bool = false
 var _dead: bool = false
 var _respawn_timer: float = 0.0
 var _respawn_pos: Vector3 = Vector3.ZERO
+# Phase 6: the death screen is waiting for the 1-of-3 choice (the
+# respawn countdown pauses; main clears it + calls request_respawn).
+var death_choice_pending: bool = false
 var _has_respawn_pos: bool = false
 
 
@@ -72,6 +80,7 @@ func _ready() -> void:
 	combat.combat_id = &"player"
 	combat.damaged.connect(_on_combat_damaged)
 	combat.killed.connect(_on_combat_killed)
+	combat.guarded.connect(_on_combat_guarded)
 
 
 func _physics_process(delta: float) -> void:
@@ -82,12 +91,15 @@ func _physics_process(delta: float) -> void:
 	combat.update(delta)
 
 	# Death: countdown to auto-respawn (RunManager owns the flow from
-	# Phase 8; this is the Phase 4 MVP behavior).
+	# Phase 8; this is the Phase 4 MVP behavior). Phase 6: while the
+	# death screen waits for the 1-of-3 choice, the countdown pauses
+	# (its 8 s window keeps the death->respawn UX inside 10 s).
 	if _dead:
 		# No control, no physics: the body stands still until respawn.
-		_respawn_timer -= delta
-		if _respawn_timer <= 0.0:
-			_do_respawn()
+		if not death_choice_pending:
+			_respawn_timer -= delta
+			if _respawn_timer <= 0.0:
+				_do_respawn()
 		return
 
 	_port.apply_gravity(delta)
@@ -128,8 +140,12 @@ func _physics_process(delta: float) -> void:
 	_port.integrate(delta)
 
 	# Combat weapon (same clock: freezes under the scene HitStop with
-	# movement; ADR-023).
-	if weapon != null:
+	# movement; ADR-023). Phase 6: the loadout drives the EQUIPPED
+	# weapon (the blade is adopted; cannon/staff join on pickup).
+	if loadout != null:
+		loadout.update_switch_input()
+		loadout.update_active(delta)
+	elif weapon != null:
 		weapon.update(delta)
 
 	# State + visual.
@@ -232,6 +248,23 @@ func get_combat_target() -> _CT:
 	return combat
 
 
+# Phase 6: healing (the camp item, the EMBER camp fire). Not damage —
+# it never flows through the resolver (one damage point, one way).
+func heal(amount: float) -> float:
+	if _dead or amount <= 0.0:
+		return 0.0
+	var before: float = combat.hp
+	combat.hp = minf(combat.max_hp, combat.hp + amount)
+	return combat.hp - before
+
+
+# Phase 6: the death-screen choice is made — respawn now (the UX
+# budget: death -> respawn <= 10 s with the screen, GDD §12).
+func request_respawn() -> void:
+	if _dead:
+		_respawn_timer = 0.0
+
+
 func is_dead() -> bool:
 	return _dead
 
@@ -252,6 +285,16 @@ func _on_combat_damaged(req: Variant) -> void:
 			_logic.apply_hurt(r.knockback_direction)
 
 
+# Phase 6: the SECOND CHANCE guard caught a lethal hit (hp = 1) —
+# the world gives a FREE dodge with the wide 0.5 s i-frame window.
+func _on_combat_guarded(_req: Variant) -> void:
+	if _logic.state == _STATE.State.DODGE \
+			or _logic.state == _STATE.State.HURT:
+		return
+	_logic.set_iframe_end_override(0.5)
+	_logic.start_dodge(_logic.facing, true)
+
+
 func _on_combat_killed() -> void:
 	if _dead:
 		return
@@ -270,7 +313,12 @@ func _do_respawn() -> void:
 		return
 	respawn(_respawn_pos)
 	combat.reset()
-	if weapon != null:
+	# Per-RUN weapon state (ammo/CDs) back to the run start; the
+	# effective Inheritance stats re-read (a death-screen choice may
+	# have changed them).
+	if loadout != null:
+		loadout.reset_all()
+	elif weapon != null:
 		weapon.reset()
 	_dead = false
 	var bus: Node = get_node_or_null("/root/EventBus")

@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="InheritanceData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/gameplay/progression/inheritance_data.gd" id="1_data"]
+
+[resource]
+script = ExtResource("1_data")
+id = &"runner"
+display_name = "RUNNER"
+ui_line = "You run — they don't catch."
+layer = 2
+behavior_stat = &"fled"
+behavior_threshold = 10.0
+in_mvp_pool = false
+effect_target = 3
+effect_stat = &"retreat_bonus"
+effect_value_1 = 2.0
+effect_value_2 = 3.0
+effect_value_3 = 4.0

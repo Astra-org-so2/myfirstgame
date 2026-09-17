@@ -21,6 +21,10 @@ var _provider: Variant = null
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
+	# Godot 4: Control receives GUI input through the `gui_input`
+	# signal (the documented path) — the `_input_event` override
+	# targeted a virtual that Control does not have (dead wiring).
+	gui_input.connect(_on_gui_input)
 
 
 func set_provider(provider: Variant) -> void:
@@ -52,8 +56,8 @@ func _draw() -> void:
 	draw_circle(c + _knob, _radius * 0.45, KNOB_COLOR)
 
 
-func _input_event(event: InputEvent) -> void:
-	# Note: Control._input_event delivers positions in LOCAL coordinates.
+func _on_gui_input(event: InputEvent) -> void:
+	# Note: the gui_input signal delivers positions in LOCAL coordinates.
 	if event is InputEventScreenTouch:
 		var t: InputEventScreenTouch = event
 		if t.pressed:

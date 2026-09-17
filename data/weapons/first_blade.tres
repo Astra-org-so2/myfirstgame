@@ -1,0 +1,46 @@
+[gd_resource type="Resource" script_class="WeaponData" load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/gameplay/combat/weapon_data.gd" id="1_data"]
+[ext_resource type="Script" path="res://scripts/gameplay/combat/weapon_hit.gd" id="2_hit"]
+
+[sub_resource type="Resource" id="Resource_u1"]
+script = ExtResource("2_hit")
+name = &"u1"
+damage = 35
+windup = 0.3
+active = 0.15
+recovery = 0.85
+range = 2.5
+arc = 110.0
+knockback_force = 5.0
+knockback_duration = 0.35
+stamina_cost = 10
+
+[sub_resource type="Resource" id="Resource_u2"]
+script = ExtResource("2_hit")
+name = &"u2"
+damage = 35
+windup = 0.3
+active = 0.15
+recovery = 0.85
+range = 2.5
+arc = 120.0
+knockback_force = 5.0
+knockback_duration = 0.35
+stamina_cost = 10
+
+[resource]
+script = ExtResource("1_data")
+id = &"weapon_first_blade"
+display_name = "The First Blade"
+type = 0
+hits = [SubResource("Resource_u1"), SubResource("Resource_u2")]
+combo_window = 0.5
+special_name = &"core_hit"
+special_cooldown = 30.0
+special_window = 0.0
+special_stun_duration = 0.0
+special_damage = 50
+hitstop_hit = 0.06
+hitstop_kill = 0.12
+color_tint = Color(0.9, 0.75, 0.5, 1)

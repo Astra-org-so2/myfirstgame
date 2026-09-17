@@ -177,10 +177,17 @@ func _build_camp_core() -> void:
 			"Examine the pillar (E)")
 	_add_interactable(root, _NOTE_STAND, layout.note_stand_pos,
 			"Look at the note (E)")
-	_add_interactable(root, _MARA, layout.mara_pos,
-			"Talk to Mara (E)")
 	_add_interactable(root, _KETTLE, layout.kettle_pos,
 			"The kettle (E)", 1.6)
+
+	# Mara: Phase 6 makes her a trust NPC (NpcNode in the main scene)
+	# — the camp keeps only her look, as an anchor the NpcNode adopts
+	# (the old "Talk to Mara (E)" interactable stub is gone).
+	var mara_anchor: Node3D = Node3D.new()
+	mara_anchor.name = "MaraAnchor"
+	mara_anchor.position = Vector3(layout.mara_pos.x, 0.0, layout.mara_pos.z)
+	root.add_child(mara_anchor)
+	mara_anchor.add_child(_MARA.instantiate())
 
 	# Passive beat (no interaction): the table with two cups
 	# (ENV_STORYTELLING: repeating "home" motif).

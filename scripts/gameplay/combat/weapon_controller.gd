@@ -45,12 +45,19 @@ func bind(player: Node, data: _DATA, resolver: Node) -> void:
 	_data = data
 	_resolver = resolver
 	_logic = _LOGIC.new(data)
+
 	# Riposte resolution: watch the player's own damage (cross-script
 	# signal connect is safe; cross-script Callable.call() is not —
 	# ADR-022).
 	var ct: Variant = player.get_combat_target()
 	if ct != null and ct.has_signal("damaged"):
 		ct.damaged.connect(_on_player_damaged)
+
+
+# The bound data (Phase 6: the loadout/scene route a weapon's signals
+# by its Type without depending on the controller subclass).
+func get_data() -> _DATA:
+	return _data
 
 
 func set_sfx(sfx: Node) -> void:

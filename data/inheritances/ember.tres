@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="InheritanceData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/gameplay/progression/inheritance_data.gd" id="1_data"]
+
+[resource]
+script = ExtResource("1_data")
+id = &"ember"
+display_name = "EMBER"
+ui_line = "The campfire heals."
+layer = 1
+npc_id = &"mara"
+in_mvp_pool = true
+effect_target = 4
+effect_stat = &"campfire_heal"
+effect_value_1 = 1.0
+effect_value_2 = 1.0
+effect_value_3 = 1.0

@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="WeaponData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/gameplay/combat/weapon_data.gd" id="1_data"]
+
+[resource]
+script = ExtResource("1_data")
+id = &"weapon_staff"
+display_name = "Echo Staff"
+type = 2
+combo_window = 0.5
+special_name = &""
+hitstop_hit = 0.04
+hitstop_kill = 0.08
+staff_cast_time = 1.5
+staff_range = 10.0
+staff_read_range = 8.0
+staff_read_cd = 5.0
+staff_disrupt_cd = 10.0
+staff_soothe_cd = 15.0
+staff_soothe_duration = 3.0
+staff_shatter_cd = 20.0
+staff_shatter_damage = 40
+color_tint = Color(0.55, 0.6, 0.75, 1)

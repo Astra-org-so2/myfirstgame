@@ -18,3 +18,7 @@ signal player_died(position: Vector3)
 signal player_spawned(position: Vector3)
 signal target_killed(combat_id: StringName, position: Vector3)
 signal enemy_killed(enemy_id: StringName, position: Vector3)
+# Phase 6: the permanent NPC price (the consequence is scene-wired).
+signal npc_died(npc_id: StringName, position: Vector3)
+# Phase 6: a weapon is found (scripted, once, forever — WEAPON_DESIGN).
+signal weapon_found(weapon_id: StringName, position: Vector3)

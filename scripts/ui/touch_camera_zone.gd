@@ -14,6 +14,10 @@ var _rig: Variant = null
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	focus_mode = Control.FOCUS_NONE
+	# Godot 4: Control receives GUI input through the `gui_input`
+	# signal (the documented path) — the `_input_event` override
+	# targeted a virtual that Control does not have (dead wiring).
+	gui_input.connect(_on_gui_input)
 
 
 func set_rig(rig: Variant) -> void:
@@ -27,9 +31,10 @@ func _draw() -> void:
 			Color(1.0, 1.0, 1.0, 0.10), 2.0)
 
 
-func _input_event(event: InputEvent) -> void:
-	# Positions arrive in LOCAL coordinates; use the drag delta for the
-	# orbit (absolute position is irrelevant for a relative camera drag).
+func _on_gui_input(event: InputEvent) -> void:
+	# Positions arrive in LOCAL coordinates (gui_input contract); use
+	# the drag delta for the orbit (absolute position is irrelevant for
+	# a relative camera drag).
 	if event is InputEventScreenTouch:
 		var t: InputEventScreenTouch = event
 		if t.pressed:

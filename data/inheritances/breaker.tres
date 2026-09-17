@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="InheritanceData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/gameplay/progression/inheritance_data.gd" id="1_data"]
+
+[resource]
+script = ExtResource("1_data")
+id = &"breaker"
+display_name = "BREAKER"
+ui_line = "Breaks two at once."
+layer = 2
+in_mvp_pool = false
+effect_target = 2
+effect_stat = &"disrupt_count"
+effect_value_1 = 2.0
+effect_value_2 = 3.0
+effect_value_3 = 4.0

@@ -24,6 +24,9 @@ var _attack_btn: _BTN
 var _interact_btn: _BTN
 var _inventory_btn: _BTN
 var _special_btn: _BTN
+var _weapon_btn: _BTN
+var _soothe_btn: _BTN
+var _disrupt_btn: _BTN
 var _camera_zone: _CAM_ZONE
 
 var _provider: _PROVIDER = _PROVIDER.new()
@@ -45,6 +48,9 @@ func _ready() -> void:
 	_interact_btn = $Interact
 	_inventory_btn = $Inventory
 	_special_btn = $Special
+	_weapon_btn = $WeaponSwitch
+	_soothe_btn = $Soothe
+	_disrupt_btn = $Disrupt
 	_camera_zone = $CameraZone
 	if layout == null:
 		layout = load("res://data/ui/touch_layout.tres")
@@ -61,6 +67,9 @@ func _ready() -> void:
 	_interact_btn.action = &"interact"
 	_inventory_btn.action = &"inventory"
 	_special_btn.action = &"special"
+	_weapon_btn.action = &"weapon_switch"
+	_soothe_btn.action = &"staff_soothe"
+	_disrupt_btn.action = &"staff_disrupt"
 	_place()
 	_placed = true
 	get_viewport().size_changed.connect(_on_viewport_resized)
@@ -95,6 +104,15 @@ func _place() -> void:
 	_special_btn.set_placement(
 			_clamp_center(layout.special_center * screen.size, btn_r, safe),
 			btn_r, "SPC")
+	_weapon_btn.set_placement(
+			_clamp_center(layout.weapon_center * screen.size, btn_r, safe),
+			btn_r, "SWP")
+	_soothe_btn.set_placement(
+			_clamp_center(layout.soothe_center * screen.size, btn_r, safe),
+			btn_r, "CALM")
+	_disrupt_btn.set_placement(
+			_clamp_center(layout.disrupt_center * screen.size, btn_r, safe),
+			btn_r, "BRK")
 
 	var z: Rect2 = Rect2(layout.camera_zone.position * screen.size,
 			layout.camera_zone.size * screen.size)

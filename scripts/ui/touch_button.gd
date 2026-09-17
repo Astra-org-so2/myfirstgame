@@ -19,6 +19,11 @@ var _pressed: bool = false
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	focus_mode = Control.FOCUS_NONE
+	# Godot 4: Control receives GUI input through the `gui_input`
+	# signal (the documented path). An `_input_event` override would
+	# target a CollisionObject virtual that Control does not have —
+	# that wiring was dead (regression test: touch_scene).
+	gui_input.connect(_on_gui_input)
 
 
 func set_placement(center: Vector2, radius_px: float, label: String) -> void:
@@ -41,8 +46,8 @@ func _draw() -> void:
 				_label_text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, font_size, LABEL_COLOR)
 
 
-func _input_event(event: InputEvent) -> void:
-	# Positions arrive in LOCAL coordinates.
+func _on_gui_input(event: InputEvent) -> void:
+	# Positions arrive in LOCAL coordinates (gui_input contract).
 	if event is InputEventScreenTouch:
 		var t: InputEventScreenTouch = event
 		if t.pressed and t.position.length() <= _radius * 1.3:

@@ -36,6 +36,9 @@ const SUITES = [
 	["enemy_logic", "res://tests/unit/enemy_logic_test.gd", ["unit"]],
 	["nav_memory", "res://tests/unit/nav_memory_test.gd", ["unit"]],
 	["memory_stats", "res://tests/unit/memory_stats_test.gd", ["unit"]],
+	["inheritance", "res://tests/unit/inheritance_test.gd", ["unit"]],
+	["inventory", "res://tests/unit/inventory_test.gd", ["unit"]],
+	["inheritance_effects", "res://tests/unit/inheritance_effects_test.gd", ["unit"]],
 	["player_scene", "res://tests/integration/player_scene_test.gd",
 			["integration"]],
 	["camp_scene", "res://tests/integration/camp_scene_test.gd",
@@ -43,6 +46,10 @@ const SUITES = [
 	["combat_scene", "res://tests/integration/combat_scene_test.gd",
 			["integration"]],
 	["enemy_scene", "res://tests/integration/enemy_scene_test.gd",
+			["integration"]],
+	["touch_scene", "res://tests/integration/touch_scene_test.gd",
+			["integration"]],
+	["progression_scene", "res://tests/integration/progression_scene_test.gd",
 			["integration"]],
 ]
 

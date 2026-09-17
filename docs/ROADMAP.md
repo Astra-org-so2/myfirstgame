@@ -1,6 +1,6 @@
 # AFTER YOU — Roadmap (фазы, вехи, exit-criteria)
 
-Версия: 0.5 (Phase 5 закрыта, GDD v2.0). Формат статуса фазы
+Версия: 0.6 (Phase 6 закрыта, GDD v2.0). Формат статуса фазы
 (обязателен при закрытии):
 `STATUS / IMPLEMENTED / TESTED / KNOWN ISSUES / NEXT`.
 
@@ -302,6 +302,56 @@ Unit: inventory, upgrade resolve (1/3, perma, NPC-gate), trust.
 Integration: pickup-scripted (weapon), death→inheritance flow.
 Exit: полный прогресс-цикл работает; data-driven (новый
 Inheritance = .tres); NPC-gate проверен (смерть NPC → наследие ×).
+STATUS: COMPLETE (2026-09-17). ADR-025 (уровни 2–3 = эскалация в
+данных) + P0-регрессия тач-слоя (Control._input_event не
+существует в Godot 4 — wiring через gui_input, touch_scene-тест).
+IMPLEMENTED: WorldState (data/npcs/npc_state.tres, flags,
+inheritance levels 0–3, weapon_X_found, npc-записи alive/trust/
+interactions/help_done) + InheritanceManager (пул = 12 basic +
+4 NPC-gated (NPC жив и trust ≥ 1) + post-MVP (поведенческие
+гейты, в MVP data-disabled); roll «1 из 3»: до 2 новых + повторы
+(макс. 2 на Inheritance); перманентный apply) + InheritanceEffects
+(эффективные статы: blade/cannon/staff/player/world — ADR-025
+таблица уровней) + NpcTrust (0–2: 2 разговора + help → 1; 4 +
+help + memory-stat → 2; kill → 0, навсегда) + InventoryLogic
+(12 слотов, кап 3 костра, use/first_of) + ItemData (camp_fire.tres:
+heal 30, use_line). Оружие ×3: BLADE (Phase 4) + HAND CANNON
+(windup 1.8 s, снаряд 15 m / 3° spread, 5 патрон + 1 reload 1.5 s,
+Break 2×dmg CD 40/30/25, шум будит врагов) + ECHO STAFF (Shatter
+40 / Read 12 м маркеры / Soothe 5–7 с (EnemyLogic.SOOOTHED, новый
+state) / Disrupt — честный 0 до Phase 9; каст 1.5 s, отмена
+уроном) — WeaponData-расширение (ranged/staff поля + validate),
+RangedWeaponController (детерм. spread seed), StaffController,
+WeaponLoadout (adopt BLADE, add на pickup, Q-switch, update
+только equipped, reset_all per run). Сцена: 4 NpcNode (капсулы по
+NPCData, Mara = её Phase-3 модель (MaraAnchor-reparent),
+killable 50 hp, trust-флоу, death = флаг + trust 0 + EventBus
+npc_died, реплики на Label3D), 2 WeaponPickup (cannon/staff,
+демо-позиции лагеря; боевые зоны — Phase 7; перманентно),
+костёр (EMBER: heal vs холодная реплика), CampDrop (1/10, 3/run),
+DeathScreen (3 карточки: имя + строка без цифр; touch + mouse;
+8 с → seeded-выбор мира; death_choice_pending держит respawn —
+UX ≤ 10 s), InventoryPanel (4×3, touch-tap слота), Toast (3 s),
+EchoStep (afterimage 0.5 s + стазн смотревших), SECOND CHANCE
+(CombatTarget.guard_charges: смертельный удар → HP 1 + free-dodge
+с i-frame 0.5 s, per run), SfxLibrary +shot +pickup
+(процедурные). Тач-регрессия: gui_input (Control._input_event не
+существует в Godot 4 — CollisionObject-виртуаль; Phase 3 wiring
+бы мёртв на устройстве).
+TESTED: риг — 620/620 PASS (unit 473 + integration 147). Unit:
+inheritance 37 (пул/roll/повторы/уровни/NPC-gate), inventory 15,
+inheritance_effects 29 (композиции: sharp+flow, slow_burn+
+quiet_step, perma). Integration: progression_scene 33
+(pickup-scripted: prompt→(E)→loadout+2/WorldState/флаг/BLADE
+equipped/Q-switch/повтор без дублей; NPC trust: 2 разговора ≠
+trust 1, help → 1 → EMBER в пуле; смерть: флаг/trust 0/EMBER из
+пули навсегда; костёр cold vs EMBER full-heal; костёр-предмет
+bag→tap→+30→consumed), combat_scene death flow (экран ждёт
+выбора, press(0) → owned+1 перманентно, respawn на спавне),
+touch_scene 6 (регрессия gui_input: press/release/far/drag/
+orbit), camp_scene/combat_scene/enemy_scene/player_scene —
+без регрессий. Manual: tests/qa/qa_phase6_progression.md
+(A: ПК-редактор; B: touch-устройство; C: замеры).
 
 ## PHASE 7 — Procedural rooms (13 modular)
 Scope: AreaGraph (camp-hub + 8 зон, DAG), 13 modular rooms

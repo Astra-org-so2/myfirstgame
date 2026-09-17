@@ -10,7 +10,11 @@ extends Node
 
 const _LIB = preload("res://scripts/audio/sfx_library.gd")
 
-const NAMES: Array[StringName] = [&"swing", &"hit", &"riposte", &"hurt"]
+const NAMES: Array[StringName] = [
+	&"swing", &"hit", &"riposte", &"hurt",
+	# Phase 6: the Hand Cannon's shot + the found-thing "plink".
+	&"shot", &"pickup",
+]
 const POOL_SIZE: int = 3
 
 var trigger_count: int = 0
@@ -24,6 +28,8 @@ func _ready() -> void:
 	_streams[&"hit"] = _LIB.generate_hit()
 	_streams[&"riposte"] = _LIB.generate_riposte()
 	_streams[&"hurt"] = _LIB.generate_hurt()
+	_streams[&"shot"] = _LIB.generate_shot()
+	_streams[&"pickup"] = _LIB.generate_pickup()
 	for i in POOL_SIZE:
 		var p: AudioStreamPlayer = AudioStreamPlayer.new()
 		p.name = "Sfx%d" % i

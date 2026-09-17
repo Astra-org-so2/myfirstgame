@@ -48,13 +48,16 @@ func reset() -> void:
 
 # Starts a dodge in `dir` (use facing if dir is ~zero). Returns false when
 # blocked (cooldown, hurt, not enough stamina).
-func start_dodge(dir: Vector3) -> bool:
+# `free` = no stamina cost (Phase 6: the SECOND CHANCE auto-dodge —
+# "the world caught you" is not a spend).
+func start_dodge(dir: Vector3, free: bool = false) -> bool:
 	if state == _STATE.State.HURT or _dodge_cooldown > 0.0 \
 			or state == _STATE.State.DODGE:
 		return false
-	if stamina < _data.dodge_stamina_cost:
+	if not free and stamina < _data.dodge_stamina_cost:
 		return false
-	stamina -= _data.dodge_stamina_cost
+	if not free:
+		stamina -= _data.dodge_stamina_cost
 	_dodge_dir = dir if dir.length() > 0.01 else facing
 	_dodge_dir = Vector3(_dodge_dir.x, 0.0, _dodge_dir.z)
 	_dodge_dir = _dodge_dir.normalized() if _dodge_dir.length() > 0.01 else facing
@@ -77,12 +80,23 @@ func spend_stamina(amount: float) -> bool:
 	return true
 
 
-# I-frames: only inside [dodge_iframe_start, dodge_iframe_end] of the dodge.
+# I-frames: only inside [dodge_iframe_start, dodge_iframe_end] of the
+# dodge. Phase 6: the SECOND CHANCE auto-dodge widens the window to
+# 0.5 s (`_iframe_end_override`, cleared when the dodge ends).
+var _iframe_end_override: float = 0.0
+
+
+func set_iframe_end_override(seconds: float) -> void:
+	_iframe_end_override = maxf(0.0, seconds)
+
+
 func is_invulnerable() -> bool:
 	if state != _STATE.State.DODGE:
 		return false
+	var end: float = _data.dodge_iframe_end \
+			if _iframe_end_override <= 0.0 else _iframe_end_override
 	return _dodge_elapsed >= _data.dodge_iframe_start \
-			and _dodge_elapsed <= _data.dodge_iframe_end
+			and _dodge_elapsed <= end
 
 
 # Enters hitstun (damage pipeline is Phase 4; this is the state + knockback).
@@ -128,6 +142,7 @@ func update(delta: float, input_dir: Vector3, want_sprint: bool,
 			_dodge_elapsed = 0.0
 			_dodge_cooldown = _data.dodge_cooldown
 			_last_velocity = Vector3.ZERO  # no leftover dodge speed
+			_iframe_end_override = 0.0  # the wide window ends with it
 			state = _walk_run_state(input_dir, want_sprint)
 		return _dodge_dir * _data.dodge_speed
 

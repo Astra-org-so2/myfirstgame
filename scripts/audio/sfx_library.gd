@@ -16,6 +16,8 @@ const SWING_DUR: float = 0.3
 const HIT_DUR: float = 0.18
 const RIPOSTE_DUR: float = 0.4
 const HURT_DUR: float = 0.25
+const SHOT_DUR: float = 0.28
+const PICKUP_DUR: float = 0.22
 
 
 static func generate_swing() -> AudioStreamWAV:
@@ -77,6 +79,39 @@ static func generate_hurt() -> AudioStreamWAV:
 		var low: float = sin(TAU * 55.0 * t)
 		var noise: float = rnd.randf_range(-1.0, 1.0) * 0.25
 		out[i] = (low + noise) * env
+	return _to_wav(_normalize(out))
+
+
+# Phase 6: the Hand Cannon's shot — a low boom (50 Hz) with a short
+# crack on the attack (the "one shot = one decision" feel).
+static func generate_shot() -> AudioStreamWAV:
+	var n: int = int(RATE * SHOT_DUR)
+	var out: PackedFloat32Array = PackedFloat32Array()
+	out.resize(n)
+	var rnd: RandomNumberGenerator = RandomNumberGenerator.new()
+	rnd.seed = 0x5EED
+	for i in n:
+		var t: float = float(i) / float(n)
+		var env: float = (1.0 - t) * (1.0 - t)
+		var boom: float = sin(TAU * 50.0 * t) * 0.9
+		var crack: float = rnd.randf_range(-1.0, 1.0) * 0.6 * (1.0 - t)
+		out[i] = (boom + crack) * env
+	return _to_wav(_normalize(out))
+
+
+# Phase 6: a soft "plink" for found things (weapons, the small fire)
+# — a short two-note chime, deliberately quiet (the world doesn't
+# shout about its gifts).
+static func generate_pickup() -> AudioStreamWAV:
+	var n: int = int(RATE * PICKUP_DUR)
+	var out: PackedFloat32Array = PackedFloat32Array()
+	out.resize(n)
+	for i in n:
+		var t: float = float(i) / float(n)
+		# First 60%: 660 Hz, last 40%: 990 Hz (a rising "found").
+		var f: float = 660.0 if t < 0.6 else 990.0
+		var env: float = (1.0 - t) * (1.0 - t)
+		out[i] = sin(TAU * f * t) * env
 	return _to_wav(_normalize(out))
 
 

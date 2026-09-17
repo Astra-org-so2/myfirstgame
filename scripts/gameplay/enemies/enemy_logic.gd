@@ -46,6 +46,7 @@ var _state: int = _ST.State.IDLE
 var _elapsed: float = 0.0  # time in the current state
 var _hurt_from: int = _ST.State.IDLE
 var _retreat_time: float = 0.0
+var _soothe_time: float = 0.0
 var _death_done: bool = false
 var _whisper_timer: float = WHISPER_INTERVAL
 var _whisper_pool_index: int = 0
@@ -104,6 +105,8 @@ func interrupt_hurt() -> bool:
 	if _state == _ST.State.ACTIVE or _state == _ST.State.VANISH:
 		return false  # committed: the swing/teleport lands
 	_hurt_from = _state
+	if _state == _ST.State.SOOTHED:
+		_hurt_from = _ST.State.IDLE  # damage breaks the sleep for good
 	_enter(_ST.State.HURT)
 	return true
 
@@ -131,6 +134,20 @@ func _enter(s: int) -> void:
 				_rng.randi_range(0, lines.size() - 1)]
 
 
+# Echo Staff Soothe (Phase 6): the enemy "sleeps" for `duration` — no
+# combat, no movement. Damage wakes it (interrupt_hurt), the timer
+# wakes it to IDLE (its senses re-aggro naturally).
+func apply_soothe(duration: float) -> bool:
+	if _state == _ST.State.DEATH or _state == _ST.State.HURT:
+		return false
+	_soothe_time = maxf(0.0, duration)
+	if _state == _ST.State.SOOTHED:
+		_elapsed = 0.0  # refresh the sleep
+		return true
+	_enter(_ST.State.SOOTHED)
+	return true
+
+
 # One tick. `home` = the spawn point (xz). Returns the event list.
 func update(delta: float, sense: _SENSE, home: Vector2) -> Array[String]:
 	var events: Array[String] = []
@@ -146,6 +163,12 @@ func update(delta: float, sense: _SENSE, home: Vector2) -> Array[String]:
 		_ST.State.HURT:
 			if _elapsed >= _data.hitstun - EPS:
 				_enter(_hurt_from)
+				events.append(EV_STATE_CHANGED)
+		_ST.State.SOOTHED:
+			# The staff's sleep: no combat, no senses — the timer ends
+			# it (wake to IDLE: re-aggro is up to the senses again).
+			if _elapsed >= _soothe_time - EPS:
+				_enter(_ST.State.IDLE)
 				events.append(EV_STATE_CHANGED)
 		_ST.State.IDLE:
 			_idle(sense, events)

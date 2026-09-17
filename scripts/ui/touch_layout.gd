@@ -18,6 +18,12 @@ extends Resource
 @export var inventory_center: Vector2 = Vector2(0.96, 0.36)
 # Weapon special (BLADE: Riposte, Phase 4).
 @export var special_center: Vector2 = Vector2(0.66, 0.78)
+# Weapon switch (Phase 6: cycle the found weapons).
+@export var weapon_center: Vector2 = Vector2(0.54, 0.88)
+# Echo Staff actions (Phase 6; visible always — the staff is late
+# game, the buttons cost two small screenspace slots, top-left).
+@export var soothe_center: Vector2 = Vector2(0.08, 0.20)
+@export var disrupt_center: Vector2 = Vector2(0.08, 0.36)
 @export var button_radius: float = 0.075
 
 # Camera drag zone (normalized rect): right side of the screen.
@@ -35,7 +41,7 @@ func validate() -> Array[String]:
 		problems.append("camera zone must stay in the right half")
 	var centers: Array[Vector2] = [
 		dodge_center, attack_center, interact_center, inventory_center,
-		special_center,
+		special_center, weapon_center, soothe_center, disrupt_center,
 	]
 	if joystick_center.distance_to(centers[0]) < joystick_radius + button_radius:
 		problems.append("joystick overlaps the dodge button")

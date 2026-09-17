@@ -46,6 +46,24 @@ offset_bottom = 40.0
 mouse_filter = 2
 script = ExtResource("3_btn")
 
+[node name="WeaponSwitch" type="Control" parent="."]
+offset_right = 40.0
+offset_bottom = 40.0
+mouse_filter = 2
+script = ExtResource("3_btn")
+
+[node name="Soothe" type="Control" parent="."]
+offset_right = 40.0
+offset_bottom = 40.0
+mouse_filter = 2
+script = ExtResource("3_btn")
+
+[node name="Disrupt" type="Control" parent="."]
+offset_right = 40.0
+offset_bottom = 40.0
+mouse_filter = 2
+script = ExtResource("3_btn")
+
 [node name="CameraZone" type="Control" parent="."]
 offset_right = 40.0
 offset_bottom = 40.0

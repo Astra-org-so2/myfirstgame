@@ -27,4 +27,8 @@ enum State {
 	SPEAK,  # Remnant: encounter speech
 	LEAVE,  # Remnant: first encounter ends — it leaves
 	DEATH,  # dissolve (0.3 s; Forgotten 3 s)
+	# Phase 6 (appended: no index shift): Echo Staff Soothe — the enemy
+	# "sleeps" (no combat, no movement), wakes to IDLE (re-aggros on
+	# its own senses) or is woken by damage (HURT).
+	SOOTHED,
 }

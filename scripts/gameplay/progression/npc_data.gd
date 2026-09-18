@@ -31,6 +31,14 @@ extends Resource
 @export var dialogue_0: String = ""
 @export var dialogue_1: String = ""
 @export var dialogue_2: String = ""
+# Optional second line at trust 0 (the 2nd talk before trust 1): the
+# "NPC opens up a notch" beat (A8: Mara's second line). Empty = the
+# level line repeats.
+@export var dialogue_0b: String = ""
+# Optional first-RETURN line: the first talk of a run after the
+# player has died at least once (B1: "You left a kettle last time.
+# I washed it."). Empty = no return beat.
+@export var first_return_line: String = ""
 @export_group("Death (the permanent price)")
 @export var death_flag: StringName = &""
 @export var death_consequence: String = ""

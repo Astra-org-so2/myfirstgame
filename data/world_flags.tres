@@ -1,0 +1,92 @@
+[gd_resource type="Resource" script_class="WorldFlagTable" load_steps=15 format=3]
+
+[ext_resource type="Script" path="res://scripts/gameplay/progression/world_flag_table.gd" id="1_tbl"]
+[ext_resource type="Script" path="res://scripts/gameplay/progression/world_flag_data.gd" id="2_flag"]
+
+[sub_resource type="Resource" id="flag_pillar"]
+script = ExtResource("2_flag")
+flag_id = &"pillar_seen"
+consequence_text = "The pillar is warm to the touch."
+set_by = "A2 (RUN 1, pillar interact)"
+
+[sub_resource type="Resource" id="flag_blade"]
+script = ExtResource("2_flag")
+flag_id = &"blade_found"
+consequence_text = "Your hands remember the blade."
+set_by = "A3 (RUN 1, first swing)"
+
+[sub_resource type="Resource" id="flag_figure"]
+script = ExtResource("2_flag")
+flag_id = &"figure_seen"
+consequence_text = "Someone else was here."
+set_by = "A10 (RUN 1, figure at 30 m)"
+
+[sub_resource type="Resource" id="flag_pyre"]
+script = ExtResource("2_flag")
+flag_id = &"village_pyre_seen"
+consequence_text = "The village pyre is remembered."
+set_by = "A12 (RUN 1, village pyre)"
+
+[sub_resource type="Resource" id="flag_first_kill"]
+script = ExtResource("2_flag")
+flag_id = &"first_hollow_killed"
+consequence_text = "A mark is left where it fell."
+set_by = "A5 (RUN 1, first Hollow kill)"
+
+[sub_resource type="Resource" id="flag_mine_note"]
+script = ExtResource("2_flag")
+flag_id = &"mine_note_read"
+consequence_text = "The warning at the mine gate is yours now."
+set_by = "A14 (RUN 1, mine note)"
+
+[sub_resource type="Resource" id="flag_shrine"]
+script = ExtResource("2_flag")
+flag_id = &"shrine_echo_seen"
+consequence_text = "The shrine has answered once."
+set_by = "A15 (RUN 1, shrine whisper)"
+
+[sub_resource type="Resource" id="flag_gate_seal"]
+script = ExtResource("2_flag")
+flag_id = &"gate_seal_seen"
+consequence_text = "The gate's words are known."
+set_by = "A16 (RUN 1, gate engraving)"
+
+[sub_resource type="Resource" id="flag_lake_note"]
+script = ExtResource("2_flag")
+flag_id = &"lake_note_read"
+consequence_text = "The lake keeps its silence."
+set_by = "A17 (RUN 1, lake note)"
+
+[sub_resource type="Resource" id="flag_kettle"]
+script = ExtResource("2_flag")
+flag_id = &"kettle_washed"
+consequence_text = "The kettle at camp is clean. (Mara.)"
+set_by = "first death (B1, RUN 02)"
+
+[sub_resource type="Resource" id="flag_door"]
+script = ExtResource("2_flag")
+flag_id = &"run_02_door_open"
+consequence_text = "The door past the gate has opened."
+set_by = "A19 (first death)"
+
+[sub_resource type="Resource" id="flag_cannon"]
+script = ExtResource("2_flag")
+flag_id = &"cannon_found"
+consequence_text = "The cannon waits in the mine."
+set_by = "RUN 02 availability (A14)"
+
+[sub_resource type="Resource" id="flag_staff"]
+script = ExtResource("2_flag")
+flag_id = &"staff_found"
+consequence_text = "The staff waits at the shrine."
+set_by = "RUN 02 availability (A15)"
+
+[sub_resource type="Resource" id="flag_first_death"]
+script = ExtResource("2_flag")
+flag_id = &"first_death_done"
+consequence_text = "The world remembers you now."
+set_by = "A19 (first death)"
+
+[resource]
+script = ExtResource("1_tbl")
+flags = Array[WorldFlagData]([SubResource("flag_pillar"), SubResource("flag_blade"), SubResource("flag_figure"), SubResource("flag_pyre"), SubResource("flag_first_kill"), SubResource("flag_mine_note"), SubResource("flag_shrine"), SubResource("flag_gate_seal"), SubResource("flag_lake_note"), SubResource("flag_kettle"), SubResource("flag_door"), SubResource("flag_cannon"), SubResource("flag_staff"), SubResource("flag_first_death")])

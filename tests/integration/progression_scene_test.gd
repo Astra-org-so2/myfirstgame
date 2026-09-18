@@ -119,14 +119,18 @@ func _test_zone_transition(ctx: Variant) -> void:
 	ctx.check(gate != null, "zones: the camp layout resolves the mine gate")
 	if gate == null:
 		return
+	var camp_nodes: int = _main.director.nav_node_count()
 	zw._cooldown = 0.0
 	_mock.set_position(gate.local_pos)
 	zw._physics_process(DT)
 	ctx.check(zw.current == &"the_mine",
 			"zones: crossing the mine gate enters the Mine")
-	# The camp nav ring is 24 m (+pad 2); the Mine chain reaches
-	# ~31 m — the radius change proves the level nav was loaded.
-	ctx.check(_main.director.hub_radius() > 30.0,
+	# The level nav was re-loaded: the director's graph is no longer
+	# the camp's handcrafted ring (the Mine's chain has its own
+	# nodes). Phase 8: the Mine's forward door to the Undercroft is
+	# SEALED in RUN 1 (A16), so the radius alone no longer distinguishes
+	# the levels — the node set does.
+	ctx.check(_main.director.nav_node_count() != camp_nodes,
 			"zones: the director re-loaded the level nav")
 	# Back: the Mine's entry room, its camp_exit door.
 	var mine_ap = _main.run_layout.get_area(&"the_mine")
@@ -141,44 +145,43 @@ func _test_zone_transition(ctx: Variant) -> void:
 	ctx.check(zw.is_camp(),
 			"zones: the camp_exit door returns to the camp")
 
-	# The forward edge: the Mine's last room -> the Undercroft (the
-	# DAG sink). Enter the Mine, walk the chain, cross the forward
-	# door, come back through the arena's entry_mine door.
+	# Phase 8 (A16): in RUN 1 the Undercroft edge is SEALED
+	# (run_02_door_open is set on the first death). The door data says
+	# so (is_sealed) — the RUN 02 leg is tested in run_cycle_test.
 	zw._cooldown = 0.0
 	_mock.set_position(gate.local_pos)
 	zw._physics_process(DT)
 	ctx.check(zw.current == &"the_mine", "zones: back in the Mine")
 	var last_rp = mine_ap.rooms.back()
-	var fwd = null
-	for d in last_rp.doors:
-		var rd = d
-		if rd.to_area == &"undercroft":
-			fwd = rd
-			break
-	ctx.check(fwd != null,
-			"zones: the Mine's last room leads to the Undercroft")
+	# The forward edge is data (the Mine's single connection: door_b
+	# -> undercroft). In RUN 1 the generator leaves it SEALED
+	# (condition run_02_door_open unset) — sealed doors keep their
+	# anchor but no destination, so the door is found by anchor.
+	var conn: Node = null
+	for c in mine_ap.area.connections:
+		if c.to == &"undercroft":
+			conn = c
+	ctx.check(conn != null,
+			"zones: the Mine's undercroft edge exists in the data")
+	if conn == null:
+		return
+	var fwd = last_rp.door(conn.door)
+	ctx.check(fwd != null and fwd.is_sealed(),
+			"zones: the Mine's Undercroft door is sealed in RUN 1 (A16)")
 	if fwd == null:
 		return
+	# Crossing the sealed door must NOT switch the level (walk-through
+	# is skipped for sealed doors — the player stays in the Mine).
 	zw._cooldown = 0.0
 	_mock.set_position(last_rp.origin + fwd.local_pos)
 	zw._physics_process(DT)
-	ctx.check(zw.current == &"undercroft",
-			"zones: crossing the forward door enters the Undercroft")
-	# Back: the arena's entry_mine door -> the Mine's last room.
-	var boss_ap = _main.run_layout.get_area(&"undercroft")
-	var boss_rp = boss_ap.rooms[0]
-	var home = boss_rp.door(&"entry_mine")
-	ctx.check(home != null, "zones: the arena has the entry_mine door")
-	if home == null:
-		return
-	zw._cooldown = 0.0
-	_mock.set_position(boss_rp.origin + home.local_pos)
-	zw._physics_process(DT)
 	ctx.check(zw.current == &"the_mine",
-			"zones: the entry_mine door returns to the Mine")
-	# memory_stats: the two visited zones = 2/8 = 25% explored.
-	ctx.check(_main.tracker.stats.explored_pct == 25,
-			"zones: explored_pct = 25 after Mine + Undercroft")
+			"zones: the sealed door does not open (RUN 1)")
+	# memory_stats: the one visited zone = 1/8 → int(12.5) = 12
+	# (the Undercroft is sealed in RUN 1 — its leg is the run_cycle
+	# test's RUN 02 assertion).
+	ctx.check(_main.tracker.stats.explored_pct == 12,
+			"zones: explored_pct = 12 after the Mine (RUN 1)")
 	# And home to the camp (the test flow ends camp-side).
 	_main._enter_level(&"camp")
 
@@ -200,50 +203,33 @@ func _test_weapon_pickup(ctx: Variant) -> void:
 			"pickup: the Mine carries the HAND CANNON (data)")
 	ctx.check(_fixed_loot_of(shrine_ap) == &"weapon_staff",
 			"pickup: the Shrine carries the ECHO STAFF (data)")
-	# Enter the Mine (the production level switch) and find the cannon.
+	# Phase 8 (A14): RUN 1 the box carries the NOTE, not the weapon
+	# ("the world gives the weapon after the first death"). The RUN 02
+	# pickup itself is the run_cycle_test's assertion.
 	_main._enter_level(&"the_mine")
-	var pickup: _PICKUP = _main.find_child("WeaponPickup_cannon",
+	ctx.check(_main.find_child("WeaponPickup_cannon", true, false) == null,
+			"pickup: the cannon is NOT offered in RUN 1 (A14)")
+	var note: Node = _main.find_child("NoteStand_box_note_weapon_cannon",
 			true, false)
-	if pickup == null:
-		ctx.check(false, "pickup: the cannon is placed in the Mine")
+	ctx.check(note != null,
+			"pickup: the box carries E.'s note stand in RUN 1")
+	if note == null:
+		_main._enter_level(&"camp")
 		return
-	var ia: _IA = pickup.find_child("IA_pickup_weapon_cannon", true, false)
+	var ia: _IA = note.find_child("IA_note_box_note_weapon_cannon",
+			true, false)
 	_ticks = [ia]
-	# Walk to the plinth.
-	var p: Vector3 = pickup.global_position
+	var p: Vector3 = note.global_position
 	_mock.set_position(Vector3(p.x, 0.0, p.z + 0.8))
 	_tick(3)
-	ctx.check(ia.is_prompt_visible(), "pickup: the prompt shows near")
-
+	ctx.check(ia.is_prompt_visible(), "pickup: the note prompt shows near")
 	_interact_once()
-	ctx.check(_main.loadout.has(&"weapon_cannon"),
-			"pickup: the cannon entered the loadout")
-	ctx.check(_main.loadout.count() == 2,
-			"pickup: the loadout has exactly the blade + cannon")
-	ctx.check(_main.progress.ws.is_weapon_found(&"weapon_cannon"),
-			"pickup: WorldState remembers the find (permanent)")
-	ctx.check(bool(_main.progress.ws.get_flag(&"cannon_found")),
-			"pickup: the cannon_found flag is set")
-	ctx.check(_main.loadout.equipped() == &"weapon_blade",
-			"pickup: picking up does not switch (the blade stays)")
-
-	# The switch key cycles to the cannon (the loadout's held-edge).
-	Input.action_press("weapon_switch")
-	_tick(3)
-	Input.action_release("weapon_switch")
-	_tick(2)
-	ctx.check(_main.loadout.equipped() == &"weapon_cannon",
-			"pickup: weapon_switch equips the cannon")
-
-	# A second (E): already yours — no duplicate, no second find.
-	var count_before: int = _main.loadout.count()
-	_interact_once()
-	ctx.check(_main.loadout.count() == count_before,
-			"pickup: re-picking does not duplicate")
+	ctx.check(bool(_main.progress.ws.flag(&"mine_note_read")),
+			"pickup: reading the box note sets mine_note_read")
+	ctx.check(not _main.loadout.has(&"weapon_cannon"),
+			"pickup: the loadout still has no cannon in RUN 1")
 	# Back to camp (the rest of the flow is camp-side).
 	_main._enter_level(&"camp")
-	ctx.check(_main.find_child("WeaponPickup_cannon", true, false) == null,
-			"pickup: leaving the Mine clears the zone pickup")
 
 
 func _test_npc_trust_and_death(ctx: Variant) -> void:

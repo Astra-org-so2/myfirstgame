@@ -109,6 +109,11 @@ func _id_placeholder() -> String:
 	return _data.id if _data != null else "enemy"
 
 
+# The enemy's data id (death-cause mapping, run recording).
+func get_data_id() -> StringName:
+	return _data.id if _data != null else &"unknown"
+
+
 var _seed: int = 0
 
 

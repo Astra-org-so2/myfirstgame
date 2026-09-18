@@ -15,6 +15,10 @@
 class_name NpcNode
 extends Node3D
 
+# A talk happened (NPC_TALKED for the run recording; the scene
+# bridges it — no cross-script Callables, ADR-022).
+signal talked(npc_id: StringName)
+
 const _DATA = preload("res://scripts/gameplay/progression/npc_data.gd")
 const _STATE = preload("res://scripts/gameplay/progression/progression_state.gd")
 const _INTERACTABLE = preload("res://scripts/world/interactable.gd")
@@ -31,6 +35,9 @@ var _target: _CT
 var _label: Label3D
 var _line_left: float = 0.0
 var _dead: bool = false
+# The first-return line (B1) is once per run — the main scene resets
+# this on respawn (reset_run_lines).
+var _return_line_used: bool = false
 
 
 # `custom_visual` (optional): a richer look to adopt (Mara keeps her
@@ -66,6 +73,12 @@ func get_data() -> _DATA:
 
 func is_dead() -> bool:
 	return _dead
+
+
+# The line currently shown (the NPC's name after the 3 s window).
+# QA/test seam for the scripted beats (A8/B1).
+func current_line() -> String:
+	return _label.text
 
 
 func get_trust() -> int:
@@ -108,9 +121,30 @@ func _on_interacted(_ia_node: Node) -> void:
 	if needs_help:
 		var level: int = _state.trust.complete_help(e, _data, _state.stats)
 		_show_line(_help_line(level))
+		talked.emit(_data.npc_id)
 		return
 	var level: int = _state.trust.interact(e, _data, _state.stats)
-	_show_line(_data.dialogue_for(level))
+	_show_line(_line_for(level, e))
+	talked.emit(_data.npc_id)
+
+
+func _line_for(level: int, e: Dictionary) -> String:
+	# B1: the first talk of a run after the first death — the NPC
+	# remembers the run that "didn't happen" (GDD §7).
+	if not _return_line_used and _data.first_return_line != "" \
+			and _state.ws.flag(&"first_death_done"):
+		_return_line_used = true
+		return _data.first_return_line
+	# A8: the second talk at trust 0 (one extra beat before trust 1).
+	if level == 0 and int(e.interactions) >= 2 \
+			and _data.dialogue_0b != "":
+		return _data.dialogue_0b
+	return _data.dialogue_for(level)
+
+
+# The main scene calls this on respawn (a new run begins).
+func reset_run_lines() -> void:
+	_return_line_used = false
 
 
 func _help_line(new_level: int) -> String:

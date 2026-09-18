@@ -1,9 +1,10 @@
-[gd_resource type="Resource" script_class="SpawnTable" load_steps=7 format=3]
+[gd_resource type="Resource" script_class="SpawnTable" load_steps=9 format=3]
 
 [ext_resource type="Script" path="res://scripts/gameplay/enemies/spawn_table.gd" id="1_tbl"]
 [ext_resource type="Script" path="res://scripts/gameplay/enemies/spawn_entry.gd" id="2_ent"]
 [ext_resource type="Resource" path="res://data/enemies/hollow_base.tres" id="e3"]
 [ext_resource type="Resource" path="res://data/enemies/forgotten_wanderer.tres" id="e4"]
+[ext_resource type="Resource" path="res://data/enemies/watcher_base.tres" id="e5"]
 
 [sub_resource type="Resource" id="se0"]
 script = ExtResource("2_ent")
@@ -17,6 +18,18 @@ enemy = ExtResource("e4")
 position = Vector3(0, 0, 0)
 condition = "explorer"
 
+[sub_resource type="Resource" id="se2"]
+script = ExtResource("2_ent")
+enemy = ExtResource("e3")
+position = Vector3(4, 0, 4)
+condition = "always"
+
+[sub_resource type="Resource" id="se3"]
+script = ExtResource("2_ent")
+enemy = ExtResource("e5")
+position = Vector3(0, 0, -6)
+condition = "always"
+
 [resource]
 script = ExtResource("1_tbl")
-entries = Array[SpawnEntry]([SubResource("se0"), SubResource("se1")])
+entries = Array[SpawnEntry]([SubResource("se0"), SubResource("se1"), SubResource("se2"), SubResource("se3")])

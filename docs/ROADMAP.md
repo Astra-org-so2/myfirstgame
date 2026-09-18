@@ -1,6 +1,6 @@
 # AFTER YOU — Roadmap (фазы, вехи, exit-criteria)
 
-Версия: 0.7 (Phase 7 закрыта, GDD v2.0). Формат статуса фазы
+Версия: 0.8 (Phase 8 закрыта, GDD v2.0). Формат статуса фазы
 (обязателен при закрытии):
 `STATUS / IMPLEMENTED / TESTED / KNOWN ISSUES / NEXT`.
 
@@ -440,6 +440,54 @@ Unit: recorder limits, events roundtrip, A-якоря (triggers).
 Integration: death→save→resume; A-якоря по таймлайну (window).
 Exit: забег → смерть → новый забег: полный цикл; «Что изменилось»
 читается; A1–A17 срабатывают (playtest по FIRST_30_MINUTES).
+STATUS: COMPLETE (2026-09-18). ADR-027 (seed ранa: RUN 1 =
+session-seed, run N>1 = derive_seed; реконструкция на respawn
+синхронная, 41 ms в риге; «Что изменилось» = 5 самых свежих
+изменений).
+IMPLEMENTED: RunEvent (14 байт, 19 типов) + RunRecorder
+(≤4096, pin/сэмплирование, JSON [t,type,room,x,y,z,ry,target,
+data]) + RunRecord/RunHistory (все runs, 5 МБ-кэп → RunSummary)
++ RunManager (states PLAYING/DEAD/RESPAWNING; seed-политика
+ADR-027; last_death_pos; changed_lines) + death flow:
+bus.player_died → RUN 02 availability-флаги (cannon/staff/
+kettle) → on_player_died → death screen 1/3 (P6) →
+request_respawn → **синхронная реконструкция** (begin_next_run
+→ генератор+валидатор → zone_world.setup (NPC → holding) →
+_enter_level(camp) → on_run_started → spawn) +
+FirstRunDirector (A1–A17 event-driven: столб A2, первый взмах
+A3 (swing_started), первый Hollow A5 (след = first_kill_pos,
+метка в лагере RUN 02+), лагерь+note A7, фигура A10 (30 м,
+0.6 с голова, 1 s fade, 10 следов), Ния A11, костёр деревни
+A12, шахта-note A14, святилище A15, gate-seal A16 (+3
+footnotes), озеро-note A17; B1 кетл, B2 «That wasn't there.»;
+«Again?» A19 — один раз за сессию) + «Что изменилось» overlay
+(≤5 строк, 3 s, пропускаемый, layer 30) + run-запись в
+world_state.runs (P15-формат) + recorder-мост
+(RunManager.bind: enemy_killed→ENEMY_KILLED, weapon_found→
+ITEM_PICKED, swing→ATTACK (перепривязка на weapon_changed),
+damage_applied→ATTACK_HIT, npc.talked→NPC_TALKED,
+level-entered→ENTER_ROOM, notes→NOTE_WRITTEN).
+TESTED: риг — **823/823 PASS** (unit 584 + integration 239).
+Unit: run_system (recorder limits/roundtrip, derive_seed,
+changed_lines newest-first, history 5 МБ-кэп/summary),
+world_flags (таблица строк). Integration: run_cycle —
+полный цикл: RUN 1 (A2/A3/A5/A7/A10/A11/A12/A14/A15/A16/A17)
+→ смерть (A19: флаги, run-запись, death screen, выбор) →
+respawn (41 ms < 2 s; RUN 02: новый seed, новая раскладка,
+дверь подвала открыта, «что изменилось» с дверью+канном,
+«Again?», след A5 на месте) → RUN 02 (канон → loadout +
+ITEM_PICKED, подвал туда/обратно, B2, посох, Ния в деревне)
+→ run-запись (RUN 1: PLAYER_DIED/ENEMY_KILLED/ATTACK/
+ENTER_ROOM/NPC_TALKED/EVENT_COMPLETED/NOTE_WRITTEN, kills≥1,
+RUN 2: PLAYER_SPAWNED first). Regression: progression_scene
+(RUN 1 = note-станды, не оружие; seal-двери; explored_pct),
+combat/camp/enemy/touch — без изменений.
+KNOWN ISSUES: B4 (первый Echo «You're early.») и мумия #5 —
+Phase 9/10 (last_death_pos уже хранится); playtest A-якорей
+на железе — тест/qa/qa_phase8_run.md (владелец); 5-строчный
+пул «что изменилось» — лимит Q-WD2 (старейшие флаги
+выпадают при >5).
+NEXT: PHASE 9 — Ghost/Echo (budget per ADR-014).
 
 ## PHASE 9 — Ghost/Echo (budget per ADR-014)
 Scope: GhostDirector/GhostReplay/GhostController по TECHNICAL_DESIGN

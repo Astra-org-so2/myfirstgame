@@ -11,15 +11,39 @@
 class_name WorldState
 extends RefCounted
 
+# The runs section (WORLD_STATE_DESIGN §1, TECHNICAL_DESIGN §3):
+# recent full runs + summaries. Serialized separately from flags
+# (the 5 MB cap applies to this section alone).
+const _RH = preload("res://scripts/gameplay/run/run_history.gd")
+
 var flags: Dictionary = {}
 var inheritances: Dictionary = {}
 var weapons: Dictionary = {}
 var npcs: Dictionary = {}
+var runs: Variant = null  # RunHistory
+
+
+func _init() -> void:
+	if runs == null:
+		runs = _RH.new()
 
 # --- Flags (persistent booleans; 1 flag = 1 visible consequence) ---
 
 func set_flag(id: StringName, value: Variant = true) -> void:
 	flags[id] = value
+
+
+# Boolean view (the design docs' "flag" — true if set).
+func flag(id: StringName) -> bool:
+	return bool(get_flag(id, false))
+
+
+func runs_dict() -> Dictionary:
+	return runs.to_dict()
+
+
+func load_runs(d: Dictionary) -> void:
+	runs.from_dict(d)
 
 
 func get_flag(id: StringName, default: Variant = false) -> Variant:

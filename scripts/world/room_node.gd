@@ -11,6 +11,7 @@ extends Node3D
 const _ROOM = preload("res://scripts/gameplay/rooms/room_data.gd")
 const _OB = preload("res://scripts/gameplay/rooms/obstacle_box.gd")
 const _DW = preload("res://scripts/gameplay/rooms/doorway_def.gd")
+const _RD = preload("res://scripts/gameplay/rooms/resolved_door.gd")
 
 const WALL_H: float = 3.0
 const WALL_T: float = 0.4
@@ -18,6 +19,10 @@ const DOOR_GAP: float = 1.7  # the doorway mouth (matches the data)
 const DOOR_H: float = 2.4
 
 var room: _ROOM
+# The placed room's RESOLVED doors (the layout knows which doorways
+# are sealed in the current run; the visuals follow the data — the
+# sealed door must look sealed, A16 legibility).
+var resolved: Array = []  # Array[ResolvedDoor]
 
 
 func _ready() -> void:
@@ -34,10 +39,13 @@ func _build() -> void:
 			Vector3(0.0, -0.1, 0.0), _mat(0.16, 0.17, 0.16))
 	floor.name = "Floor"
 	add_child(floor)
-	# Walls with doorway gaps.
+	# Walls with doorway gaps (sealed doors get a solid wall + seal).
+	var sealed: Dictionary = _sealed_anchors()
 	var doors_by_side: Dictionary = {"n": [], "s": [], "w": [], "e": []}
 	for dw in room.doorways:
 		var dd: _DW = dw
+		if sealed.has(dd.anchor):
+			continue
 		var p: Vector3 = dd.local_pos
 		if absf(p.z) > absf(p.x):
 			if p.z < 0.0:
@@ -56,10 +64,14 @@ func _build() -> void:
 	_wall(walls, "s", w, d * 0.5, doors_by_side["s"], 0.0)
 	_wall(walls, "e", d, w * 0.5, doors_by_side["e"], 1.0)
 	_wall(walls, "w", d, -w * 0.5, doors_by_side["w"], 1.0)
-	# Doorway frames (the monolith pair + lintel, the camp language).
+	# Doorway frames (the monolith pair + lintel, the camp language);
+	# sealed doorways get the seal (A16) instead.
 	for dw in room.doorways:
 		var dd: _DW = dw
-		_doorframe(walls, dd.local_pos)
+		if sealed.has(dd.anchor):
+			_seal(walls, dd.local_pos)
+		else:
+			_doorframe(walls, dd.local_pos)
 	# Obstacles (the same boxes the spawn probe uses — ADR-002).
 	var oi: int = 0
 	for o in room.obstacles:
@@ -126,6 +138,61 @@ func _wall(parent: Node3D, _side: String, len: float, at: float,
 					Vector3(at, DOOR_H + (WALL_H - DOOR_H) * 0.5, g),
 					_mat(0.22, 0.22, 0.2))
 		parent.add_child(lintel)
+
+
+func _sealed_anchors() -> Dictionary:
+	var out := {}
+	for rd in resolved:
+		var d: _RD = rd
+		if d != null and d.is_sealed():
+			out[d.anchor] = true
+	return out
+
+
+# A16: the sealed doorway — the wall continues across the mouth
+# (no gap) and the seal (a dark ring, three notches) says: this door
+# is a decision, not a path.
+func _seal(parent: Node3D, p: Vector3) -> void:
+	var axis_x: bool = absf(p.x) >= absf(p.z)  # wall runs along Z
+	var slab: MeshInstance3D
+	if axis_x:
+		slab = _box(Vector3(WALL_T, WALL_H, DOOR_GAP + 0.2),
+				p, _mat(0.22, 0.22, 0.2))
+	else:
+		slab = _box(Vector3(DOOR_GAP + 0.2, WALL_H, WALL_T),
+				p, _mat(0.22, 0.22, 0.2))
+	parent.add_child(slab)
+	var ring: MeshInstance3D = MeshInstance3D.new()
+	var cm: CylinderMesh = CylinderMesh.new()
+	cm.top_radius = 1.25
+	cm.bottom_radius = 1.25
+	cm.height = 0.14
+	ring.mesh = cm
+	ring.position = p + Vector3(0.0, 1.5, 0.0)
+	if axis_x:
+		ring.rotation.x = deg_to_rad(90.0)
+	else:
+		ring.rotation.z = deg_to_rad(90.0)
+	var rm: StandardMaterial3D = _mat(0.12, 0.12, 0.15)
+	rm.emission_enabled = true
+	rm.emission = Color(0.35, 0.28, 0.22)
+	rm.emission_energy_multiplier = 0.7
+	ring.material = rm
+	parent.add_child(ring)
+	# The three notches (the "3 впадины" of the gate's seal).
+	for k in 3:
+		var ang: float = deg_to_rad(90.0 + float(k) * 120.0)
+		var off: Vector3 = Vector3(cos(ang), 0.0, sin(ang)) * 1.25
+		var notch: MeshInstance3D
+		if axis_x:
+			notch = _box(Vector3(0.14, 0.3, 0.2),
+					p + Vector3(0.0, 1.5, 0.0)
+					+ Vector3(0.0, off.x, off.y), _mat(0.05, 0.05, 0.06))
+		else:
+			notch = _box(Vector3(0.2, 0.3, 0.14),
+					p + Vector3(0.0, 1.5, 0.0)
+					+ Vector3(off.x, off.y, 0.0), _mat(0.05, 0.05, 0.06))
+		parent.add_child(notch)
 
 
 func _doorframe(parent: Node3D, p: Vector3) -> void:

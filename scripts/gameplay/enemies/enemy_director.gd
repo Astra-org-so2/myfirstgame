@@ -68,6 +68,15 @@ func hub_radius() -> float:
 	return _hub_radius
 
 
+# The loaded nav's node count (level identity: the camp's handcrafted
+# ring and a generated zone chain have different graphs — the level
+# reload seam tests use this).
+func nav_node_count() -> int:
+	if nav == null:
+		return 0
+	return nav.node_count()
+
+
 func load_nav(data: _NAV_DATA) -> void:
 	nav = _NAV.new()
 	nav.build(data.nodes, data.edges)

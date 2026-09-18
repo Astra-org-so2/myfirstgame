@@ -25,6 +25,11 @@ const _DREQ = preload("res://scripts/gameplay/combat/damage_request.gd")
 const _DRES = preload("res://scripts/gameplay/combat/damage_result.gd")
 const _CT = preload("res://scripts/gameplay/combat/combat_target.gd")
 
+# A swing actually started (stamina spent, active phase armed). The
+# scene wires the SfxBus swing cue; Phase 8 records ATTACK events
+# and fires the first-swing beat (A3) from it.
+signal swing_started()
+
 var _player: Node = null
 var _data: _DATA = null
 var _logic: _LOGIC = null
@@ -136,6 +141,7 @@ func _on_swing_started() -> void:
 		return
 	_swing_hit = []
 	_sfx_play(&"swing")
+	swing_started.emit()
 
 
 func _sample_hitbox() -> void:

@@ -56,6 +56,20 @@ const _RP = preload("res://scripts/gameplay/rooms/room_placement.gd")
 const _RD = preload("res://scripts/gameplay/rooms/resolved_door.gd")
 const _TABLE = preload("res://scripts/gameplay/enemies/spawn_table.gd")
 const _ENTRY = preload("res://scripts/gameplay/enemies/spawn_entry.gd")
+# Phase 8 — the run system (TECHNICAL_DESIGN §2/§3, FIRST_30_MINUTES):
+const _RUN_MGR = preload("res://scripts/gameplay/run/run_manager.gd")
+const _FIRST_RUN = preload("res://scripts/world/first_run_director.gd")
+const _VAL = preload("res://scripts/gameplay/rooms/layout_validator.gd")
+const _FLAG_TABLE = preload("res://scripts/gameplay/progression/world_flag_table.gd")
+const _FLAG_TABLE_DATA = preload("res://data/world_flags.tres")
+
+# The session seed (RUN 1's layout is the canonical one the A-beats
+# were designed against; run N>1 = derived — RunManager.derive_seed).
+const SESSION_SEED: int = 20260917
+# A1: the 2 s black fade at the start (FIRST_30_MINUTES).
+const A1_FADE_SECONDS: float = 2.0
+# The "what changed" overlay window (WORLD_STATE_DESIGN §9.2: 3 s).
+const CHANGED_WINDOW_SECONDS: float = 3.0
 
 const AREA_FILES := [
 	"camp", "ruined_village", "watchtower", "the_mine", "old_shrine",
@@ -91,6 +105,22 @@ var zone_world: _ZONE_WORLD
 var run_layout: _RUN_LAYOUT
 var camp_layer: Node3D
 var _zone_weapons: Dictionary = {}  # weapon id -> pickup node
+# Phase 8: the run system (run lifecycle + the scripted A-beats).
+var run_manager: _RUN_MGR
+var first_run: _FIRST_RUN
+var run_generator: _ROOM_GEN
+var _area_pool: Dictionary = {}
+var _last_player_attacker: Node = null
+# Phase 8 (A11): Nia's home is the village (CHARACTER_BIBLE §4) — she
+# rides in the village level; the holding keeps her (state included)
+# while other levels are up.
+var _village_npc: Node = null
+var _npc_holding: Node3D = null
+var _a1_left: float = 0.0
+var _a1_rect: ColorRect = null
+var _changed_layer: CanvasLayer = null
+var _changed_label: Label = null
+var _changed_left: float = 0.0
 
 
 func _ready() -> void:
@@ -250,8 +280,19 @@ func _setup_progression(layout: _LAYOUT, camp: _CAMP) -> void:
 		var pos: Vector3 = npc_positions.get(d.npc_id, Vector3.ZERO)
 		var npc: _NPC_NODE = _NPC_NODE.new()
 		npc.name = "NPC_" + String(d.npc_id)
-		camp_layer.add_child(npc)
-		npc.global_position = pos
+		if d.npc_id == &"nia":
+			# A11: Nia is in the village, not the camp (the first-30-
+			# minutes script meets her there). She joins the village
+			# level on entry; the holding keeps her meanwhile.
+			_npc_holding = Node3D.new()
+			_npc_holding.name = "NpcHolding"
+			_npc_holding.visible = false
+			add_child(_npc_holding)
+			_npc_holding.add_child(npc)
+			_village_npc = npc
+		else:
+			camp_layer.add_child(npc)
+			npc.global_position = pos
 		# Mara keeps her Phase 3 look (the camp's anchor, reparented:
 		# add_child does NOT move a node with a parent).
 		var custom: Node = null
@@ -312,23 +353,60 @@ const WEAPON_LINES: Dictionary = {
 
 
 func _setup_zones() -> void:
-	var pool: Dictionary = {}
+	_area_pool.clear()
 	for f in AREA_FILES:
 		var res: Resource = load("res://data/areas/%s.tres" % f)
 		if res == null:
 			push_error("Main scene: area data missing: " + f)
 			return
-		pool[(res as _AREA).id] = res
-	var gen: _ROOM_GEN = _ROOM_GEN.new()
-	gen.set_pool(pool)
-	run_layout = gen.generate(20260917, progress.ws.flags)
+		_area_pool[(res as _AREA).id] = res
+	run_generator = _ROOM_GEN.new()
+	run_generator.set_pool(_area_pool)
+	# Phase 8: the run system owns the layout seed (run 1 = the session
+	# seed, run N>1 = derived — the layout changes on every run).
+	run_manager = _RUN_MGR.new()
+	run_manager.name = "RunManager"
+	add_child(run_manager)
+	var table: _FLAG_TABLE = _FLAG_TABLE_DATA
+	run_manager.flag_lines = table.lines()
+	run_manager.init_session(SESSION_SEED, progress.ws)
+	run_manager.changed_lines_ready.connect(_on_changed_lines)
+	run_layout = run_generator.generate(run_manager.run_seed,
+			progress.ws.flags)
+	_check_layout(run_layout, "session start")
 	zone_world = _ZONE_WORLD.new()
 	zone_world.name = "ZoneWorld"
 	add_child(zone_world)
 	zone_world.setup(run_layout)
 	zone_world.set_player(player)
 	zone_world.door_crossed.connect(_on_door_crossed)
+	zone_world.level_freed.connect(_on_level_freed)
+	# The scripted first-30-minutes beats (event-driven, A1–A19).
+	first_run = _FIRST_RUN.new()
+	first_run.name = "FirstRunDirector"
+	add_child(first_run)
+	first_run.setup(self, zone_world, player, progress.ws, run_manager)
+	var bus2: Node = get_node_or_null("/root/EventBus")
+	run_manager.bind(bus2, player, resolver)
+	for n in _npcs:
+		if is_instance_valid(n) and n.has_signal("talked"):
+			n.talked.connect(run_manager.record_npc_talked)
+	first_run.on_run_started(run_manager.run_id)
 	_enter_level(&"camp")
+	# A1: the 2 s black fade, no menu (FIRST_30_MINUTES).
+	_a1_left = A1_FADE_SECONDS
+	_build_a1_fade()
+
+
+# Layout integrity (the P7 validator): a broken layout must not reach
+# the player (no-fake rule — the session falls back to a re-validated
+# layout on the same seed).
+func _check_layout(layout_res: _RUN_LAYOUT, where: String) -> void:
+	var problems: Array = _VAL.validate(layout_res, progress.ws.flags,
+			_area_pool)
+	if not problems.is_empty():
+		push_error("Main scene: layout invalid at %s: %s"
+				% [where, str(problems)])
 
 
 # Switch the gameplay level: visuals + nav + spawns + fog + weapons.
@@ -343,6 +421,11 @@ func _enter_level(area_id: StringName) -> void:
 		camp_layer.visible = is_camp
 	director.clear()
 	zone_world.enter(area_id)
+	# AFTER enter(): the scripted props (figure, notes, the pyre) are
+	# placed in the level that now exists — before it, they landed in
+	# the level being freed and died with it.
+	if first_run != null:
+		first_run.on_level_entered(area_id)
 	if is_camp:
 		director.load_nav(_NAV_DATA)
 		director.start(_SPAWN_TABLE)
@@ -354,6 +437,7 @@ func _enter_level(area_id: StringName) -> void:
 		director.start(table)
 	_place_weapons(area_id)
 	_set_fog(area_id)
+	_place_village_npc(area_id)
 
 
 # The layout spawns of one area (copies from the generator).
@@ -434,6 +518,19 @@ func _place_weapons(area_id: StringName) -> void:
 			continue
 		if progress.ws.is_weapon_found(wid):
 			continue
+		# Phase 8 (A14/A15): the world gives the weapon only AFTER the
+		# first death — in RUN 1 the box carries the NOTE, not the
+		# weapon (the cannon_found/staff_found flags are set on the
+		# first death = "available from RUN 02").
+		var available: bool = progress.ws.flag(
+				&"cannon_found" if wid == &"weapon_cannon"
+				else &"staff_found")
+		if not available:
+			if first_run != null and WEAPON_LINES.has(wid):
+				first_run.place_gated_weapon_note(area_id, wid,
+						rp.origin + rp.room.loot_spots[0],
+						String(WEAPON_LINES[wid]))
+			continue
 		var data: Resource
 		var line: String
 		if wid == &"weapon_cannon":
@@ -486,6 +583,12 @@ func _apply_per_run_effects() -> void:
 
 
 func _on_player_spawned(_pos: Vector3) -> void:
+	# A respawn after a death begins the NEXT run (Phase 8): new
+	# derived seed → new layout (the undercroft edges open, the
+	# weapons wait). Rebuild budget (TECHNICAL_DESIGN §12): ≤ 2 s —
+	# the generate + level swap is a few ms of pure work.
+	if run_manager != null and run_manager.state == _RUN_MGR.State.DEAD:
+		_begin_new_run()
 	_apply_per_run_effects()
 	# A respawn is back at the camp (Phase 7): re-enter the camp
 	# level if the death happened in a zone.
@@ -493,7 +596,40 @@ func _on_player_spawned(_pos: Vector3) -> void:
 		_enter_level(&"camp")
 
 
+# Death → new run (TECHNICAL_DESIGN §12, WORLD_STATE_DESIGN §1):
+# run N+1 with a derived seed, the layout regenerated against the
+# current world state, back at the camp.
+func _begin_new_run() -> void:
+	var seed: int = run_manager.begin_next_run()
+	run_layout = run_generator.generate(seed, progress.ws.flags)
+	_check_layout(run_layout, "run %d rebuild" % run_manager.run_id)
+	zone_world.setup(run_layout)  # frees the old level, new one
+	_zone_weapons.clear()
+	director.clear()
+	for n in _npcs:
+		if is_instance_valid(n) and n.has_method("reset_run_lines"):
+			n.reset_run_lines()
+	_enter_level(&"camp")
+	var port: Variant = player.get_port()
+	if port != null:
+		port.set_position($CampWorld.layout.spawn_pos)
+	if first_run != null:
+		first_run.on_run_started(run_manager.run_id)
+
+
 func _on_player_died(_pos: Vector3) -> void:
+	# Phase 8 (A19): the run ends. The run system gets the death
+	# (record + flags + the run record) BEFORE the death screen, so
+	# the "what changed" lines are ready when the respawn comes.
+	if run_manager != null:
+		if progress != null:
+			# RUN 02 availability (A14/A15/B1): the weapons wait from
+			# the second run, the kettle is washed. Set BEFORE the
+			# run system snapshots the "what changed" lines.
+			progress.ws.set_flag(&"cannon_found")
+			progress.ws.set_flag(&"staff_found")
+			progress.ws.set_flag(&"kettle_washed")
+		run_manager.on_player_died(_pos, _death_cause())
 	var offers: Array = progress.roll_death_offers()
 	if offers.is_empty():
 		# The pool is never empty by data (12 basic), but the scene
@@ -507,6 +643,20 @@ func _on_player_died(_pos: Vector3) -> void:
 	player.death_choice_pending = true
 	death_screen.show_offers(offers, levels,
 			tracker.stats.deaths * 7919 + 13)
+
+
+# The death cause for the run record (the last enemy that hurt the
+# player — the data id's prefix: hollow_*/mimic_*/watcher_*/...).
+func _death_cause() -> StringName:
+	var a: Node = _last_player_attacker
+	if a == null or not is_instance_valid(a):
+		return &"unknown"
+	var id: StringName = &"unknown"
+	if a.has_method("get_data_id"):
+		id = a.get_data_id()
+	var s: String = String(id)
+	var cut: int = s.find("_")
+	return StringName(s.substr(0, cut if cut > 0 else s.length()))
 
 
 func _on_death_choice(data: Resource) -> void:
@@ -624,6 +774,9 @@ func _physics_process(delta: float) -> void:
 	if player == null or hitstop == null:
 		return
 	var d: float = hitstop.update(delta)
+	# Phase 8: the run clock (deciseconds, frozen when not PLAYING).
+	if run_manager != null:
+		run_manager.advance_time(d)
 	player._physics_process(d)
 	if director != null:
 		director.update(d)
@@ -635,6 +788,104 @@ func _physics_process(delta: float) -> void:
 	if inv and not _inv_held:
 		inventory_panel.toggle()
 	_inv_held = inv
+
+
+# A11: Nia lives in the village level (her home zone — CHARACTER_BIBLE
+# §4). She is added on village entry and moved to the holding when the
+# level is freed (her trust/state lives in world_state, the node is
+# reused — no re-creation).
+func _place_village_npc(area_id: StringName) -> void:
+	if _village_npc == null or _npc_holding == null:
+		return
+	if area_id == &"ruined_village" and zone_world != null \
+			and zone_world.layout != null:
+		var a: Variant = zone_world.layout.get_area(&"ruined_village")
+		if a == null or a.rooms.is_empty():
+			return
+		var rp: Variant = a.rooms[0]
+		if _village_npc.get_parent() != zone_world.level:
+			_npc_holding.remove_child(_village_npc)
+			zone_world.level.add_child(_village_npc)
+		_village_npc.global_position = Vector3(
+				rp.origin.x + 2.5, 0.0, rp.origin.z + 2.0)
+
+
+func _on_level_freed() -> void:
+	if _village_npc != null and _npc_holding != null \
+			and _village_npc.get_parent() != _npc_holding \
+			and is_instance_valid(_village_npc):
+		# reparent (add_child refuses a node that has a parent).
+		_village_npc.reparent(_npc_holding)
+
+
+# ---------------------------------------------------------------------------
+# Phase 8 — UI beats: A1 (the 2 s black fade) and the "what changed"
+# overlay (WORLD_STATE_DESIGN §9.2: ≤ 5 lines, 3 s, skippable).
+# ---------------------------------------------------------------------------
+
+func _process(delta: float) -> void:
+	if _a1_rect != null and _a1_left > 0.0:
+		_a1_left -= delta
+		var k: float = clampf(1.0 - _a1_left / A1_FADE_SECONDS, 0.0, 1.0)
+		_a1_rect.color.a = 1.0 - k
+		if _a1_left <= 0.0:
+			var r: ColorRect = _a1_rect
+			_a1_rect = null
+			r.queue_free()
+	# "What changed": the 3 s window, then a short fade; a press
+	# (interact, held-edge) skips it.
+	if _changed_left > 0.0 and _changed_label != null:
+		var skip: bool = Input.is_action_pressed("interact")
+		if skip and not _changed_held:
+			_changed_left = 0.15  # a quick fade, not an instant cut
+		_changed_left -= delta
+		if _changed_left <= 0.0:
+			_changed_label.modulate.a = 0.0
+	_changed_held = Input.is_action_pressed("interact")
+
+
+func _build_a1_fade() -> void:
+	var layer: CanvasLayer = CanvasLayer.new()
+	layer.name = "A1Fade"
+	layer.layer = 40
+	add_child(layer)
+	_a1_rect = ColorRect.new()
+	_a1_rect.color = Color(0.0, 0.0, 0.0, 1.0)
+	_a1_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# Fixed oversized rect (headless-safe: no viewport layout needed —
+	# ADR-002; on device it covers any aspect ratio).
+	_a1_rect.position = Vector2.ZERO
+	_a1_rect.size = Vector2(4000.0, 4000.0)
+	layer.add_child(_a1_rect)
+
+
+func _on_changed_lines(lines: Array) -> void:
+	if lines.is_empty():
+		return
+	if _changed_layer == null:
+		_changed_layer = CanvasLayer.new()
+		_changed_layer.name = "ChangedLines"
+		_changed_layer.layer = 30
+		add_child(_changed_layer)
+		_changed_label = Label.new()
+		_changed_label.text = ""
+		_changed_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		_changed_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		_changed_label.add_theme_font_size_override("font_size", 18)
+		_changed_label.add_theme_color_override("font_color",
+				Color(0.85, 0.88, 0.92, 1.0))
+		_changed_label.add_theme_color_override("font_shadow_color",
+				Color(0.0, 0.0, 0.0, 0.9))
+		_changed_label.position = Vector2(0.0, 140.0)
+		_changed_label.size = Vector2(4000.0, 140.0)
+		_changed_label.modulate.a = 0.0
+		_changed_layer.add_child(_changed_label)
+	_changed_label.text = "\n".join(lines)
+	_changed_label.modulate.a = 0.95
+	_changed_left = CHANGED_WINDOW_SECONDS
+
+
+var _changed_held: bool = false
 
 
 func _on_player_noise() -> void:
@@ -667,6 +918,7 @@ func _on_damage_applied(res: Variant) -> void:
 				0.12 if res.killed else 0.08)
 	# Defensive (player hit): hitstop + vignette + hurt SFX + shake.
 	if res.target == player and not res.blocked:
+		_last_player_attacker = res.source
 		hitstop.freeze(0.05)
 		vignette.flash(0.9 if res.killed else 0.5)
 		sfx.play(&"hurt")

@@ -26,6 +26,9 @@ const SWITCH_COOLDOWN: float = 1.0
 
 signal door_crossed(area_id: StringName, room_id: StringName,
 		anchor: StringName)
+# Emitted BEFORE the level's children are freed (Phase 8: the village
+# NPC lives in the level and must be moved out, not deleted).
+signal level_freed
 
 var layout: _RL
 var current: StringName = &""
@@ -62,6 +65,7 @@ func enter(area_id: StringName) -> void:
 		var rp: _RP = r
 		var rn = _ROOM_NODE.new()
 		rn.room = rp.room
+		rn.resolved = rp.doors
 		rn.position = rp.origin
 		level.add_child(rn)  # _ready builds the visuals
 	nav = _build_nav(a)
@@ -93,6 +97,7 @@ func door_world(room_id: StringName, anchor: StringName) -> Vector3:
 func _free_level() -> void:
 	if level == null:
 		return
+	level_freed.emit()
 	# Immediate free (not queue_free): a level switch must leave no
 	# node behind — the old level's pickups must be gone the moment
 	# the new level is in.

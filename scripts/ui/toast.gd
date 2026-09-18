@@ -28,16 +28,26 @@ func _ready() -> void:
 	visible = false
 
 
-# Show (or replace) the line.
-func show_text(text: String) -> void:
+# Show (or replace) the line. `life` (optional): the read window —
+# the default 3 s suits short lines; the note beats (A7/A15/A16) get
+# a longer window (FIRST_30_MINUTES read times).
+func show_text(text: String, life: float = LIFE) -> void:
 	_ensure_placed()
 	_label.text = text
-	_left = LIFE
+	_left = life
 	visible = true
 
 
 func is_visible_now() -> bool:
 	return visible and _left > 0.0
+
+
+# The line currently shown ("" when hidden). QA/test seam for the
+# scripted beats (A2/A15/A16/A19, B2).
+func current_text() -> String:
+	if not is_visible_now():
+		return ""
+	return _label.text
 
 
 func _ensure_placed() -> void:

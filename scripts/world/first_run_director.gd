@@ -33,6 +33,8 @@ const LINE_B2: String = "That wasn't there."
 const LINE_A19: String = "Again?"
 const LINE_KETTLE: String = "The kettle is cold."
 const LINE_KETTLE_WASHED: String = "It's clean. Warm, even."
+# #6 (RUN 03 D2): the Remnant reads the player's note (section 4).
+const LINE_D6: String = "\u2026I forgot that."
 
 # The figure's animation timing (A10: head turn, then a 1 s fade).
 const FIGURE_TURN_SECONDS: float = 0.6
@@ -57,6 +59,7 @@ var _pyre_pos: Vector3 = Vector3.INF
 var _b2_shown: bool = false
 var _again_shown: bool = false
 var _a3_done: bool = false
+var _d6_done: bool = false
 
 
 func setup(m: Node, zw: Node, p: Node, ws_ref: Variant, rm: Node) -> void:
@@ -80,6 +83,33 @@ func _ready() -> void:
 	var bus: Node = get_tree().root.get_node_or_null("EventBus")
 	if bus != null:
 		bus.enemy_killed.connect(_on_enemy_killed)
+		bus.echo_triggered.connect(_on_echo_triggered)
+
+
+# #6 (RUN 03, section 4): the player left a note — the Remnant
+# reads it on its first-encounter sequence (a third line).
+# MVP limit: the line beat, not the "interrupts combat to walk over"
+# choreography (documented in the phase QA).
+func _on_echo_triggered(echo_type: StringName, _pos: Vector3) -> void:
+	if _d6_done or echo_type != &"combat":
+		return
+	if _rm == null or int(_rm.run_id) < 3:
+		return
+	if _ws == null or (_ws.last_note() as Dictionary).is_empty():
+		return
+	_d6_done = true
+	if _main == null:
+		return
+	var d: Node = _main.get("director")
+	if d == null:
+		return
+	for e in d.get_alive_enemies():
+		var ctrl: Node = e
+		var data: Node = ctrl.data()
+		if data != null and data.id == &"remnant_mirror" \
+				and ctrl.has_method("add_encounter_line"):
+			ctrl.add_encounter_line(LINE_D6)
+			break
 
 
 func _bind_swing() -> void:

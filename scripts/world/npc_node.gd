@@ -129,6 +129,11 @@ func _on_interacted(_ia_node: Node) -> void:
 
 
 func _line_for(level: int, e: Dictionary) -> String:
+	# K7 (WORLD_STATE_DESIGN section 6): post-boss the world is
+	# quieter — the NPC line changes (npc_calm).
+	if _data.post_boss_line != "" and _state.ws.flag(
+			&"boss_defeated"):
+		return _data.post_boss_line
 	# B1: the first talk of a run after the first death — the NPC
 	# remembers the run that "didn't happen" (GDD §7).
 	if not _return_line_used and _data.first_return_line != "" \

@@ -73,3 +73,32 @@ func aggression_profile(thresholds: Resource) -> int:
 			and strange_actions > thresholds.explorer_strange_actions:
 		return PROFILE_EXPLORER
 	return PROFILE_NORMAL
+
+# --- Persist (TECHNICAL_DESIGN section 3: the save «memory» section) ---
+# The 10 hidden counters + the 3 style aggregates (dominant_style is
+# derived on load from the aggregates, not stored).
+
+func to_dict() -> Dictionary:
+	return {"kills": kills, "fled": fled, "explored_pct": explored_pct,
+			"notes_written": notes_written, "npc_killed": npc_killed,
+			"child_hit": child_hit, "strange_actions": strange_actions,
+			"deaths": deaths, "runs_completed": runs_completed,
+			"dodge_count": dodge_count, "melee_hits": melee_hits,
+			"ranged_hits": ranged_hits}
+
+
+# Safe defaults (corrupt-save defense): bad values clamp, missing
+# keys keep the live value.
+func load_dict(d: Dictionary) -> void:
+	kills = maxi(0, int(d.get("kills", kills)))
+	fled = maxi(0, int(d.get("fled", fled)))
+	explored_pct = clampi(int(d.get("explored_pct", explored_pct)), 0, 100)
+	notes_written = maxi(0, int(d.get("notes_written", notes_written)))
+	npc_killed = maxi(0, int(d.get("npc_killed", npc_killed)))
+	child_hit = maxi(0, int(d.get("child_hit", child_hit)))
+	strange_actions = maxi(0, int(d.get("strange_actions", strange_actions)))
+	deaths = maxi(0, int(d.get("deaths", deaths)))
+	runs_completed = maxi(0, int(d.get("runs_completed", runs_completed)))
+	dodge_count = maxi(0, int(d.get("dodge_count", dodge_count)))
+	melee_hits = maxi(0, int(d.get("melee_hits", melee_hits)))
+	ranged_hits = maxi(0, int(d.get("ranged_hits", ranged_hits)))

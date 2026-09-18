@@ -42,6 +42,9 @@ extends Resource
 @export_group("Death (the permanent price)")
 @export var death_flag: StringName = &""
 @export var death_consequence: String = ""
+# K7 (WORLD_STATE_DESIGN section 6): post-boss the NPC is calmer —
+# this line replaces the normal dialogue (npc_calm).
+@export var post_boss_line: String = ""
 
 
 func dialogue_for(trust: int) -> String:

@@ -227,6 +227,22 @@ func _remnant_first_encounter(ctx: Variant) -> void:
 	ctx.check(evs.has(_LOGIC.EV_LEAVE),
 			"enemy_logic: leave event despawns the remnant (1 s)")
 
+	# #6 (WORLD_STATE_DESIGN section 4): the player left a note — the
+	# Remnant adds a third line to the first-encounter sequence.
+	l = _LOGIC.new(d, 11)
+	l.first_encounter = true
+	l.extra_lines.append("\u2026I forgot that.")
+	_ticks(l, 1, _sense(Vector3(8, 0, 0)))
+	_ticks(l, 48, _sense(Vector3(8, 0, 0)))
+	_ticks(l, 48, _sense(Vector3(8, 0, 0)))
+	ctx.check(l.state() == _ST.State.SPEAK
+			and l.last_speech == "\u2026I forgot that.",
+			"enemy_logic: #6 the note line is the third line: %s"
+				% l.last_speech)
+	_ticks(l, 48, _sense(Vector3(8, 0, 0)))
+	ctx.check(l.state() == _ST.State.LEAVE,
+			"enemy_logic: #6 the remnant leaves after the note line")
+
 	# Not a first encounter: it FIGHTS (chase), not speech.
 	l = _LOGIC.new(d, 12)
 	l.first_encounter = false

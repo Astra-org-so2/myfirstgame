@@ -58,6 +58,9 @@ var _prev_player_phase: int = -1
 
 # Set at spawn (director/builder):
 var first_encounter: bool = false   # Remnant: speaks and leaves
+# Lines appended to the first-encounter sequence at runtime (the
+# #6 beat: the Remnant reads the player's note and adds its line).
+var extra_lines: PackedStringArray = PackedStringArray()
 var _speech_idx: int = 0
 var anchors_created: int = 0        # Watcher: run-wide count (director)
 
@@ -130,7 +133,7 @@ func _enter(s: int) -> void:
 		_pick_wander_target(_home)
 	elif s == _ST.State.SPEAK:
 		_speech_idx = 0
-		last_speech = _data.first_encounter_lines[0]
+		last_speech = _encounter_lines()[0]
 
 
 # Echo Staff Soothe (Phase 6): the enemy "sleeps" for `duration` — no
@@ -219,7 +222,7 @@ func update(delta: float, sense: _SENSE, home: Vector2) -> Array[String]:
 		_ST.State.SPEAK:
 			# The full sequence, canonical order (#1): each line holds
 			# SPEAK_TIME, then the next; the last line hands to LEAVE.
-			var lines: PackedStringArray = _data.first_encounter_lines
+			var lines: PackedStringArray = _encounter_lines()
 			if _elapsed >= SPEAK_TIME - EPS:
 				if _speech_idx + 1 < lines.size():
 					_speech_idx += 1
@@ -404,3 +407,12 @@ func _track_player_phase(sense: _SENSE, delta: float) -> void:
 
 func player_phase_time() -> float:
 	return _player_phase_time
+
+
+# The first-encounter sequence: the data lines + the runtime extras
+# (the #6 note line, WORLD_STATE_DESIGN section 4).
+func _encounter_lines() -> PackedStringArray:
+	var out: PackedStringArray = _data.first_encounter_lines.duplicate()
+	for i in extra_lines.size():
+		out.append(extra_lines[i])
+	return out

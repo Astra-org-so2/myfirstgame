@@ -1,0 +1,7 @@
+[gd_resource type="Resource" script_class="NoteLinesData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/gameplay/progression/note_lines_data.gd" id="1_data"]
+
+[resource]
+script = ExtResource("1_data")
+lines = PackedStringArray("I remember the mine. Don't go alone.", "The door opens after you stop.", "She's in the lake. Don't look too long.", "The blade was mine. Use it quickly.", "I'm not the first. I won't be the last.")

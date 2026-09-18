@@ -1,6 +1,6 @@
 # AFTER YOU — Roadmap (фазы, вехи, exit-criteria)
 
-Версия: 0.9 (Phase 9 закрыта, GDD v2.0). Формат статуса фазы
+Версия: 1.0 (Phase 10 закрыта, GDD v2.0). Формат статуса фазы
 (обязателен при закрытии):
 `STATUS / IMPLEMENTED / TESTED / KNOWN ISSUES / NEXT`.
 
@@ -559,6 +559,64 @@ Integration: drop-in-world → следующий забег; note → RUN N+1;
 shortcut perma-open.
 Exit: «мир помнит» — 10+ различимых перманентных изменений в работе;
 «Что изменилось» замечено (qa-метрика GDD §12).
+STATUS: COMPLETE (2026-09-18). ADR-029 (WorldDirector = слой
+постоянных объектов; WorldState: notes + полный to_dict/load_dict
+— контракт Phase 15; MemoryStats persist; K7 = data-таблица
+трансформации + триггер-флаг; #6 = extra line в Remnant-
+секвенции).
+IMPLEMENTED: data (note_lines.tres — пул 5 строк;
+player_note_stands.tres — 4 stand-а camp/village/shrine/
+undercroft; world_transform_post_boss.tres — K7-таблица: fog
+×0.375, light 5500K, gate glow, city, echo «тише» 0/1/0,
+footprint permanent, npc_calm) + WorldState (notes: write_note
+(4 канон-stand-а, перезапись), get_note/note_line/last_note
+(последняя по t — руки мумии); **полный to_dict/load_dict**:
+flags (включая Vector3), inheritances, weapons, npcs, notes,
+runs (RunHistory); load_dict — защита от битого сейва: clamp +
+unknown-stand-отброс) + MemoryStats (to_dict/load_dict: 10
+счётчиков + 3 aggregates) + WorldDirector (prepare_run /
+on_level_entered / update: stand-ы (camp → CampWorld, зоны →
+комната раскладки), мумия (run_id ≥ 3, last_death_pos пред.
+ранa, remap; комната пропала → warning + skip), K7-визуал
+(gate glow + city silhouette за дверью), шиммер: 1-с emissive
+пульс на первом подходе, O(1) ≤5 targets) + PlayerNoteStand
+(Interactable: write → NotePanel → ws + notes_written +
+NOTE_WRITTEN; read в RUN N+1 → ECHO_NOTE_READ first time) +
+WorldMummy (examine → линия + corpse_seen + MUMMY_EXAMINED;
+записка в руках) + NotePanel (code-built Controls, CanvasLayer
+25, `press(idx)`, паттерн DeathScreen) + K7-применение
+(_set_fog ×fog_factor, GhostDirector.prepare_run бюджет-
+override «тише», ghost-отпечатки permanent (reparent на fade),
+NpcData.post_boss_line (4 NPC-реплики), world_flags.tres
+corpse_seen) + #6 (FirstRunDirector: echo_triggered(combat) +
+ран ≥ 3 + записка → enemy add_encounter_line «…I forgot that.»;
+enemy_logic extra_lines — канон-секвенция + 1 строка, данные
+не мутируются).
+TESTED: риг — **986/986 PASS** (unit 672 + integration 314).
+Unit: world_memory (note pool 5 canonical, stands ×4, K7-
+таблица, notes write/overwrite/last_note, WorldState
+round-trip (Vector3-флаг, NPC-state, runs, битый сейв: clamp +
+unknown-stand), MemoryStats round-trip + clamp, mummy rule,
+K7 бюджет-офсет), enemy_logic (#6: extra line = 3-я строка,
+LEAVE после). Integration: world_memory_scene — полный цикл
+(RUN 1: stand в лагере, панель-пул, запись строки 2,
+NOTE_WRITTEN (line в data), notes_written +1, свежая записка не
+readable; смерть → RUN 02: записка readable (текст = строка),
+ECHO_NOTE_READ first time, мумии нет; смерть + boss_defeated →
+RUN 03: мумия в точке смерти RUN 02 (3.5/4.5), записка в руках
+(последняя), examine → corpse_seen + MUMMY_EXAMINED,
+corpse_seen-линия; K7: бюджет «тише» (0 passive/0 special),
+gate-fog 0.0338→0.0127 (×0.375), gate glow + city в gate-
+уровне, stand per-area, мумия в лагере, Mara — post-boss-
+реплика); regression: все сьюты Phase 1–9 без изменений.
+KNOWN ISSUES: K7 без босса — триггер флаг, «после босса» игрок
+увидит в Phase 12 (тесты эмулируют флагом); #6 = реплика, не
+хореография «прерывает бой» (MVP-лимит, ADR-029); мумия/
+маркеры в перекрывающихся footprint-ах зон (пространственная
+консистентность — правило P9-маркеров); шиммер = emissive-
+пульс без частиц (visual pass Phase 13); файл сейва (I/O/CRC/
+миграции) = Phase 15 (SaveManager обёрнёт WorldState.to_dict).
+NEXT: PHASE 11 — Mystery system (4 mystery × 4 stages).
 
 ## PHASE 11 — Mystery system (4 mystery × 4 stages)
 Scope: M1–M4 stages 1–3 (MVP, MYSTERY_REVEAL_MAP §1) + trigger-

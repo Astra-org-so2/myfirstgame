@@ -43,6 +43,8 @@ const SUITES = [
 	["run_system", "res://tests/unit/run_system_test.gd", ["unit"]],
 	["world_flags", "res://tests/unit/world_flags_test.gd", ["unit"]],
 	["echo", "res://tests/unit/echo_test.gd", ["unit"]],
+	["world_memory", "res://tests/unit/world_memory_test.gd",
+			["unit"]],
 	["player_scene", "res://tests/integration/player_scene_test.gd",
 			["integration"]],
 	["camp_scene", "res://tests/integration/camp_scene_test.gd",
@@ -58,6 +60,9 @@ const SUITES = [
 	["run_cycle", "res://tests/integration/run_cycle_test.gd",
 			["integration"]],
 	["echo_scene", "res://tests/integration/echo_scene_test.gd",
+			["integration"]],
+	["world_memory_scene",
+			"res://tests/integration/world_memory_scene_test.gd",
 			["integration"]],
 ]
 

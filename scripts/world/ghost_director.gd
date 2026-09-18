@@ -29,6 +29,13 @@ const _STATE = preload("res://scripts/gameplay/echo/echo_budget_state.gd")
 const _PED = preload("res://scripts/gameplay/echo/passive_echo_data.gd")
 const _GC = preload("res://scripts/world/ghost_controller.gd")
 const _KF = preload("res://scripts/gameplay/echo/ghost_keyframe.gd")
+const _TRANSFORM = preload("res://scripts/gameplay/progression/world_transform_data.gd")
+const _TRANSFORM_DATA = preload(
+		"res://data/world_transform_post_boss.tres")
+
+# Phase 10 (K7, the trigger — the boss sets the flag in Phase 12):
+# post-boss the echoes are «тише» (ECHO_SYSTEM_DESIGN section 8).
+const BOSS_FLAG: StringName = &"boss_defeated"
 const _EV = preload("res://scripts/gameplay/run/run_event.gd")
 
 # 5 old-run markers (ECHO_SYSTEM_DESIGN section 5.6: a pool).
@@ -46,6 +53,8 @@ var _player: Node = null
 var _death_positions: Array = []  # remapped Vector3 (run space)
 var _combat_placed: bool = false
 var _layout: Variant = null  # the current run's layout (camp ring)
+var _ws: Variant = null
+var _level: Node = null
 
 
 func setup(p_echo_budget: _BUDGET, p_passive_data: _PED,
@@ -65,9 +74,16 @@ func prepare_run(run_id: int, ws: Variant, prev_record, old_layout,
 	var prev: int = echo_budget.passive(run_id)
 	var comb: int = echo_budget.combat(run_id)
 	var spec: int = echo_budget.special(run_id)
+	# K7 (WORLD_STATE_DESIGN section 6): boss_defeated -> «тише» —
+	# the transform table overrides the run budget.
+	if ws.flag(BOSS_FLAG):
+		prev = _TRANSFORM_DATA.echo_passive
+		comb = _TRANSFORM_DATA.echo_combat
+		spec = _TRANSFORM_DATA.echo_special
 	budget_state.init_run(run_id, prev, comb, spec)
 	_combat_placed = false
 	_layout = new_layout
+	_ws = ws
 	_timeline = null
 	_death_positions = []
 	# Passive: the last FULL record (the ghost replays run N-1).
@@ -137,6 +153,7 @@ func on_level_entered(area_id: StringName, level: Node) -> void:
 	if local.dropped > 0:
 		_ghost.pulse()
 	level.add_child(_ghost)
+	_level = level
 
 # The keyframes inside the given level (new-layout footprints).
 func _level_timeline(level: Node, area_id: StringName) -> _TL:
@@ -230,7 +247,26 @@ func update(delta: float) -> void:
 	if _ghost != null and is_instance_valid(_ghost):
 		_ghost.update(delta)
 		if _ghost.is_done():
+			_leave_permanent_traces()
 			_free_ghost()
+
+
+# K7 (WORLD_STATE_DESIGN section 6): post-boss the traces «stay
+# forever» — the faded ghost's footprints are left on the level
+# instead of dying with it.
+func _leave_permanent_traces() -> void:
+	if _ws == null or _level == null:
+		return
+	if not _ws.flag(BOSS_FLAG):
+		return
+	if not _TRANSFORM_DATA.footprint_permanent:
+		return
+	if not is_instance_valid(_ghost):
+		return
+	for i in _ghost.footprint_nodes().size():
+		var m: Node = _ghost.footprint_nodes()[i]
+		if is_instance_valid(m):
+			m.reparent(_level)
 
 
 func _free_ghost() -> void:

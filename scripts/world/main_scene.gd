@@ -58,6 +58,7 @@ const _TABLE = preload("res://scripts/gameplay/enemies/spawn_table.gd")
 const _ENTRY = preload("res://scripts/gameplay/enemies/spawn_entry.gd")
 # Phase 8 — the run system (TECHNICAL_DESIGN §2/§3, FIRST_30_MINUTES):
 const _RUN_MGR = preload("res://scripts/gameplay/run/run_manager.gd")
+const _EV = preload("res://scripts/gameplay/run/run_event.gd")
 const _FIRST_RUN = preload("res://scripts/world/first_run_director.gd")
 const _VAL = preload("res://scripts/gameplay/rooms/layout_validator.gd")
 const _FLAG_TABLE = preload("res://scripts/gameplay/progression/world_flag_table.gd")
@@ -70,6 +71,13 @@ const _PASSIVE_ECHO = preload(
 		"res://scripts/gameplay/echo/passive_echo_data.gd")
 const _ECHO_BUDGET_DATA = preload("res://data/echo/echo_budget.tres")
 const _PASSIVE_ECHO_DATA = preload("res://data/echo/passive_echo.tres")
+# Phase 10 — the persistent world (WORLD_STATE_DESIGN, TECH §4):
+const _WORLD_DIR = preload("res://scripts/world/world_director.gd")
+const _NOTE_PANEL = preload("res://scripts/ui/note_panel.gd")
+const _NOTE_LINES_DATA = preload("res://data/note_lines.tres")
+const _STANDS_DATA = preload("res://data/player_note_stands.tres")
+const _TRANSFORM_DATA = preload(
+		"res://data/world_transform_post_boss.tres")
 
 # The session seed (RUN 1's layout is the canonical one the A-beats
 # were designed against; run N>1 = derived — RunManager.derive_seed).
@@ -108,6 +116,8 @@ var _drop_rng: RandomNumberGenerator
 var _fired_connected: Array = []
 var _staff_connected: Array = []
 var _inv_held: bool = false
+# Phase 10: the stand the NotePanel writes to ("" = panel closed).
+var _pending_stand: StringName = &""
 # Phase 7: the level layer (generated layout + zone visuals + doors).
 var zone_world: _ZONE_WORLD
 var run_layout: _RUN_LAYOUT
@@ -117,6 +127,8 @@ var _zone_weapons: Dictionary = {}  # weapon id -> pickup node
 var run_manager: _RUN_MGR
 var first_run: _FIRST_RUN
 var ghost_director: _GHOST_DIR
+var world_director: _WORLD_DIR
+var note_panel: _NOTE_PANEL
 var run_generator: _ROOM_GEN
 var _area_pool: Dictionary = {}
 var _last_player_attacker: Node = null
@@ -411,6 +423,18 @@ func _setup_zones() -> void:
 	director.set_world_state(progress.ws)
 	ghost_director.prepare_run(run_manager.run_id, progress.ws,
 			null, null, run_layout)
+	# Phase 10: the persistent world (stands, mummy, K7 visuals).
+	world_director = _WORLD_DIR.new()
+	world_director.name = "WorldDirector"
+	add_child(world_director)
+	world_director.setup(progress.ws, _NOTE_LINES_DATA, _STANDS_DATA,
+			_TRANSFORM_DATA, $CampWorld, player)
+	world_director.prepare_run(run_manager.run_id, null, null,
+			run_layout)
+	note_panel = _NOTE_PANEL.new()
+	note_panel.name = "NotePanel"
+	add_child(note_panel)
+	note_panel.written.connect(_on_note_written)
 	first_run.on_run_started(run_manager.run_id)
 	_enter_level(&"camp")
 	# A1: the 2 s black fade, no menu (FIRST_30_MINUTES).
@@ -448,6 +472,9 @@ func _enter_level(area_id: StringName) -> void:
 		first_run.on_level_entered(area_id)
 	if ghost_director != null:
 		ghost_director.on_level_entered(area_id, zone_world.level)
+	if world_director != null:
+		world_director.on_level_entered(area_id, zone_world.level)
+		_wire_world_objects()
 	if is_camp:
 		director.load_nav(_NAV_DATA)
 		director.start(_SPAWN_TABLE)
@@ -460,6 +487,59 @@ func _enter_level(area_id: StringName) -> void:
 	_place_weapons(area_id)
 	_set_fog(area_id)
 	_place_village_npc(area_id)
+
+
+# Phase 10: the level's persistent objects get their behavior
+# (the WorldDirector builds them; the scene owns the WorldState
+# writes + the NotePanel — the director stays a builder).
+func _wire_world_objects() -> void:
+	var st: Node = world_director.current_stand()
+	if st != null and st.has_signal("write_requested"):
+		st.write_requested.connect(_on_write_requested)
+		st.note_read.connect(_on_player_note_read)
+	var mu: Node = world_director.current_mummy()
+	if mu != null and mu.has_signal("examined"):
+		mu.examined.connect(_on_mummy_examined)
+
+
+func _on_write_requested(stand_id: StringName) -> void:
+	_pending_stand = stand_id
+	note_panel.show_pool(_NOTE_LINES_DATA.lines,
+			progress.ws.note_line(stand_id))
+
+
+func _on_player_note_read(stand_id: StringName, first_time: bool) -> void:
+	if first_time:
+		run_manager.record_event(_EV.Type.ECHO_NOTE_READ, 0,
+				position_of_player(), 0, 0)
+
+
+func _on_note_written(line_id: int) -> void:
+	if _pending_stand == &"":
+		return
+	var ws: Variant = progress.ws
+	if ws.write_note(_pending_stand, line_id, run_manager.run_id,
+				run_manager.time_ms()):
+		progress.stats.notes_written += 1
+		run_manager.record_event(_EV.Type.NOTE_WRITTEN, 0,
+				position_of_player(), 0, 0, line_id)
+		toast.show_text("The note is saved.", 2.5)
+		var st: Node = world_director.current_stand()
+		if st != null and st.stand_id == _pending_stand:
+			st.refresh("", false)  # readable from the next run
+	_pending_stand = &""
+
+
+func _on_mummy_examined(_stand: Node) -> void:
+	var ws: Variant = progress.ws
+	if not ws.flag(&"corpse_seen"):
+		ws.set_flag(&"corpse_seen")
+	run_manager.record_event(_EV.Type.MUMMY_EXAMINED, 0,
+			position_of_player(), 0, 0)
+
+
+func position_of_player() -> Vector3:
+	return player.get_body_position()
 
 
 # The layout spawns of one area (copies from the generator).
@@ -586,6 +666,9 @@ func _set_fog(area_id: StringName) -> void:
 	if a == null:
 		return
 	e.fog_density = 0.01 + a.area.fog_density * 0.025
+	if progress != null and progress.ws.flag(_WORLD_DIR.BOSS_FLAG):
+		# K7: post-boss the world «grows warmer» — the fog clears.
+		e.fog_density *= _TRANSFORM_DATA.fog_factor
 	e.fog_light_color = a.area.light_color
 
 
@@ -642,6 +725,8 @@ func _begin_new_run() -> void:
 		if ghost_director.combat_spawn_pos() != Vector3.ZERO:
 			director.spawn_overrides[ghost_director.remnant_id] = \
 					ghost_director.combat_spawn_pos()
+	world_director.prepare_run(run_manager.run_id, prev_record,
+			old_layout, run_layout)
 	_enter_level(&"camp")
 	var port: Variant = player.get_port()
 	if port != null:
@@ -817,6 +902,8 @@ func _physics_process(delta: float) -> void:
 		tracker.sync_player_hits(player.weapon.hits_landed)
 	if ghost_director != null:
 		ghost_director.update(d)
+	if world_director != null:
+		world_director.update(d)
 	# Phase 6: the inventory panel toggles on the `inventory` action
 	# (I key / BAG touch button) — a hold-edge, like the dodge.
 	var inv: bool = Input.is_action_pressed("inventory")

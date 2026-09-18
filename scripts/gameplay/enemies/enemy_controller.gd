@@ -83,6 +83,13 @@ func speech_text() -> String:
 
 
 # Called by the director right after add_child.
+# The #6 beat (WORLD_STATE_DESIGN section 4): the Remnant reads the
+# player's note and adds a line to its first-encounter sequence.
+func add_encounter_line(text: String) -> void:
+	if _logic != null:
+		_logic.extra_lines.append(text)
+
+
 func setup(p_data: _DATA, pos: Vector3, player: Node, director: Node) -> void:
 	_data = p_data
 	_player = player

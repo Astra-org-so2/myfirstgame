@@ -43,6 +43,7 @@ var _pulse: float = 0.0
 var _swing: float = 0.0
 var _last_action: int = -1
 var _done: bool = false
+var _footprint_nodes: Array = []
 
 
 func setup(p_tl: _TL, p_data: _PED, p_player: Node) -> void:
@@ -55,6 +56,10 @@ func setup(p_tl: _TL, p_data: _PED, p_player: Node) -> void:
 		global_position = k0.pos
 		rotation.y = deg_to_rad(k0.ry)
 		_build_footprints()
+
+
+func footprint_nodes() -> Array:
+	return _footprint_nodes
 
 
 # Called by the director for each rewind skip of the current level:
@@ -163,6 +168,7 @@ func _build_footprints() -> void:
 		m.mesh = pm
 		m.position = Vector3(p.x, 0.03, p.z)
 		add_child(m)
+		_footprint_nodes.append(m)
 
 
 func _update_fx(delta: float) -> void:

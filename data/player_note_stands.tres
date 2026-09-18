@@ -1,0 +1,40 @@
+[gd_resource type="Resource" script_class="PlayerNoteStandsData" load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://scripts/gameplay/progression/player_note_stands_data.gd" id="1_data"]
+[ext_resource type="Script" path="res://scripts/gameplay/progression/player_note_stand_entry.gd" id="2_ent"]
+
+[sub_resource type="Resource" id="camp"]
+script = ExtResource("2_ent")
+stand_id = &"camp"
+area_id = &"camp"
+room_idx = 0
+offset = Vector3(0, 0, 0)
+camp_pos = Vector3(3.5, 0, 4.5)
+
+[sub_resource type="Resource" id="village"]
+script = ExtResource("2_ent")
+stand_id = &"village"
+area_id = &"ruined_village"
+room_idx = 0
+offset = Vector3(2.5, 0, 2.5)
+camp_pos = Vector3(0, 0, 0)
+
+[sub_resource type="Resource" id="shrine"]
+script = ExtResource("2_ent")
+stand_id = &"shrine"
+area_id = &"old_shrine"
+room_idx = 0
+offset = Vector3(2.5, 0, 2.5)
+camp_pos = Vector3(0, 0, 0)
+
+[sub_resource type="Resource" id="undercroft"]
+script = ExtResource("2_ent")
+stand_id = &"undercroft"
+area_id = &"undercroft"
+room_idx = 0
+offset = Vector3(3.0, 0, 3.0)
+camp_pos = Vector3(0, 0, 0)
+
+[resource]
+script = ExtResource("1_data")
+entries = Array[Resource]([SubResource("camp"), SubResource("village"), SubResource("shrine"), SubResource("undercroft")])

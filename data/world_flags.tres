@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="WorldFlagTable" load_steps=15 format=3]
+[gd_resource type="Resource" script_class="WorldFlagTable" load_steps=16 format=3]
 
 [ext_resource type="Script" path="res://scripts/gameplay/progression/world_flag_table.gd" id="1_tbl"]
 [ext_resource type="Script" path="res://scripts/gameplay/progression/world_flag_data.gd" id="2_flag"]
@@ -87,6 +87,12 @@ flag_id = &"first_death_done"
 consequence_text = "The world remembers you now."
 set_by = "A19 (first death)"
 
+[sub_resource type="Resource" id="flag_mummy"]
+script = ExtResource("2_flag")
+flag_id = &"corpse_seen"
+consequence_text = "A mummy waits where you fell."
+set_by = "#5 (RUN 03, mummy examine)"
+
 [resource]
 script = ExtResource("1_tbl")
-flags = Array[WorldFlagData]([SubResource("flag_pillar"), SubResource("flag_blade"), SubResource("flag_figure"), SubResource("flag_pyre"), SubResource("flag_first_kill"), SubResource("flag_mine_note"), SubResource("flag_shrine"), SubResource("flag_gate_seal"), SubResource("flag_lake_note"), SubResource("flag_kettle"), SubResource("flag_door"), SubResource("flag_cannon"), SubResource("flag_staff"), SubResource("flag_first_death")])
+flags = Array[WorldFlagData]([SubResource("flag_pillar"), SubResource("flag_blade"), SubResource("flag_figure"), SubResource("flag_pyre"), SubResource("flag_first_kill"), SubResource("flag_mine_note"), SubResource("flag_shrine"), SubResource("flag_gate_seal"), SubResource("flag_lake_note"), SubResource("flag_kettle"), SubResource("flag_door"), SubResource("flag_cannon"), SubResource("flag_staff"), SubResource("flag_first_death"), SubResource("flag_mummy")])

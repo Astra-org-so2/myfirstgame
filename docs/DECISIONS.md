@@ -794,6 +794,91 @@ runs сжимаются вместе с логами (5 МБ-кэп → summary 
 используют без кода).
 
 
+## ADR-029 — Persistent world: WorldDirector (stand-ы записок, мумия, K7-трансформация), полный persist WorldState/MemoryStats (Phase 10)
+
+**Статус:** принято (Phase 10, 2026-09-18).
+
+**Контекст.** Phase 10 (ROADMAP: «World memory: WorldState persist,
+WorldDirector apply, заметки, мумия, K7»): мир должен помнить
+(§1 WORLD_STATE_DESIGN), «что изменилось» должно замечаться (GDD
+§12 — risk R2). Четыре проблемы: (1) WorldState держал
+flags/inheritances/weapons/npcs/runs, но **не держал** заметки
+(§4: 4 stand-а, пул из 5 строк, без free text) и не умел
+сериализоваться целиком — Phase 15 (SaveManager) должна обёрнуть
+**этот же** класс, без смены модели данных; (2) «постоянные
+объекты мира» (записки игрока, мумия #5, K7-визуал) не были
+собраны в один слой — каждый будущий объект тянул бы свой
+wiring в main_scene (God-class, ADR-001/023); (3) K7
+(§6: boss_defeated → мир «теплеет») не имела ни триггера, ни
+визуала; (4) MemoryStats (10 скрытых счётчиков, §3) не
+сериализовался — память стилий терялась бы между сессиями.
+
+**Решения.**
+1. **WorldState: заметки + полный JSON-раундтрип.** `notes`
+   (stand_id → {line_id, run_id, t}), `write_note` (только 4
+   канон-stand-а, перезапись заменяет), `last_note()` (последняя
+   по t — записка в руках мумии). `to_dict()/load_dict()` =
+   flags (включая Vector3-значения, например `first_kill_pos`),
+   inheritances, weapons, npcs, notes, runs (через
+   RunHistory.to_dict). load_dict — защита от битого сейва:
+   битые значения клампятся, неизвестные stand-а отбрасываются,
+   пустой словарь = свежее состояние. Файловый I/O/CRC/миграции
+   = Phase 15 (SaveManager обёрнёт этот же класс).
+2. **WorldDirector (scripts/world/world_director.gd)** — слой
+   постоянных объектов (scene-composed, не autoload):
+   `prepare_run` (respawn-ребилд) + `on_level_entered` (после
+   zone_world.enter) + `update(delta)` (шиммер). Ставит: 4
+   player stand-а (data/player_note_stands.tres; camp — в
+   CampWorld, зоны — в комнату раскладки), мумию (run_id ≥ 3,
+   `last_death_pos` пред. ранa, remap ADR-028; комнаты нет →
+   push_warning + skip), K7-визуал (gate glow + city silhouette
+   за дверью). Шиммер «мемориальных» объектов: один 1-с emissive
+   пульс при первом подходе в ран (§9.2 — игрок замечает
+   «что изменилось»; O(1): ≤5 targets, distance-only).
+3. **Станд-записок (Node3D + Interactable):** interact →
+   NotePanel (code-built Controls, паттерн DeathScreen,
+   `press(idx)` для детерминированных тестов) → игрок выбирает
+   1 из 5 (NO free text, ADR-018) → WorldState +
+   `notes_written` (trust Mara) + NOTE_WRITTEN (line в data-байте)
+   → readable **с RUN N+1** (`run_id < current`). Чтение в
+   ране N+1 — ECHO_NOTE_READ (first time).
+4. **Мумия (#5, RUN 03 D2):** капсула лёжа + записка в руках
+   (последняя записка игрока, data-driven), examine →
+   «You died here. The world kept you.» + flag `corpse_seen`
+   (линия «A mummy waits where you fell.» в world_flags.tres) +
+   MUMMY_EXAMINED. Мумия следует run-space точке смерти: она
+   видна в любой зоне, чей footprint содержит точку (то же
+   правило, что у P9 death-маркеров — пространственная
+   консистентность).
+5. **K7 (триггер = флаг `boss_defeated`, сам босс — Phase 12):**
+   data/world_transform_post_boss.tres (fog ×0.375 = 0.8→0.3,
+   light 4000K→5500K, gate glow, city, echo «тише»
+   passive 0/combat 1/special 0 = ECHO §8, footprint permanent,
+   npc_calm). Применяется: `_set_fog` (fog-фактор),
+   GhostDirector.prepare_run (бюджет-override),
+   ghost-отпечатки остаются на уровне (reparent на fade-finish),
+   NpcData.post_boss_line (NPC говорит спокойную реплику вместо
+   обычной), gate-визуал WorldDirector.
+6. **#6 (RUN 03 D2, Ремнант читает записку):** beat = реплика.
+   FirstRunDirector ловит `echo_triggered(combat)` в ран ≥ 3 при
+   наличии записки → `enemy_controller.add_encounter_line` →
+   enemy_logic: `extra_lines` доклеиваются к канон-секвенции
+   («…I forgot that.» — третья строка перед LEAVE). MVP-лимит:
+   реплика, а не хореография «прерывает бой, подходит»
+   (documented).
+
+**Последствия.** (1) `WorldState.load_dict`/`to_dict` — готовый
+контракт Phase 15 (SaveManager: CRC32 + миграции поверх).
+(2) Мумия/маркеры в зонах с перекрывающимися footprint-ами —
+принято (пространственная консистентность > «одна зона»).
+(3) K7-триггер — флаг; до Phase 12 мир не видит `boss_defeated`
+(тесты ставят флаг вручную — честно: триггер босса ещё не
+существует). (4) `extra_lines` в enemy_logic — единственное
+расширение боевого FSM (добавление, не переписывание; данные
+ресурсов не мутируются). (5) NotePanel — единственный новый
+UI-слой фазы (CanvasLayer 25, code-built, headless-safe).
+
+
 ## Реестр рисков (Phase 0, живые)
 
 | # | Риск | Влияние | Митигция |

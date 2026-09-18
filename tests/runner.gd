@@ -45,6 +45,7 @@ const SUITES = [
 	["echo", "res://tests/unit/echo_test.gd", ["unit"]],
 	["world_memory", "res://tests/unit/world_memory_test.gd",
 			["unit"]],
+	["mystery", "res://tests/unit/mystery_test.gd", ["unit"]],
 	["player_scene", "res://tests/integration/player_scene_test.gd",
 			["integration"]],
 	["camp_scene", "res://tests/integration/camp_scene_test.gd",
@@ -63,6 +64,8 @@ const SUITES = [
 			["integration"]],
 	["world_memory_scene",
 			"res://tests/integration/world_memory_scene_test.gd",
+			["integration"]],
+	["mystery_scene", "res://tests/integration/mystery_scene_test.gd",
 			["integration"]],
 ]
 

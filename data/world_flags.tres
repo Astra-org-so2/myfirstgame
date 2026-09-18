@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="WorldFlagTable" load_steps=16 format=3]
+[gd_resource type="Resource" script_class="WorldFlagTable" load_steps=33 format=3]
 
 [ext_resource type="Script" path="res://scripts/gameplay/progression/world_flag_table.gd" id="1_tbl"]
 [ext_resource type="Script" path="res://scripts/gameplay/progression/world_flag_data.gd" id="2_flag"]
@@ -93,6 +93,96 @@ flag_id = &"corpse_seen"
 consequence_text = "A mummy waits where you fell."
 set_by = "#5 (RUN 03, mummy examine)"
 
+[sub_resource type="Resource" id="flag_first_echo"]
+script = ExtResource("2_flag")
+flag_id = &"first_echo_seen"
+consequence_text = "The echo keeps the schedule."
+set_by = "#1 (RUN 02, the Remnant speaks)"
+
+[sub_resource type="Resource" id="flag_passive"]
+script = ExtResource("2_flag")
+flag_id = &"passive_echo_seen"
+consequence_text = "A shadow walks your path."
+set_by = "Passive Echo (RUN 02+)"
+
+[sub_resource type="Resource" id="flag_nia_name"]
+script = ExtResource("2_flag")
+flag_id = &"nia_name_seen"
+consequence_text = "Your name is in the book."
+set_by = "K4 (RUN 03, Nia's book)"
+
+[sub_resource type="Resource" id="flag_nia_page"]
+script = ExtResource("2_flag")
+flag_id = &"nia_page_filled"
+consequence_text = "The page is filled in."
+set_by = "M1.4 (RUN 05, the book)"
+
+[sub_resource type="Resource" id="flag_echo_decision"]
+script = ExtResource("2_flag")
+flag_id = &"echo_decision_seen"
+consequence_text = "The echo chooses."
+set_by = "#6 (RUN 03, the note line)"
+
+[sub_resource type="Resource" id="flag_gate_notes"]
+script = ExtResource("2_flag")
+flag_id = &"gate_notes_seen"
+consequence_text = "Three handwritings at the gate."
+set_by = "M4.1 (RUN 03, the gate footnotes)"
+
+[sub_resource type="Resource" id="flag_lake"]
+script = ExtResource("2_flag")
+flag_id = &"lake_reflection_seen"
+consequence_text = "The lake is not your reflection."
+set_by = "K5 (RUN 05, the lake)"
+
+[sub_resource type="Resource" id="flag_child_number"]
+script = ExtResource("2_flag")
+flag_id = &"child_number_seen"
+consequence_text = "The child counts you."
+set_by = "M4.2 (RUN 05, the Child)"
+
+[sub_resource type="Resource" id="flag_veyra_b"]
+script = ExtResource("2_flag")
+flag_id = &"veyra_b_seen"
+consequence_text = "A second forest on the map."
+set_by = "M4.3 (RUN 05, the Cartographer)"
+
+[sub_resource type="Resource" id="flag_the_first"]
+script = ExtResource("2_flag")
+flag_id = &"the_first_seen"
+consequence_text = "The one in the mine is awake."
+set_by = "M2.3 (boss, RUN 05+)"
+
+[sub_resource type="Resource" id="flag_kept_whisper"]
+script = ExtResource("2_flag")
+flag_id = &"he_is_counted_whisper"
+consequence_text = "A whisper counts them."
+set_by = "Archivist (the first Echo)"
+
+[sub_resource type="Resource" id="flag_nia_hint"]
+script = ExtResource("2_flag")
+flag_id = &"nia_book_hint"
+consequence_text = "The book is on the third shelf."
+set_by = "Nia (RUN 03, trust 1)"
+
+[sub_resource type="Resource" id="flag_gate_welcome"]
+script = ExtResource("2_flag")
+flag_id = &"gate_welcome_whisper"
+consequence_text = "The seat is saved."
+set_by = "Archivist (post-boss, the gate)"
+
+[sub_resource type="Resource" id="flag_veyra_told"]
+script = ExtResource("2_flag")
+flag_id = &"veyra_city_told"
+consequence_text = "The map says the city."
+set_by = "Cartographer (RUN 05, trust 1)"
+
+[sub_resource type="Resource" id="flag_child_hit"]
+script = ExtResource("2_flag")
+flag_id = &"child_hit"
+consequence_text = "The child is rarer."
+set_by = "Child hit (the soft penalty)"
+
 [resource]
 script = ExtResource("1_tbl")
-flags = Array[WorldFlagData]([SubResource("flag_pillar"), SubResource("flag_blade"), SubResource("flag_figure"), SubResource("flag_pyre"), SubResource("flag_first_kill"), SubResource("flag_mine_note"), SubResource("flag_shrine"), SubResource("flag_gate_seal"), SubResource("flag_lake_note"), SubResource("flag_kettle"), SubResource("flag_door"), SubResource("flag_cannon"), SubResource("flag_staff"), SubResource("flag_first_death"), SubResource("flag_mummy")])
+flags = Array[WorldFlagData]([SubResource("flag_pillar"), SubResource("flag_blade"), SubResource("flag_figure"), SubResource("flag_pyre"), SubResource("flag_first_kill"), SubResource("flag_mine_note"), SubResource("flag_shrine"), SubResource("flag_gate_seal"), SubResource("flag_lake_note"), SubResource("flag_kettle"), SubResource("flag_door"), SubResource("flag_cannon"), SubResource("flag_staff"), SubResource("flag_first_death"), SubResource("flag_mummy"), SubResource("flag_first_echo"), SubResource("flag_passive"), SubResource("flag_nia_name"), SubResource("flag_nia_page"), SubResource("flag_echo_decision"), SubResource("flag_gate_notes"), SubResource("flag_lake"), SubResource("flag_child_number"), SubResource("flag_veyra_b"), SubResource("flag_the_first"), SubResource("flag_kept_whisper"), SubResource("flag_nia_hint"), SubResource("flag_gate_welcome"), SubResource("flag_veyra_told"), SubResource("flag_child_hit")])

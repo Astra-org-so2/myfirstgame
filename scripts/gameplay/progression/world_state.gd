@@ -25,10 +25,25 @@ var runs: Variant = null  # RunHistory
 # 1 note per stand, «перезапись» replaces). Entry:
 # { line_id: int (index in the pool), run_id: int, t: int (ms) }.
 var notes: Dictionary = {}
+# Mystery progress (TECHNICAL_DESIGN section 3:
+# mystery_progress {mystery_id: int_stage}, MYSTERY_REVEAL_MAP):
+# how far each mystery (M1-M4) has advanced. Set only through
+# MysteryDirector.reveal (the reveal gate).
+var mystery_progress: Dictionary = {}
 
 
 # 4 player notes max (one per stand, section 4: notes_max).
 const NOTES_MAX: int = 4
+
+
+func mystery_stage(mystery_id: int) -> int:
+	return int(mystery_progress.get(mystery_id, 0))
+
+
+func set_mystery_stage(mystery_id: int, stage_n: int) -> void:
+	# Forward only (no early reveal, no rewind — rule 2).
+	if stage_n > mystery_stage(mystery_id):
+		mystery_progress[mystery_id] = stage_n
 
 
 # The player writes (or re-writes) a note at a stand. Returns false
@@ -191,8 +206,11 @@ func to_dict() -> Dictionary:
 		var ne: Dictionary = notes[id]
 		nt[id] = {"line_id": int(ne.line_id), "run_id": int(ne.run_id),
 				"t": int(ne.t)}
+	var mp: Dictionary = {}
+	for m in mystery_progress:
+		mp[m] = int(mystery_progress[m])
 	return {"version": VERSION, "flags": f, "inheritances": i,
-			"weapons": w, "npcs": n, "notes": nt,
+			"weapons": w, "npcs": n, "notes": nt, "mystery_progress": mp,
 			"runs": runs.to_dict()}
 
 
@@ -227,4 +245,9 @@ func load_dict(d: Dictionary) -> void:
 						0, 4),
 					"run_id": maxi(0, int(raw.get("run_id", 1))),
 					"t": maxi(0, int(raw.get("t", 0)))}
+	mystery_progress.clear()
+	for m in d.get("mystery_progress", {}):
+		var v: int = clampi(int(d["mystery_progress"][m]), 0, 4)
+		if v > 0:
+			mystery_progress[m] = v
 	runs.load_dict(d.get("runs", {"full": [], "summaries": []}))

@@ -40,6 +40,10 @@ var follow_mult: float = 1.0  # runner: the Watcher follows harder
 # Run-scoped flags.
 var remnant_met: bool = false
 
+# The #6 note-reading encounter (P9): consumed once the remnant
+# that carried the note line has left.
+var remnant_note_met: bool = false
+
 var _slots: Array = []  # Array of {ctrl, phase, count, last}
 
 var resolver: Node = null  # the scene-composed DamageResolver
@@ -177,6 +181,10 @@ func set_budget(b: Variant) -> void:
 func set_world_state(ws: Variant) -> void:
 	_ws = ws
 
+
+func world_state() -> Variant:
+	return _ws
+
 func _combat_budget_open() -> bool:
 	if _budget == null:
 		return true
@@ -301,6 +309,12 @@ func _log_death(ctrl: _CTRL) -> void:
 func _remnant_left(ctrl: _CTRL) -> void:
 	if ctrl.data().archetype == _DATA.Archetype.REMNANT:
 		remnant_met = true
+		# The note encounter is consumed only if the note line was
+		# actually in the sequence (the run gate decides in
+		# FirstRunDirector).
+		var lg: Variant = ctrl.logic()
+		if lg.first_encounter and lg.extra_lines.size() > 0:
+			remnant_note_met = true
 
 
 func _emit_bus_killed(ctrl: _CTRL) -> void:

@@ -78,6 +78,14 @@ const _NOTE_LINES_DATA = preload("res://data/note_lines.tres")
 const _STANDS_DATA = preload("res://data/player_note_stands.tres")
 const _TRANSFORM_DATA = preload(
 		"res://data/world_transform_post_boss.tres")
+# Phase 11 — the mystery system (MYSTERY_REVEAL_MAP):
+const _MYSTERY_DIR = preload("res://scripts/gameplay/mystery/mystery_director.gd")
+const _MYSTERY_STAGES_DATA = preload(
+		"res://data/mystery/mystery_stages.tres")
+const _MYSTERY_LINES_DATA = preload(
+		"res://data/dialogue/npc_mystery_lines.tres")
+const _CHILD = preload("res://scripts/world/world_child.gd")
+const _CHILD_SPAWNS_DATA = preload("res://data/mystery/child_spawns.tres")
 
 # The session seed (RUN 1's layout is the canonical one the A-beats
 # were designed against; run N>1 = derived — RunManager.derive_seed).
@@ -129,6 +137,8 @@ var first_run: _FIRST_RUN
 var ghost_director: _GHOST_DIR
 var world_director: _WORLD_DIR
 var note_panel: _NOTE_PANEL
+var mystery: _MYSTERY_DIR
+var _child: Node = null
 var run_generator: _ROOM_GEN
 var _area_pool: Dictionary = {}
 var _last_player_attacker: Node = null
@@ -403,15 +413,28 @@ func _setup_zones() -> void:
 	zone_world.door_crossed.connect(_on_door_crossed)
 	zone_world.level_freed.connect(_on_level_freed)
 	# The scripted first-30-minutes beats (event-driven, A1–A19).
+	# Phase 11: the reveal gate (the mystery stages, 1 stage/run).
+	# BEFORE first_run: the beats pass the director to the setup.
+	mystery = _MYSTERY_DIR.new()
+	mystery.setup(_MYSTERY_STAGES_DATA)
+	mystery.reset_run()
+
 	first_run = _FIRST_RUN.new()
 	first_run.name = "FirstRunDirector"
 	add_child(first_run)
-	first_run.setup(self, zone_world, player, progress.ws, run_manager)
+	first_run.setup(self, zone_world, player, progress.ws, run_manager,
+			mystery)
 	var bus2: Node = get_node_or_null("/root/EventBus")
 	run_manager.bind(bus2, player, resolver)
 	for n in _npcs:
 		if is_instance_valid(n) and n.has_signal("talked"):
 			n.talked.connect(run_manager.record_npc_talked)
+	# Phase 11: the mystery-line layer (data/dialogue) + the run id.
+	for n in _npcs:
+		if is_instance_valid(n) and n.has_method("set_mystery_wiring"):
+			n.set_mystery_wiring(_MYSTERY_LINES_DATA, run_manager.run_id)
+			if n.has_signal("mystery_line_spoken"):
+				n.mystery_line_spoken.connect(_on_mystery_line_spoken)
 	# Phase 9: the echo system (ADR-014 budget). The EnemyDirector
 	# queries the per-run combat budget and the world-state flags
 	# (the remnant gate: no echoes before the first death).
@@ -475,6 +498,11 @@ func _enter_level(area_id: StringName) -> void:
 	if world_director != null:
 		world_director.on_level_entered(area_id, zone_world.level)
 		_wire_world_objects()
+	# Phase 11 (M1 stage 2): the Passive Echo walks the player's path
+	# (the reveal lands when the ghost is actually in this level).
+	if ghost_director != null and ghost_director.has_active_ghost():
+		mystery.reveal(&"m1_passive", progress.ws, run_manager.run_id)
+	_place_child(area_id)
 	if is_camp:
 		director.load_nav(_NAV_DATA)
 		director.start(_SPAWN_TABLE)
@@ -487,6 +515,63 @@ func _enter_level(area_id: StringName) -> void:
 	_place_weapons(area_id)
 	_set_fog(area_id)
 	_place_village_npc(area_id)
+
+
+# Phase 11: a mystery line was spoken — the stage reveal (M4.3:
+# the Cartographer's city line sets the Veyra B stage).
+func _on_mystery_line_spoken(line_id: StringName) -> void:
+	if line_id == &"carto_city":
+		mystery.reveal(&"m4_city", progress.ws, run_manager.run_id)
+
+
+# Phase 11: the Child (scripted appearances, the run window is data).
+func _place_child(area_id: StringName) -> void:
+	_free_child()
+	var sp: Variant = _CHILD_SPAWNS_DATA.for_run(run_manager.run_id,
+			progress.ws, progress.stats)
+	if sp == null or sp.zone != area_id:
+		return
+	var child: _CHILD = _CHILD.new()
+	child.name = "TheChild"
+	child.encounter_lines = sp.lines
+	child.setup(player)
+	# The data position is an offset from the zone's entry room origin
+	# (level-local, like the village NPCs).
+	var a: Variant = run_layout.get_area(sp.zone)
+	var off: Vector3 = sp.pos
+	if a != null and a.rooms.size() > 0:
+		var rp: Variant = a.rooms[0]
+		off = Vector3(rp.origin.x + sp.pos.x, 0.0, rp.origin.z + sp.pos.z)
+	child.position = off
+	child.spoke.connect(_on_child_spoke)
+	child.hit_attempted.connect(_on_child_hit)
+	zone_world.level.add_child(child)
+	_child = child
+
+
+func _on_child_spoke(line_index: int) -> void:
+	# M4 stage 2 (M4.2): the child counts the player.
+	if line_index == 0:
+		mystery.reveal(&"m4_child", progress.ws, run_manager.run_id)
+
+
+func _on_child_hit() -> void:
+	# The soft penalty (CHARACTER_BIBLE 5): the world «takes» the
+	# child — no more appearances (the spawn table's skip_flag).
+	progress.stats.child_hit += 1
+	progress.ws.set_flag(&"child_hit")
+	toast.show_text("The child is gone.", 2.5)
+
+
+func _free_child() -> void:
+	if is_instance_valid(_child):
+		_child.queue_free()
+	_child = null
+
+
+# Phase 11: the Archivist whisper #5 (a killed NPC).
+func _on_npc_died_whisper(_npc_id: StringName, _pos: Vector3) -> void:
+	toast.show_text("Remembered. Kept. Always.", 4.0)
 
 
 # Phase 10: the level's persistent objects get their behavior
@@ -727,6 +812,13 @@ func _begin_new_run() -> void:
 					ghost_director.combat_spawn_pos()
 	world_director.prepare_run(run_manager.run_id, prev_record,
 			old_layout, run_layout)
+	# Phase 11: the new run's reveal allowance + the NPC run ids.
+	if mystery != null:
+		mystery.reset_run()
+	for n in _npcs:
+		if is_instance_valid(n) and n.has_method("set_mystery_wiring"):
+			n.set_mystery_wiring(_MYSTERY_LINES_DATA, run_manager.run_id)
+	_free_child()
 	_enter_level(&"camp")
 	var port: Variant = player.get_port()
 	if port != null:

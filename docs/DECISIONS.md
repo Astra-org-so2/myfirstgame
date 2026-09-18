@@ -879,6 +879,101 @@ wiring в main_scene (God-class, ADR-001/023); (3) K7
 UI-слой фазы (CanvasLayer 25, code-built, headless-safe).
 
 
+## ADR-030 — Mystery layer: MysteryDirector + data (stages/lines/spawns), reveal-gate, ремнант note-encounter (Phase 11)
+
+**Статус:** принято (Phase 11, 2026-09-18).
+
+**Контекст.** Phase 11 (ROADMAP: «Mystery system: M1–M4 × 3 stages,
+triggers, dialogue, #1–#7 + K1–K7, reveal rules»): 4 mystery × 3
+стадии (MVP; 4-я стадия + twist-раскрытие — post-MVP, GDD v2.0 §11).
+Три проблемы: (1) правила раскрытия («стадия N+1 только после
+флага N», run-минимум, **1 стадия на mystery в run**, «мир не
+торопится») не имели ни данных, ни исполнителя — каждый триггер
+затащил бы в main_scene свою логику (God-class, ADR-001/023);
+(2) реплики NPC-слоя (5 NPC × условия run/trust/flag) должны были
+оцениваться в момент разговора — таблица с приоритетом и
+«used/repeat»-семантикой; (3) #6 (P9, «…I forgot that.») —
+реплику добавлял FirstRunDirector, но **встреча не могла
+произойти**: `remnant_met` (session-флаг, P5) гасил
+`first_encounter` у ремнанта последующих ранов, а REMNANT
+переходит в SPEAK только из IDLE — записка пишется в середине
+рана, после спавна (P9-дефект: фича реализована, но
+недостижима; P9-интеграция её не покрывала).
+
+**Решения.**
+1. **MysteryDirector (scripts/gameplay/mystery/, RefCounted,
+   scene-composed)** — чистый гейт раскрытия: `setup(stages)`
+   (data/mystery/mystery_stages.tres, 13 стадий), `can_reveal(id,
+   ws, run_id)` = run_id ≥ run_min И текущая стадия = stage−1 И
+   flag_req (если задан) И mystery не раскрыт в этом run;
+   `reveal()` = прогресс + flag_set атомарно (WorldState),
+   `reset_run()` на каждый run, `progress_view` (тестовый seam).
+   Стадии: data-driven (mystery_id, stage, run_min, flag_req,
+   flag_set) — новый content = строка в .tres, ядро не трогается
+   (data-driven-правило).
+2. **WorldState.mystery_progress** — forward-only (no rewind:
+   `set_mystery_stage` только вверх; persist с clamp 0–4).
+   Прогресс 4 mystery — часть того же JSON-раундтрипа (ADR-029),
+   Phase 15 SaveManager обёрнёт без смены модели.
+3. **Данные реплик (data/dialogue/npc_mystery_lines.tres,
+   DialogueLines.for_char)** — таблица-приоритет (первое
+   совпадение): char/run_req/flag_req/trust_req + flag_set +
+   repeat. NpcNode._line_for оценивает таблицу ПЕРЕД trust-линией;
+   `mystery_line_spoken(line_id)` — сигнал в main_scene
+   (раскрытие m4_city). used-диктонарий на NPC; repeat-линии
+   (carto_city) повторимы — при смещении стадии +1 run (см. 5).
+4. **Читер-слои сцены:** K4 WorldBook (страница = состояние мира:
+   blank → «Eli. Profession: —.» → filled, RUN 05+; «Look (E)»
+   открывает Label3D на 6 c + page_read → раскрытие m1_book/m1_page),
+   K5 lake reflection (RUN 05+, фигура-силуэт 2 c, once), Child
+   (RUN 04–05 village, deaths ≥ 3, инвульнерабелен; RUN 04 линия
+   без стадии (run_min 5), RUN 05 «217» → m4_child; attempt_hit →
+   мягкий пенальти-флаг), Veyra-map board (camp, после
+   veyra_city_told, «VEYRA B»).
+5. **Смещение стадии (поведение, не баг):** правило «1 стадия на
+   mystery в run» сильнее графика MYSTERY_REVEAL_MAP — если в RUN
+   05 M4 уже получила стадию (Child «217»), городская реплика
+   картографа **говорится** (флаг veyra_city_told), но m4_city
+   ложится в RUN 06 (линия repeat — он одержим). Тест
+   фиксирует смещение (assert: стадия не сдвинулась в RUN 05).
+6. **Ремнант note-encounter (фикс P9-дефекта, ADR-029 #4
+   продолжение):** `enemy_director.remnant_note_met` (session,
+   потребляется, когда ремнант С записной строкой ушёл);
+   `enemy_controller._note_encounter_allowed()` (remnant +
+   remnant_met + не потреблено + last_note() не пусто) —
+   вычисляется **в момент зрения** (записка может быть написана
+   после спавна); `enemy_logic.note_encounter`: IDLE→SPEAK (как
+   first_encounter) **и CHASE→SPEAK** (если sense.player_seen —
+   встреча читает записку, останавливая бой: нарративный момент,
+   не боевое состояние — узкое расширение FSM, паттерн
+   ADR-029 (4)). `_report_echo` покрывает обе встречи
+   (ECHO_TRIGGER в записи).
+
+**Альтернативы.** (1) Флаги-прогресс прямо в world_flags.tres —
+отклонено: стадии это не булевы флаги (порядок, run-минимумы,
+budget per run); отдельный слой честнее и persist-обёртывается
+целиком. (2) Mystery как Node/автозагрузчик — отклонено: чистая
+логика без дерева сцены (RefCounted, паттерн WorldState/
+MemoryStats, ADR-023). (3) Note-encounter через «убить
+remnant_met-гейт» — отклонено: сломало бы P5-поведение
+«встреча один раз» (регресс-тест enemy_scene). (4) SPEAK из
+CHASE без условия player_seen — отклонено: ремнант прочёл бы
+записку невидимому игроку за 30 м (и встретился бы потреблён
+впустую).
+
+**Последствия.** (1) Reveal-правила проверяемы unit-ом (stage
+таблица, gate, persist/clamp) — main_scene держит только wiring
+(подключение сигналов + passive-ghost/child-колбэки). (2) М2.3
+(the_first_seen) = данные+флаг, реплика — Phase 12 (boss). (3)
+Ambiguity-бюджет: ни одна реплика не «отвечает» (unit-скан
+таблицы реплик + стадий: ключевых answer-слов нет) — финальная
+амбивалентность кадра сохранена (twist только post-MVP). (4)
+Whisper #4 (gate, post-boss) — флаг gate_welcome_whisper, триггер
+фазы 12 (паттерн K7, ADR-029). (5) Реестр R7 (мистика
+«объясняется слишком рано») — подкреплён тестом: reveal-gate
+unit + маршрут integration.
+
+
 ## Реестр рисков (Phase 0, живые)
 
 | # | Риск | Влияние | Митигция |

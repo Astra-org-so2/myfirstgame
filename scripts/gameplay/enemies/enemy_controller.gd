@@ -132,6 +132,24 @@ func _is_first_remnant() -> bool:
 	return _director != null and not _director.remnant_met
 
 
+# #6 (P9, M3 stage 2): the note-reading encounter — once per
+# session, AFTER the first meeting, when the player has written a
+# note. Evaluated at sight time: the note can be written mid-run,
+# after the remnant spawned. The run gate (RUN 03+) is in
+# FirstRunDirector._on_echo_triggered.
+func _note_encounter_allowed() -> bool:
+	if _data.archetype != _DATA.Archetype.REMNANT \
+			or not _data.first_encounter_leaves:
+		return false
+	if _director == null or not _director.remnant_met \
+			or _director.remnant_note_met:
+		return false
+	var ws: Variant = _director.world_state()
+	if ws == null:
+		return false
+	return not (ws.last_note() as Dictionary).is_empty()
+
+
 func _build_visual() -> void:
 	# Prototype silhouettes (ENEMY_DESIGN §1.3/§2.3/§3.3/§4.3/§5.3):
 	# same primitive language as the camp (ADR-022: no .tscn pipeline).
@@ -263,6 +281,7 @@ func tick(delta: float) -> Array[String]:
 	_target.update(delta)
 
 	var sense: _SENSE = _build_sense()
+	_logic.note_encounter = _note_encounter_allowed()
 	_logic.set_position(global_position.x, global_position.z)
 	events = _logic.update(delta, sense, _home)
 
@@ -573,7 +592,7 @@ func _show_speech(text: String) -> void:
 # Phase 9: the canonical first encounter (#1) is a recorded moment
 # (ECHO_TRIGGER in the run log — once per encounter, not per line).
 func _report_echo() -> void:
-	if not _logic.first_encounter or _echo_reported:
+	if not (_logic.first_encounter or _logic.note_encounter):
 		return
 	_echo_reported = true
 	var bus: Node = get_tree().root.get_node_or_null("EventBus")

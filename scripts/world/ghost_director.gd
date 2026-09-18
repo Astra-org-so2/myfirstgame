@@ -125,6 +125,12 @@ func has_passive() -> bool:
 	return _timeline != null and not _timeline.is_empty()
 
 
+# A ghost instance is actually alive in the current level (Phase 11:
+# the M1.2 reveal lands when the replay is on screen, not when armed).
+func has_active_ghost() -> bool:
+	return _ghost != null and is_instance_valid(_ghost)
+
+
 # A level switch (main, after zone_world.enter): the ghost and the
 # markers are per-level (the level node is rebuilt on every entry).
 func on_level_entered(area_id: StringName, level: Node) -> void:

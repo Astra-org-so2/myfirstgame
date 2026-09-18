@@ -18,12 +18,16 @@ extends Node3D
 # A talk happened (NPC_TALKED for the run recording; the scene
 # bridges it — no cross-script Callables, ADR-022).
 signal talked(npc_id: StringName)
+# Phase 11: a mystery line was spoken (the scene reveals the stage).
+signal mystery_line_spoken(line_id: StringName)
 
 const _DATA = preload("res://scripts/gameplay/progression/npc_data.gd")
 const _STATE = preload("res://scripts/gameplay/progression/progression_state.gd")
 const _INTERACTABLE = preload("res://scripts/world/interactable.gd")
 const _CT = preload("res://scripts/gameplay/combat/combat_target.gd")
 const _DREQ = preload("res://scripts/gameplay/combat/damage_request.gd")
+const _DLINES = preload("res://scripts/gameplay/mystery/dialogue_lines.gd")
+const _DLN = preload("res://scripts/gameplay/mystery/dialogue_line.gd")
 
 const HP: float = 50.0
 
@@ -38,6 +42,13 @@ var _dead: bool = false
 # The first-return line (B1) is once per run — the main scene resets
 # this on respawn (reset_run_lines).
 var _return_line_used: bool = false
+# Phase 11: the mystery-line table (data/dialogue) + the used-up
+# line ids (one-shot per session; the scene owns the table).
+var mystery_lines: _DLINES = null
+var _mystery_used: Dictionary = {}
+# The main scene feeds the current run id (reset_run_lines + the
+# start of the session).
+var current_run_id: int = 1
 
 
 # `custom_visual` (optional): a richer look to adopt (Mara keeps her
@@ -65,6 +76,13 @@ func setup(data: _DATA, state: _STATE, resolver: Node, player: Node,
 	if resolver != null:
 		resolver.register(self, _target)
 		_target.killed.connect(_on_killed)
+
+
+# The scene feeds the mystery-line table + the current run id
+# (session start and every respawn).
+func set_mystery_wiring(lines: _DLINES, run_id: int) -> void:
+	mystery_lines = lines
+	current_run_id = run_id
 
 
 func get_data() -> _DATA:
@@ -129,6 +147,12 @@ func _on_interacted(_ia_node: Node) -> void:
 
 
 func _line_for(level: int, e: Dictionary) -> String:
+	# Phase 11 (MYSTERY_REVEAL_MAP): the mystery-line layer — the
+	# data table (DIALOGUE_DATA) is evaluated first (table order =
+	# priority); a match replaces the trust line for this talk.
+	var ml: _DLN = _mystery_line()
+	if ml != null:
+		return _speak_mystery_line(ml)
 	# K7 (WORLD_STATE_DESIGN section 6): post-boss the world is
 	# quieter — the NPC line changes (npc_calm).
 	if _data.post_boss_line != "" and _state.ws.flag(
@@ -150,6 +174,21 @@ func _line_for(level: int, e: Dictionary) -> String:
 # The main scene calls this on respawn (a new run begins).
 func reset_run_lines() -> void:
 	_return_line_used = false
+
+
+func _mystery_line() -> _DLN:
+	if mystery_lines == null or _state == null:
+		return null
+	return mystery_lines.for_char(_data.npc_id, _state.ws,
+			current_run_id, _mystery_used)
+
+
+func _speak_mystery_line(ml: _DLN) -> String:
+	mystery_lines.mark_used(ml, _mystery_used)
+	if ml.flag_set != &"":
+		_state.ws.set_flag(ml.flag_set)
+	mystery_line_spoken.emit(ml.id)
+	return ml.text
 
 
 func _help_line(new_level: int) -> String:

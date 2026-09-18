@@ -1,6 +1,6 @@
 # AFTER YOU — Roadmap (фазы, вехи, exit-criteria)
 
-Версия: 1.0 (Phase 10 закрыта, GDD v2.0). Формат статуса фазы
+Версия: 1.1 (Phase 11 закрыта, GDD v2.0). Формат статуса фазы
 (обязателен при закрытии):
 `STATUS / IMPLEMENTED / TESTED / KNOWN ISSUES / NEXT`.
 
@@ -629,6 +629,50 @@ choice → state; FIRST_3_RUNS-маршрут (RUN 1–03).
 Exit: #1–#7 + K1–K7 достижимы (playtest-маршрут по FIRST_3_RUNS);
 M2 stages 1–3 «собираются» (главная MVP-линия, GDD v2.0 §11);
 ambiguity сохранена (тест: ни одна реплика не «отвечает»).
+
+STATUS: **ЗАКРЫТА** (2026-09-18, ADR-030).
+IMPLEMENTED: MysteryDirector (gameplay/mystery/, RefCounted:
+can_reveal/run_min/stage-порядок/flag_req/1-на-run, reveal =
+прогресс+флаг, reset_run, progress_view) + data (mystery_stages
+13: m1_k1/m1_passive/m1_book/m1_page, m2_trace/m2_gate/m2_first,
+m3_first_echo/m3_note/m3_lake, m4_gate/m4_child/m4_city;
+child_spawns RUN 04–05 village deaths≥3) + WorldState
+mystery_progress (forward-only, persist clamp 0–4, тот же
+JSON-раундтрип ADR-029) + dialogue-таблица
+(data/dialogue/npc_mystery_lines.tres: 6 линий, for_char-
+приоритет char/run/flag/trust, repeat; NpcNode._line_for перед
+trust-линией, mystery_line_spoken → m4_city в main) + K4
+WorldBook (страница = состояние: blank/имя/filled, Label3D 6 c,
+page_read → m1_book/m1_page) + K5 lake reflection (RUN 05+,
+силуэт 2 c, once → m3_lake) + Child (village RUN 04–05,
+инвульнерабелен, RUN 04 линия без стадии, RUN 05 «217» →
+m4_child, attempt_hit → child_hit) + Veyra-map board (camp,
+veyra_city_told, «VEYRA B») + Archivist whispers #2/#3/#5
+(#1 — P8, #4 — триггер фазы 12, флаг gate_welcome_whisper) +
+реплики A3/A5/B2/passive-ghost/child-спик в FirstRunDirector/
+main (m1_k1, m2_trace, m2_gate, m1_passive, m3_first_echo +
+whisper #2) + **P9-дефект фикс** (ADR-030 (6): #6-встреча
+недостижима — remnant_note_met + note_encounter в момент зрения
++ CHASE→SPEAK) + world_flags.tres +15 (30 всего).
+TESTED: риг — **1094/1094 PASS** (unit 717 + integration 377).
+Unit: mystery (stage-таблица, gate, persist/clamp, dialogue,
+child-spawns, ambiguity-скан — ни одна реплика не «отвечает»).
+Integration: mystery_scene — полный маршрут RUN 1–06 на живой
+сцене: RUN 1 (K1→M1.1, след→M2.1, A16-печать) → RUN 02
+(passive→M1.2, #1→M3.1 + whisper #2, B2→M2.2) → RUN 03
+(записка, #6 «…I forgot that.»→M3.2, K4→M1.3 + страница
+показана, аннотации→M4.1; итог M1:3 M2:2 M3:2 M4:1) → RUN 04
+(Child: линия без стадии) → RUN 05 (K5→M3.3, Child «217»→M4.2,
+filled page→M1.4, город сказан но **стадия смещена** — assert)
+→ RUN 06 (смещённая стадия ложится; MVP-финал M1:4 M2:2 M3:3
+M4:3). Regression: все сьюты Phase 1–10 без изменений.
+KNOWN ISSUES: M2.3-реплика — Phase 12 (данные+флаг готовы:
+the_first_seen); whisper #4 триггер = boss_defeated (Phase 12,
+паттерн K7 ADR-029); Child-хореография/K5-визуал/шиммер-
+частицы — Phase 13; «1 стадия на mystery в run» может сдвинуть
+графику MYSTERY_REVEAL_MAP на +1 run (поведение зафиксировано
+тестом RUN 05/06 — «мир не торопится»).
+NEXT: PHASE 12 — Boss: THE FIRST (Undercroft).
 
 ## PHASE 12 — Boss: THE FIRST (Undercroft)
 Scope: THE FIRST (BOSS_DESIGN): 2 фазы (Wandering/Workshop),

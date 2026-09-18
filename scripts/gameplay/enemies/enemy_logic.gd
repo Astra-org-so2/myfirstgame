@@ -58,6 +58,7 @@ var _prev_player_phase: int = -1
 
 # Set at spawn (director/builder):
 var first_encounter: bool = false   # Remnant: speaks and leaves
+var note_encounter: bool = false  # Remnant: the #6 note reading
 # Lines appended to the first-encounter sequence at runtime (the
 # #6 beat: the Remnant reads the player's note and adds its line).
 var extra_lines: PackedStringArray = PackedStringArray()
@@ -268,7 +269,7 @@ func _idle(sense: _SENSE, events: Array[String]) -> void:
 		_:
 			if _seen_or_heard(sense):
 				if _data.archetype == _DATA.Archetype.REMNANT \
-						and first_encounter:
+						and (first_encounter or note_encounter):
 					_enter(_ST.State.SPEAK)
 				else:
 					_enter(_ST.State.CHASE)
@@ -276,6 +277,13 @@ func _idle(sense: _SENSE, events: Array[String]) -> void:
 
 
 func _chase(sense: _SENSE, delta: float, events: Array[String]) -> void:
+	# #6 (P9): the remnant reading the note stops the fight —
+	# the encounter is a narrative moment, not a combat state.
+	if _data.archetype == _DATA.Archetype.REMNANT and note_encounter \
+			and sense.player_seen:
+		_enter(_ST.State.SPEAK)
+		events.append(EV_STATE_CHANGED)
+		return
 	var d: float = _dist(sense)
 	# Remnant (ranged style): kite — hold the distance band; only
 	# strikes if the player breaks inside it.

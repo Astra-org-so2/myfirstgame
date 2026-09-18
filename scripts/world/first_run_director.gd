@@ -14,6 +14,7 @@ class_name FirstRunDirector
 extends Node3D
 
 const _NOTE = preload("res://scripts/world/note_stand.gd")
+const _BOOK = preload("res://scripts/world/world_book.gd")
 const _EV = preload("res://scripts/gameplay/run/run_event.gd")
 
 # Canonical lines (FIRST_30_MINUTES — English MVP).
@@ -35,6 +36,21 @@ const LINE_KETTLE: String = "The kettle is cold."
 const LINE_KETTLE_WASHED: String = "It's clean. Warm, even."
 # #6 (RUN 03 D2): the Remnant reads the player's note (section 4).
 const LINE_D6: String = "\u2026I forgot that."
+# The Archivist whispers (DIALOGUE_GUIDELINES 2.7, MVP 5 lines).
+const LINE_ARCHIVIST_KEPT: String = "He is kept. He is counted."
+const LINE_ARCHIVIST_LAKE: String = \
+		"You call it death because you cannot remember."
+const LINE_ARCHIVIST_GATE: String = \
+		"Welcome back, two-one-seven. I saved your seat."
+const LINE_ARCHIVIST_NPC: String = "Remembered. Kept. Always."
+# K5: the reflection lasts this long (NARRATIVE_STRUCTURE: 2 s).
+const LAKE_REFLECTION_SECONDS: float = 2.0
+# K4: the page states (M1.3 blank name -> M1.4 the world «writes» it).
+const PAGE_K4: String = \
+		"Eli. Profession: \u2014. Home: \u2014. First seen: \u2014."
+const PAGE_M1_4: String = ("Eli. Profession: the one who forgets. "
+		+ "Home: the forest. First seen: \u2014.")
+const PAGE_BLANK: String = "\u2014 (a page, not written yet) \u2014"
 
 # The figure's animation timing (A10: head turn, then a 1 s fade).
 const FIGURE_TURN_SECONDS: float = 0.6
@@ -48,6 +64,8 @@ var _zone_world: Node = null
 var _player: Node = null
 var _ws: Node = null
 var _rm: Node = null
+# Phase 11: the reveal gate (MysteryDirector, scene-owned).
+var _mystery: Variant = null
 
 # A10 figure state (one animation per session, RUN 1 only).
 var _figure: Node3D = null
@@ -60,14 +78,19 @@ var _b2_shown: bool = false
 var _again_shown: bool = false
 var _a3_done: bool = false
 var _d6_done: bool = false
+var _lake_reflection_done: bool = false
+var _lake_reflection: Node3D = null
+var _lake_reflection_t: float = 0.0
 
 
-func setup(m: Node, zw: Node, p: Node, ws_ref: Variant, rm: Node) -> void:
+func setup(m: Node, zw: Node, p: Node, ws_ref: Variant, rm: Node,
+		mystery_ref: Variant = null) -> void:
 	_main = m
 	_zone_world = zw
 	_player = p
 	_ws = ws_ref
 	_rm = rm
+	_mystery = mystery_ref
 	# Camp beats (CampWorld persists for the session): the pillar,
 	# the note stand and the kettle are existing interactables.
 	# Hooked in setup (not _ready): _ready runs before main has
@@ -91,16 +114,27 @@ func _ready() -> void:
 # MVP limit: the line beat, not the "interrupts combat to walk over"
 # choreography (documented in the phase QA).
 func _on_echo_triggered(echo_type: StringName, _pos: Vector3) -> void:
-	if _d6_done or echo_type != &"combat":
+	if _rm == null or _ws == null:
 		return
-	if _rm == null or int(_rm.run_id) < 3:
+	# Archivist whisper #2 (DIALOGUE_GUIDELINES 2.7): at the first
+	# Echo — once per session.
+	if not _ws.flag(&"he_is_counted_whisper"):
+		_ws.set_flag(&"he_is_counted_whisper")
+		_toast(LINE_ARCHIVIST_KEPT, 4.0)
+	if echo_type != &"combat":
 		return
-	if _ws == null or (_ws.last_note() as Dictionary).is_empty():
+	# #1 (M3 stage 1): the Remnant speaks for the first time.
+	if not _ws.flag(&"first_echo_seen"):
+		_ws.set_flag(&"first_echo_seen")
+		_mystery_reveal(&"m3_first_echo")
+	# #6 (M3 stage 2, RUN 03 + a note): the note line.
+	if _d6_done or int(_rm.run_id) < 3:
+		return
+	if (_ws.last_note() as Dictionary).is_empty():
 		return
 	_d6_done = true
-	if _main == null:
-		return
-	var d: Node = _main.get("director")
+	_mystery_reveal(&"m3_note")
+	var d: Node = _main.get("director") if _main != null else null
 	if d == null:
 		return
 	for e in d.get_alive_enemies():
@@ -144,11 +178,23 @@ func on_level_entered(area_id: StringName) -> void:
 			_place_note(area_id, "village_note",
 					PackedStringArray([LINE_A12_NOTE]), &"",
 					0, 2.5)
+			_place_book(area_id)
 		&"mysterious_lake":
 			_build_ice_circle()
 			_place_note(area_id, "lake_note",
 					PackedStringArray([LINE_A17]), &"lake_note_read",
 					1, 3.0)
+			# K5 (M3 stage 3, RUN 05+): the reflection in the water.
+			_beat_lake_reflection()
+		&"ancient_gate":
+			# A16 (RUN 1) / B2 (RUN 02+): the seal, then the open door
+			# (M2 stage 2, the world answers).
+			_beat_gate()
+			# The footnotes stand on every entry (the level is
+			# rebuilt per entry; the stand itself is idempotent).
+			_place_gate_footnotes()
+			# Whisper #4 (post-boss only; the flag is Phase 12).
+			_beat_gate_welcome()
 		&"the_mine":
 			# A14: RUN 1 the cannon box carries the NOTE, not the
 			# weapon (main._place_weapons gates the pickup and calls
@@ -156,8 +202,6 @@ func on_level_entered(area_id: StringName) -> void:
 			pass
 		&"old_shrine":
 			_beat_shrine_whisper()
-		&"ancient_gate":
-			_beat_gate()
 	# A10: the figure on the FIRST zone entry of RUN 1.
 	if _rm.run_id == 1 and not _ws.flag(&"figure_seen") \
 			and area_id != &"camp":
@@ -177,6 +221,50 @@ func on_run_started(run_id: int) -> void:
 		if not _again_shown:
 			_again_shown = true
 			_toast(LINE_A19, 2.5)
+	_place_veyra_map()
+
+
+# M4.3 consequence (the map board in the camp): the Cartographer drew
+# the city (the line sets veyra_city_told) — from the next run on the
+# board stands in the camp (the camp is persistent, so the board
+# stays). The label «VEYRA B»: a second forest (the burned one, M4.3).
+func _place_veyra_map() -> void:
+	if _ws == null or not _ws.flag(&"veyra_city_told"):
+		return
+	if _main == null:
+		return
+	var camp: Node = _main.find_child("CampWorld", true, false)
+	if camp == null or camp.find_child("VeyraMap", true, false) != null:
+		return
+	var root: Node3D = Node3D.new()
+	root.name = "VeyraMap"
+	# By the Cartographer (camp position -3.6/0.6).
+	root.position = Vector3(-4.6, 0.0, 0.0)
+	var frame: MeshInstance3D = MeshInstance3D.new()
+	var fm: BoxMesh = BoxMesh.new()
+	fm.size = Vector3(0.9, 1.2, 0.06)
+	var fmat: StandardMaterial3D = StandardMaterial3D.new()
+	fmat.albedo_color = Color(0.5, 0.42, 0.32)
+	fm.material = fmat
+	frame.mesh = fm
+	frame.position = Vector3(0.0, 1.1, 0.0)
+	root.add_child(frame)
+	var paper: MeshInstance3D = MeshInstance3D.new()
+	var pm: BoxMesh = BoxMesh.new()
+	pm.size = Vector3(0.8, 1.0, 0.02)
+	var pmat: StandardMaterial3D = StandardMaterial3D.new()
+	pmat.albedo_color = Color(0.8, 0.74, 0.6)
+	pm.material = pmat
+	paper.mesh = pm
+	paper.position = Vector3(0.0, 1.1, 0.04)
+	root.add_child(paper)
+	var label: Label3D = Label3D.new()
+	label.text = "VEYRA B"
+	label.position = Vector3(0.0, 1.1, 0.07)
+	label.outline_size = 2
+	label.modulate = Color(0.35, 0.28, 0.2)
+	root.add_child(label)
+	camp.add_child(root)
 
 
 # --- A2 — the pillar ----------------------------------------------------
@@ -203,6 +291,7 @@ func _on_first_swing() -> void:
 		_ws.set_flag(&"blade_found")
 	_toast(LINE_A3, 3.0)
 	_record_event(_EV.Type.EVENT_COMPLETED, 3)
+	_mystery_reveal(&"m1_k1")  # M1 stage 1 (K1)
 	beat_fired.emit(&"a3_first_swing")
 
 
@@ -218,6 +307,7 @@ func _on_enemy_killed(enemy_id: StringName, pos: Vector3) -> void:
 	# RUN 02+ camp rebuild places a scorch mark at.
 	_ws.set_flag(&"first_kill_pos", pos)
 	_record_event(_EV.Type.EVENT_COMPLETED, 5)
+	_mystery_reveal(&"m2_trace")  # M2 stage 1 (the trace, A5)
 	beat_fired.emit(&"a5_first_kill")
 
 
@@ -457,13 +547,18 @@ func _beat_gate() -> void:
 		beat_fired.emit(&"a16_gate")
 	elif _rm.run_id >= 2 and not _b2_shown and _ws.flag(&"gate_seal_seen"):
 		# B2: the first time the open door is seen (after the seal was
-		# seen) — Eli's own thought.
+		# seen) — Eli's own thought. M2 stage 2 (the world «answers»).
 		_b2_shown = true
 		_toast(LINE_B2, 3.0)
+		_mystery_reveal(&"m2_gate")
 		beat_fired.emit(&"b2_gate_open")
 
 
 func _place_gate_footnotes() -> void:
+	if _zone_world == null or _zone_world.level == null:
+		return
+	if _zone_world.level.find_child("NoteStand_gate_footnotes", true, false) != null:
+		return
 	# Three notes of "previous versions" at the base (M4 seed) — the
 	# stand carries all three lines (shown in sequence).
 	var a: Node = _zone_world.layout.get_area(&"ancient_gate")
@@ -569,9 +664,19 @@ func _on_note_read(_stand: Node, first_time: bool, flag: StringName) -> void:
 		return
 	if flag != &"":
 		_ws.set_flag(flag)
+	# M4 stage 1 (M4.1): the three «previous versions» at the gate
+	# (the handwritings differ — «not all of us are one»).
+	if flag == &"gate_note_read":
+		_mystery_reveal(&"m4_gate")
 	# A note left/read is a NOTE_WRITTEN moment for the record
 	# (the player's own handwriting — GDD §8).
 	_record_event(_EV.Type.NOTE_WRITTEN, 0)
+
+
+func _mystery_reveal(stage_id: StringName) -> void:
+	if _mystery == null or _rm == null or _ws == null:
+		return
+	_mystery.reveal(stage_id, _ws, _rm.run_id)
 
 
 func _record_event(type: int, data: int) -> void:
@@ -592,3 +697,136 @@ func _toast(text: String, seconds: float) -> void:
 func _physics_process(delta: float) -> void:
 	_tick_figure(delta)
 	_tick_pyre(delta)
+	_tick_lake_reflection(delta)
+
+
+# --- K4 — Nia's book (M1 stages 3-4) ------------------------------------
+#
+# RUN 03+: the book stands by Nia's table (village). The page state
+# follows the world: blank (Nia's trust < 1) -> the name page
+# (M1.3) -> the filled page (M1.4, RUN 05+: the world «writes»).
+func _place_book(area_id: StringName) -> void:
+	if _rm == null or _rm.run_id < 3 or _zone_world == null \
+			or _zone_world.level == null:
+		return
+	var a: Node = _zone_world.layout.get_area(&"ruined_village")
+	if a == null or a.rooms.is_empty():
+		return
+	var rp: Node = a.rooms[0]
+	var book: _BOOK = _BOOK.new()
+	book.name = "NiaBook"
+	# By Nia (she stands at origin + 2.5/2.0; the book is at her table).
+	book.position = Vector3(rp.origin.x + 3.4, 0.0, rp.origin.z + 2.6)
+	var e: Dictionary = _ws.npc_entry(&"nia")
+	var trust: int = int(e.trust)
+	var filled: bool = _ws.flag(&"nia_name_seen")
+	if filled:
+		book.set_page(PAGE_M1_4)
+	elif trust >= 1:
+		book.set_page(PAGE_K4)
+	else:
+		book.set_page(PAGE_BLANK)
+	book.setup(_player)
+	book.page_read.connect(_on_book_page_read)
+	_zone_world.level.add_child(book)
+
+
+func _on_book_page_read() -> void:
+	if _ws == null:
+		return
+	if not _ws.flag(&"nia_name_seen"):
+		# M1 stage 3 (K4): the name is in the book («the life before»
+		# is empty — a door, not an answer).
+		_mystery_reveal(&"m1_book")
+		return
+	# M1 stage 4 (M1.4): the page is filled (RUN 05+).
+	_mystery_reveal(&"m1_page")
+
+
+# --- K5 — the lake reflection (M3 stage 3, RUN 05+) ---------------------
+#
+# In the lake is NOT the reflection: the Archivist (2 s,
+# NARRATIVE_STRUCTURE K5) + the whisper. Once (lake_reflection_seen);
+# NPC lines change after (the dialogue table reads the flag).
+func _beat_lake_reflection() -> void:
+	if _lake_reflection_done or _ws == null:
+		return
+	if _ws.flag(&"lake_reflection_seen"):
+		_lake_reflection_done = true
+		return
+	if _rm == null or int(_rm.run_id) < 5:
+		return
+	if not _mystery.can_reveal(&"m3_lake", _ws, _rm.run_id):
+		return
+	var a: Node = _zone_world.layout.get_area(&"mysterious_lake")
+	if a == null or a.rooms.is_empty():
+		return
+	var rp: Node = a.rooms[0]
+	var fig: Node3D = _build_reflection_figure()
+	fig.name = "LakeReflection"
+	fig.position = Vector3(rp.origin.x, 0.0, rp.origin.z + 1.0)
+	_zone_world.level.add_child(fig)
+	_lake_reflection = fig
+	_lake_reflection_t = LAKE_REFLECTION_SECONDS
+	_toast(LINE_ARCHIVIST_LAKE, 4.0)
+	_lake_reflection_done = true
+	_mystery_reveal(&"m3_lake")
+	beat_fired.emit(&"k5_lake_reflection")
+
+
+func _build_reflection_figure() -> Node3D:
+	# The Archivist in the MVP: a white monochrome silhouette
+	# (monochrome + accent — WORLD_BIBLE 1.1), standing in the water.
+	var root: Node3D = Node3D.new()
+	var body: MeshInstance3D = MeshInstance3D.new()
+	var cm: CapsuleMesh = CapsuleMesh.new()
+	cm.radius = 0.22
+	cm.height = 1.2
+	var bm: StandardMaterial3D = StandardMaterial3D.new()
+	bm.albedo_color = Color(0.9, 0.9, 0.92)
+	cm.material = bm
+	body.mesh = cm
+	body.position = Vector3(0.0, 0.85, 0.0)
+	root.add_child(body)
+	var head: MeshInstance3D = MeshInstance3D.new()
+	var sm: SphereMesh = SphereMesh.new()
+	sm.radius = 0.14
+	sm.height = 0.28
+	var hm: StandardMaterial3D = StandardMaterial3D.new()
+	hm.albedo_color = Color(0.92, 0.92, 0.94)
+	sm.material = hm
+	head.mesh = sm
+	head.position = Vector3(0.0, 1.62, 0.0)
+	root.add_child(head)
+	return root
+
+
+func _tick_lake_reflection(delta: float) -> void:
+	if _lake_reflection_t <= 0.0 or _lake_reflection == null:
+		return
+	_lake_reflection_t -= delta
+	# The 2 s presence: a slow fade (the reflection is not a door).
+	var k: float = clampf(_lake_reflection_t / LAKE_REFLECTION_SECONDS,
+			0.0, 1.0)
+	for c in _lake_reflection.get_children():
+		var mi: MeshInstance3D = c as MeshInstance3D
+		if mi != null and mi.mesh != null:
+			var me: Material = mi.mesh.material
+			if me is StandardMaterial3D:
+				(me as StandardMaterial3D).albedo_color.a = k
+	if _lake_reflection_t <= 0.0 and is_instance_valid(_lake_reflection):
+		_lake_reflection.queue_free()
+	_lake_reflection = null if _lake_reflection_t <= 0.0 \
+			else _lake_reflection
+
+
+# --- The Archivist behind the gate (post-boss whisper #4) --------------
+func _beat_gate_welcome() -> void:
+	if _ws == null:
+		return
+	if not _ws.flag(&"boss_defeated"):
+		return
+	if _ws.flag(&"gate_welcome_whisper"):
+		return
+	_ws.set_flag(&"gate_welcome_whisper")
+	_toast(LINE_ARCHIVIST_GATE, 4.5)

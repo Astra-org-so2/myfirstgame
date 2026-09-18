@@ -8,7 +8,7 @@
 script = ExtResource("2_ent")
 enemy = ExtResource("e3")
 position = Vector3(0, 0, 0)
-condition = "always"
+condition = "flag:first_death_done"
 
 [resource]
 script = ExtResource("1_tbl")

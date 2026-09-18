@@ -22,3 +22,6 @@ signal enemy_killed(enemy_id: StringName, position: Vector3)
 signal npc_died(npc_id: StringName, position: Vector3)
 # Phase 6: a weapon is found (scripted, once, forever — WEAPON_DESIGN).
 signal weapon_found(weapon_id: StringName, position: Vector3)
+# Phase 9: an echo appeared/spoke (the run record's ECHO_TRIGGER;
+# echo_type: "passive" / "combat" / "memory" / "forgotten" / "false").
+signal echo_triggered(echo_type: StringName, position: Vector3)

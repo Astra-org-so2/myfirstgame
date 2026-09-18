@@ -123,7 +123,23 @@ func _rescan() -> void:
 # --- 1. Spawn table: 5 enemies, one per archetype ---
 
 func _spawn_table(ctx: Variant) -> void:
+	# Phase 9 (ADR-014): RUN 1 is echo-free — the remnant (the
+	# combat echo) is gated on first_death_done. 4, not 5.
 	var alive: Array = _alive()
+	ctx.check(alive.size() == 4,
+			"enemy_scene: RUN 1 spawns no echo (got %d)"
+					% alive.size())
+	ctx.check(_enemy(&"remnant_mirror") == null,
+			"enemy_scene: no remnant before the first death")
+	# Simulate the RUN 02 world state and restart the camp table
+	# (the respawn rebuild does the same: the budget re-arms via
+	# prepare_run, the flag opens the gate, clear -> start).
+	_main.progress.ws.set_flag(&"first_death_done")
+	_main.ghost_director.prepare_run(2, _main.progress.ws, null,
+			null, _main.run_layout)
+	_director.clear()
+	_director.start(_main._SPAWN_TABLE)
+	alive = _alive()
 	ctx.check(alive.size() == 5,
 			"enemy_scene: the demo table spawns 5 enemies (got %d)"
 					% alive.size())

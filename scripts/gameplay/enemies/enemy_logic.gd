@@ -33,7 +33,6 @@ const EPS: float = 1e-4
 
 const RETREAT_RETURN_TIME: float = 2.0  # RETREAT -> IDLE
 const SPEAK_TIME: float = 0.8
-const LEAVE_TIME: float = 1.0
 const VANISH_TIME: float = 1.0
 const WHISPER_INTERVAL: float = 8.0  # Forgotten: between whispers
 # Remnant (ranged style) kiting band: backs off below KITE_FAR,
@@ -59,6 +58,7 @@ var _prev_player_phase: int = -1
 
 # Set at spawn (director/builder):
 var first_encounter: bool = false   # Remnant: speaks and leaves
+var _speech_idx: int = 0
 var anchors_created: int = 0        # Watcher: run-wide count (director)
 
 var last_speech: String = ""
@@ -129,9 +129,8 @@ func _enter(s: int) -> void:
 	if s == _ST.State.WANDER:
 		_pick_wander_target(_home)
 	elif s == _ST.State.SPEAK:
-		var lines: PackedStringArray = _data.first_encounter_lines
-		last_speech = lines[0] if lines.size() == 1 else lines[
-				_rng.randi_range(0, lines.size() - 1)]
+		_speech_idx = 0
+		last_speech = _data.first_encounter_lines[0]
 
 
 # Echo Staff Soothe (Phase 6): the enemy "sleeps" for `duration` — no
@@ -218,15 +217,31 @@ func update(delta: float, sense: _SENSE, home: Vector2) -> Array[String]:
 				_enter(_ST.State.IDLE)
 				events.append(EV_STATE_CHANGED)
 		_ST.State.SPEAK:
-			if _elapsed <= delta + EPS:
-				events.append(EV_SPEECH)  # the controller shows the line
+			# The full sequence, canonical order (#1): each line holds
+			# SPEAK_TIME, then the next; the last line hands to LEAVE.
+			var lines: PackedStringArray = _data.first_encounter_lines
 			if _elapsed >= SPEAK_TIME - EPS:
-				_enter(_ST.State.LEAVE)
-				events.append(EV_STATE_CHANGED)
+				if _speech_idx + 1 < lines.size():
+					_speech_idx += 1
+					last_speech = lines[_speech_idx]
+					_elapsed = 0.0
+					events.append(EV_SPEECH)  # controller shows line N+1
+				else:
+					_enter(_ST.State.LEAVE)
+					events.append(EV_STATE_CHANGED)
+			elif _elapsed <= delta + EPS:
+				events.append(EV_SPEECH)  # the first line
 		_ST.State.LEAVE:
-			if _elapsed >= LEAVE_TIME - EPS:
+			if _elapsed >= _leave_time() - EPS:
 				events.append(EV_LEAVE)  # the controller despawns
 	return events
+
+
+# Data-driven: the first-encounter remnant dissolves for leave_fade
+# (ECHO_SYSTEM_DESIGN §3.2); everything else uses the 1 s default.
+func _leave_time() -> float:
+	return maxf(_data.leave_fade if _data.first_encounter_leaves
+			else 1.0, 0.1)
 
 
 # --- Archetype behaviors ---

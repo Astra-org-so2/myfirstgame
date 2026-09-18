@@ -298,6 +298,14 @@ func _manager(ctx: Variant) -> void:
 			"manager: first run record exists")
 	var spawn: Variant = rm.record_event(0, 0, Vector3.ZERO, 0, 0)
 	ctx.check(spawn != null, "manager: events recorded while PLAYING")
+	# The run clock advances at 60 Hz (regression: rounding the
+	# per-frame delta froze it — 0.167 deciseconds rounded to 0
+	# every frame, every event got t=0, playtime_ms was always 0).
+	for i in 60:
+		rm.advance_time(1.0 / 60.0)
+	ctx.check(rm.time_decis() >= 9,
+			"manager: the run clock advances at 60 Hz (got %d ds)"
+					% rm.time_decis())
 
 	# "What changed": the pre-run flags are NOT in the diff.
 	ctx.check(rm.changed_lines(lines).is_empty(),

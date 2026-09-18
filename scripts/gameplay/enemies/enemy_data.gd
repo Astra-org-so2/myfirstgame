@@ -59,6 +59,9 @@ enum Archetype { HOLLOW, REMNANT, WATCHER, MIMIC, FORGOTTEN }
 		"You're early.", "You usually take longer.",
 	]
 @export var first_encounter_leaves: bool = true
+# Dissolve length when the first-encounter remnant departs (the
+# canonical «You're early.» — and fades, not despawns).
+@export var leave_fade: float = 1.0
 @export var note_on_death: bool = true
 
 # --- Forgotten (corrupted Echo; whispers the player's history) ---

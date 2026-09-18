@@ -62,6 +62,14 @@ const _FIRST_RUN = preload("res://scripts/world/first_run_director.gd")
 const _VAL = preload("res://scripts/gameplay/rooms/layout_validator.gd")
 const _FLAG_TABLE = preload("res://scripts/gameplay/progression/world_flag_table.gd")
 const _FLAG_TABLE_DATA = preload("res://data/world_flags.tres")
+# Phase 9 — Ghost/Echo (TECHNICAL_DESIGN §5, ADR-014):
+const _GHOST_DIR = preload("res://scripts/world/ghost_director.gd")
+const _ECHO_BUDGET = preload(
+		"res://scripts/gameplay/echo/echo_budget_data.gd")
+const _PASSIVE_ECHO = preload(
+		"res://scripts/gameplay/echo/passive_echo_data.gd")
+const _ECHO_BUDGET_DATA = preload("res://data/echo/echo_budget.tres")
+const _PASSIVE_ECHO_DATA = preload("res://data/echo/passive_echo.tres")
 
 # The session seed (RUN 1's layout is the canonical one the A-beats
 # were designed against; run N>1 = derived — RunManager.derive_seed).
@@ -108,6 +116,7 @@ var _zone_weapons: Dictionary = {}  # weapon id -> pickup node
 # Phase 8: the run system (run lifecycle + the scripted A-beats).
 var run_manager: _RUN_MGR
 var first_run: _FIRST_RUN
+var ghost_director: _GHOST_DIR
 var run_generator: _ROOM_GEN
 var _area_pool: Dictionary = {}
 var _last_player_attacker: Node = null
@@ -391,6 +400,17 @@ func _setup_zones() -> void:
 	for n in _npcs:
 		if is_instance_valid(n) and n.has_signal("talked"):
 			n.talked.connect(run_manager.record_npc_talked)
+	# Phase 9: the echo system (ADR-014 budget). The EnemyDirector
+	# queries the per-run combat budget and the world-state flags
+	# (the remnant gate: no echoes before the first death).
+	ghost_director = _GHOST_DIR.new()
+	ghost_director.name = "GhostDirector"
+	add_child(ghost_director)
+	ghost_director.setup(_ECHO_BUDGET_DATA, _PASSIVE_ECHO_DATA, player)
+	director.set_budget(ghost_director.budget_state)
+	director.set_world_state(progress.ws)
+	ghost_director.prepare_run(run_manager.run_id, progress.ws,
+			null, null, run_layout)
 	first_run.on_run_started(run_manager.run_id)
 	_enter_level(&"camp")
 	# A1: the 2 s black fade, no menu (FIRST_30_MINUTES).
@@ -426,6 +446,8 @@ func _enter_level(area_id: StringName) -> void:
 	# the level being freed and died with it.
 	if first_run != null:
 		first_run.on_level_entered(area_id)
+	if ghost_director != null:
+		ghost_director.on_level_entered(area_id, zone_world.level)
 	if is_camp:
 		director.load_nav(_NAV_DATA)
 		director.start(_SPAWN_TABLE)
@@ -600,6 +622,9 @@ func _on_player_spawned(_pos: Vector3) -> void:
 # run N+1 with a derived seed, the layout regenerated against the
 # current world state, back at the camp.
 func _begin_new_run() -> void:
+	var old_layout: Variant = run_layout
+	var prev_record: Variant = progress.ws.runs.get_run(
+			run_manager.run_id)
 	var seed: int = run_manager.begin_next_run()
 	run_layout = run_generator.generate(seed, progress.ws.flags)
 	_check_layout(run_layout, "run %d rebuild" % run_manager.run_id)
@@ -609,6 +634,14 @@ func _begin_new_run() -> void:
 	for n in _npcs:
 		if is_instance_valid(n) and n.has_method("reset_run_lines"):
 			n.reset_run_lines()
+	# Phase 9: the echoes of the new run (the passive replay of the
+	# run that just ended; the combat slot «where the player was»).
+	if ghost_director != null:
+		ghost_director.prepare_run(run_manager.run_id, progress.ws,
+				prev_record, old_layout, run_layout)
+		if ghost_director.combat_spawn_pos() != Vector3.ZERO:
+			director.spawn_overrides[ghost_director.remnant_id] = \
+					ghost_director.combat_spawn_pos()
 	_enter_level(&"camp")
 	var port: Variant = player.get_port()
 	if port != null:
@@ -782,6 +815,8 @@ func _physics_process(delta: float) -> void:
 		director.update(d)
 		director.record_player_position(player.get_body_position())
 		tracker.sync_player_hits(player.weapon.hits_landed)
+	if ghost_director != null:
+		ghost_director.update(d)
 	# Phase 6: the inventory panel toggles on the `inventory` action
 	# (I key / BAG touch button) — a hold-edge, like the dodge.
 	var inv: bool = Input.is_action_pressed("inventory")

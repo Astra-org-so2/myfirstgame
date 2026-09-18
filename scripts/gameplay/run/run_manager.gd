@@ -88,6 +88,8 @@ func bind(bus: Node, pl: Node, resolver: Node) -> void:
 			bus.enemy_killed.connect(_on_enemy_killed)
 		if bus.has_signal("weapon_found"):
 			bus.weapon_found.connect(_on_weapon_found)
+		if bus.has_signal("echo_triggered"):
+			bus.echo_triggered.connect(_on_echo_triggered)
 	if pl != null:
 		# ATTACK events follow the EQUIPPED weapon (a pickup swaps
 		# it, and the old node stops swinging).
@@ -128,6 +130,18 @@ func _bind_swing() -> void:
 	if not w.is_connected(&"swing_started", _on_swing):
 		w.swing_started.connect(_on_swing)
 	_swing_weapon = w
+
+
+# Phase 9: an echo appeared/spoke (ECHO_TRIGGER, the type in `data`).
+func _on_echo_triggered(echo_type: StringName, pos: Vector3) -> void:
+	var idx: int = _echo_index(echo_type)
+	record_event(_EV.Type.ECHO_TRIGGER, 0, pos, 0, 0, idx)
+
+
+func _echo_index(t: StringName) -> int:
+	var i: int = [&"passive", &"combat", &"memory", &"forgotten",
+			&"false"].find(t)
+	return maxi(0, i)
 
 
 func record_npc_talked(npc_id: StringName) -> void:
@@ -214,6 +228,7 @@ func begun_run(id: int) -> void:
 	run_seed = derive_seed(session_seed, run_id)
 	recorder.reset()
 	_time_decis = 0
+	_time_acc = 0.0
 	var rec := _RR.new()
 	current_record = rec
 	rec.run_id = run_id
@@ -247,12 +262,21 @@ static func derive_seed(session_seed: int, run_id: int) -> int:
 	return x ^ (x >> 31)
 
 
+var _time_acc: float = 0.0
+
+
 func advance_time(delta_seconds: float) -> void:
 	if state != State.PLAYING:
 		return
-	var before: int = _time_decis
-	_time_decis += int(round(delta_seconds * _REC.DECS_PER_SECOND))
-	if _time_decis < before or _time_decis > 2000000000:
+	# Accumulate the fraction: at 60 Hz one frame is 0.167 deciseconds
+	# — rounding per frame would freeze the clock (every frame rounds
+	# to 0) and all events would share t=0.
+	_time_acc += delta_seconds * _REC.DECS_PER_SECOND
+	var whole: int = int(floor(_time_acc))
+	if whole >= 1:
+		_time_acc -= float(whole)
+		_time_decis += whole
+	if _time_decis > 2000000000:
 		# int32 territory (~68 h): clamp, keep counting runs.
 		_time_decis = 2000000000
 

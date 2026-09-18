@@ -18,7 +18,7 @@ condition = "always"
 script = ExtResource("2_ent")
 enemy = ExtResource("4_remnant")
 position = Vector3(-6, 0, -4)
-condition = "always"
+condition = "flag:first_death_done"
 
 [sub_resource type="Resource" id="SpawnEntry_watcher"]
 script = ExtResource("2_ent")

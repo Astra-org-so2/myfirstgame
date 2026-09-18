@@ -1,6 +1,6 @@
 # AFTER YOU — Roadmap (фазы, вехи, exit-criteria)
 
-Версия: 0.8 (Phase 8 закрыта, GDD v2.0). Формат статуса фазы
+Версия: 0.9 (Phase 9 закрыта, GDD v2.0). Формат статуса фазы
 (обязателен при закрытии):
 `STATUS / IMPLEMENTED / TESTED / KNOWN ISSUES / NEXT`.
 
@@ -501,6 +501,50 @@ Unit: timeline build, remap, interpolation, budget (≤3/run).
 Integration: recording → passive ghost; RUN 02: #1 (B4) + Passive (C1).
 Exit: ghost бегает по хабу, повторяет действия, читается как «прошлый
 я», ≤ 0.5ms/frame; #1 (B4) воспроизводится (playtest).
+STATUS: COMPLETE (2026-09-18). ADR-028 (бюджет = data + world-state
++ per-run счётчики; ghost = pure timeline + визуальный контроллер
+без физики; remap по room id; часы ранa: накопление дробных
+deciseconds; stagger-якорь t0).
+IMPLEMENTED: data/echo (echo_budget.tres rows: RUN 1 = 0, RUN 02/03 =
+1 Passive + 1 Combat, RUN 04+ = +1 «special»; passive_echo.tres:
+opacity 0.5, max_speed 4 м/с, fade_dist 20 м, fade 3 с, tint) +
+GhostKeyframe/GhostTimeline (pure: build из RunRecord, remap
+старая→новая раскладка по room id (ADR-003 якоря), Catmull-Rom,
+ry angle-wrap, action-at-t) + EchoBudgetData/EchoBudgetState
+(per-run счётчики; EnemyDirector опрашивает) + GhostController
+(копия силуэта игрока, без физики: chase сэмпла с max_speed,
+action-pulse, dissolve-pulse на «перематке», fade-out на конце
+реплея/отрыве >20 м, footprints) + GhostDirector (prepare_run:
+бюджет + timeline пред. ранa + маркеры ≤5 last_death_pos
+(remap); per-level ghost; combat spawn-override «где игрок был»)
++ EnemyDirector: condition-тип flag:<id> (remnant-гейт
+first_death_done — RUN 1 echo-free), spawn_overrides (one-shot),
+budget-гейт REMNANT (1 Combat/run), stagger-якорь t0 (рестарт
+уровня не бьёт слоты в кадр) + enemy: полная канон-секвенция #1
+(«You're early.» → «You usually take longer.», в порядке),
+leave_fade (dissolve-уход, EnemyData), ECHO_TRIGGER в run-записи
+(bus echo_triggered) + RUN-часы: накопление дробных deciseconds
+(баг: int(round(1/60×10)) == 0 — все события t=0, playtime 0).
+TESTED: риг — **886/886 PASS** (unit 615 + integration 271).
+Unit: echo (budget rows/plateau, budget-state, timeline build
+(decis→s, сортировка, dup-t), remap (origin delta, missing-room
+rewind, camp-ring keep, identity), Catmull-Rom (концы/срединная
+точка, no-extrapolation), ry-wrap 350→10, action-at-t),
+run_system (+регрессия: часы идут при 60 Гц). Integration:
+echo_scene — полный цикл (RUN 1: 4 врага без remnant, ghost нет,
+запись ≥4 событий; смерть → RUN 02: replay вооружён, маркер в
+точке смерти RUN 1, remnant на пути игрока (override), ghost
+движется, B4: обе реплики канона → dissolve-уход, ECHO_TRIGGER
+(combat=1) в записи, бюджет combat исчерпан, реплей завершается
+dissolve); enemy_scene: RUN 1 = 4 (без remnant), RUN 02-
+симуляция = 5 (remnant спавнится: бюджет + флаг); regression:
+progression/run_cycle/combat/camp/touch — без изменений.
+KNOWN ISSUES: финальный dissolve/rim-шейдер ghost — Phase 13
+(MVP: transparency + tint + faint emissive); маркеры старейших
+runs сжимаются с логами (summary без позиции, 5 МБ-кэп);
+«специальные» эхо (Memory/Forgotten/False) — контент Phase 10/11
+(бюджетный слот уже зарезервирован в data).
+NEXT: PHASE 10 — World memory.
 
 ## PHASE 10 — World memory
 Scope: WorldState persist (в save, ADR-008), WorldDirector apply

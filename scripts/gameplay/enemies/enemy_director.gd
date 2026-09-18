@@ -48,6 +48,13 @@ var _stats: _STYLE = null
 var _thresholds: _THR
 var _spawn_noise: float = -10.0  # time of the last player noise
 var _hub_radius: float = 24.0
+# Phase 9 (echo budget, ADR-014): world-state gated conditions
+# ("flag:x"), spawn position overrides (enemy data id -> pos: the
+# combat echo spawns "where the player was", ECHO_SYSTEM_DESIGN
+# section 3.2), and the per-run combat-echo budget (1 Combat/run).
+var _ws: Variant = null  # WorldState (RefCounted — Variant, ADR-022)
+var spawn_overrides: Dictionary = {}  # StringName -> Vector3
+var _budget: Variant = null
 
 # The controller asks: is the player making noise right now?
 const NOISE_DURATION: float = 0.5
@@ -92,15 +99,29 @@ func start(table: _TABLE) -> void:
 		var entry: _ENTRY = table.entries[i]
 		if not should_spawn(entry):
 			continue
+		# The echo system may place the combat echo «where the
+		# player was» (ECHO_SYSTEM_DESIGN section 3.2).
+		var pos: Vector3 = entry.position
+		if spawn_overrides.has(entry.enemy.id):
+			pos = spawn_overrides[entry.enemy.id]
+			spawn_overrides.erase(entry.enemy.id)  # one-shot
 		var ctrl: _CTRL = _CTRL.new()
 		ctrl.name = "Enemy_" + String(entry.enemy.id)
 		add_child(ctrl)
-		ctrl.setup(entry.enemy, entry.position, _player, self)
+		ctrl.setup(entry.enemy, pos, _player, self)
+		if entry.enemy.archetype == _DATA.Archetype.REMNANT \
+				and _budget != null \
+				and _budget.has_method("use_combat"):
+			_budget.use_combat()
 		# Stagger: slot i starts i slots early in the budget — ticks
 		# spread across frames instead of stacking (TECHNICAL_DESIGN).
+		# Anchored to the spawn time: a level restart (clear+start)
+		# must not burst every slot into the same frame.
+		var t0: float = time
 		var phase: float = float(i) / float(maxi(1, table.entries.size())) \
 				/ entry.enemy.update_hz
-		_slots.append({"ctrl": ctrl, "phase": phase, "count": 0, "last": 0.0})
+		_slots.append({"ctrl": ctrl, "phase": phase, "count": 0,
+				"last": t0, "t0": t0})
 
 
 # Free all spawned enemies (level changes, Phase 7). The run-level
@@ -111,10 +132,17 @@ func clear() -> void:
 		if ctrl != null and is_instance_valid(ctrl):
 			ctrl.queue_free()
 	_slots.clear()
+	# spawn_overrides are run-scoped (set by the echo system at the
+	# respawn, consumed at the remnant spawn) — level changes keep
+	# them.
 
 
 # Pure rule (unit-tested): does this entry spawn for this run?
 func should_spawn(entry: _ENTRY) -> bool:
+	# Echo budget (ADR-014): one combat echo (remnant) per run.
+	if entry.enemy.archetype == _DATA.Archetype.REMNANT \
+			and not _combat_budget_open():
+		return false
 	var c: String = entry.condition.strip_edges()
 	match c:
 		"", "always":
@@ -134,8 +162,27 @@ func should_spawn(entry: _ENTRY) -> bool:
 		"first_run":
 			return _stats != null and _stats.runs_completed == 0
 		_:
+			# World-state gated (Phase 9: the echo budget keeps RUN 1
+			# echo-free — the remnant only exists after the first death).
+			if c.begins_with("flag:") and _ws != null:
+				return _ws.flag(StringName(c.substr(5)))
 			push_error("EnemyDirector: unknown spawn condition: " + c)
 			return false
+
+# The scene wires the per-run combat-echo budget (ADR-014: 1 Combat
+# per run). A REMNANT entry spawns only while the budget allows.
+func set_budget(b: Variant) -> void:
+	_budget = b
+
+func set_world_state(ws: Variant) -> void:
+	_ws = ws
+
+func _combat_budget_open() -> bool:
+	if _budget == null:
+		return true
+	if not _budget.has_method("combat_remaining"):
+		return true
+	return _budget.combat_remaining() > 0
 
 
 func apply_aggression(profile: int) -> void:
@@ -169,7 +216,8 @@ func update(delta: float) -> void:
 		# next += period accumulates the frame quantization and runs
 		# the AI slower than the data says).
 		var period: float = 1.0 / ctrl.data().update_hz
-		var ideal: float = slot["phase"] + float(slot["count"]) * period
+		var ideal: float = slot["t0"] + slot["phase"] \
+				+ float(slot["count"]) * period
 		if time < ideal - 1e-6:
 			continue
 		var step: float = time - slot["last"]

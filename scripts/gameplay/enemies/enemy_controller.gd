@@ -265,6 +265,7 @@ func tick(delta: float) -> Array[String]:
 				_try_attack()
 			_LOGIC.EV_SPEECH:
 				_show_speech(_logic.last_speech)
+				_report_echo()
 			_LOGIC.EV_TELEPORT:
 				_vanish_reposition()
 			_:
@@ -560,6 +561,20 @@ func _show_speech(text: String) -> void:
 	_speech.text = text
 	_speech.visible = true
 	_speech_timer = SPEECH_TIME
+
+
+# Phase 9: the canonical first encounter (#1) is a recorded moment
+# (ECHO_TRIGGER in the run log — once per encounter, not per line).
+func _report_echo() -> void:
+	if not _logic.first_encounter or _echo_reported:
+		return
+	_echo_reported = true
+	var bus: Node = get_tree().root.get_node_or_null("EventBus")
+	if bus != null and bus.has_signal("echo_triggered"):
+		bus.echo_triggered.emit(&"combat", global_position)
+
+
+var _echo_reported: bool = false
 
 
 func _exit_tree() -> void:

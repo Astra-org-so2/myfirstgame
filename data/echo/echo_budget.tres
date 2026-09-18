@@ -1,0 +1,36 @@
+[gd_resource type="Resource" script_class="EchoBudgetData" load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://scripts/gameplay/echo/echo_budget_data.gd" id="1_data"]
+[ext_resource type="Script" path="res://scripts/gameplay/echo/echo_budget_row.gd" id="2_row"]
+
+[sub_resource type="Resource" id="run1"]
+script = ExtResource("2_row")
+min_run = 1
+passive = 0
+combat = 0
+special = 0
+
+[sub_resource type="Resource" id="run2"]
+script = ExtResource("2_row")
+min_run = 2
+passive = 1
+combat = 1
+special = 0
+
+[sub_resource type="Resource" id="run3"]
+script = ExtResource("2_row")
+min_run = 3
+passive = 1
+combat = 1
+special = 0
+
+[sub_resource type="Resource" id="run4"]
+script = ExtResource("2_row")
+min_run = 4
+passive = 1
+combat = 1
+special = 1
+
+[resource]
+script = ExtResource("1_data")
+rows = Array[Resource]([SubResource("run1"), SubResource("run2"), SubResource("run3"), SubResource("run4")])

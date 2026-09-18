@@ -211,13 +211,18 @@ func _remnant_first_encounter(ctx: Variant) -> void:
 	var evs: Array[String] = _ticks(l, 1, _sense(Vector3(8, 0, 0)))
 	ctx.check(l.state() == _ST.State.SPEAK,
 			"enemy_logic: remnant speaks on first encounter")
-	var valid: bool = l.last_speech in d.first_encounter_lines
-	ctx.check(valid,
-			"enemy_logic: speech is from the design pool: %s"
+	ctx.check(l.last_speech == d.first_encounter_lines[0],
+			"enemy_logic: first line is the canonical one: %s"
+					% l.last_speech)
+	# The full sequence (#1): line 1 holds 0.8 s, then line 2.
+	evs = _ticks(l, 48, _sense(Vector3(8, 0, 0)))
+	ctx.check(l.state() == _ST.State.SPEAK
+			and l.last_speech == d.first_encounter_lines[1],
+			"enemy_logic: the second line follows (0.8 s later): %s"
 					% l.last_speech)
 	evs = _ticks(l, 48, _sense(Vector3(8, 0, 0)))
 	ctx.check(l.state() == _ST.State.LEAVE,
-			"enemy_logic: remnant leaves after the speech (0.8 s)")
+			"enemy_logic: remnant leaves after the full sequence")
 	evs = _ticks(l, 60, _sense(Vector3(8, 0, 0)))
 	ctx.check(evs.has(_LOGIC.EV_LEAVE),
 			"enemy_logic: leave event despawns the remnant (1 s)")

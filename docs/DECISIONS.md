@@ -721,6 +721,79 @@ data-driven). (4) RUN 1 = каноническая раскладка: playtest
 при входе в уровень), а не к геометрии.
 
 
+
+## ADR-028 — Echo-бюджет (data + world-state + per-run счётчики), ghost = «pure timeline + визуальный контроллер» (Phase 9)
+
+**Статус:** принято (Phase 9, 2026-09-18).
+
+**Контекст.** Phase 9 (ROADMAP: «Ghost/Echo (budget per ADR-014)»):
+GhostDirector/Replay/Controller по TECHNICAL_DESIGN §5, Passive Echo
+(replay последнего забега) + маркеры старых runs (3–5), Combat Echo
+(Remnant) — интеграция: спавн «где игрок был», реплики #1
+(«You're early.» — и уходит, B4). Четыре проблемы: (1) remnant из
+Phase 5 спавнился по camp-таблице во ВСЕХ runs (condition «always»)
+— в RUN 1 появлялся «echo» при запрете (ECHO_SYSTEM_DESIGN §8:
+RUN 1 = 0); (2) источник реплея = запись пред. ранa в раскладке
+**прошлого** ранa (раскладка регенерируется, ADR-027) — remap по
+§5.2 («карта в текущий мир») не был реализован; (3) часы ранa были
+заморожены: `int(round(1/60 × 10)) == 0` — дробная часть
+бросалась каждый кадр, ВСЕ RunEvent получали t=0, playtime_ms
+всегда 0; (4) при рестарте уровня (director.clear + start) все
+стеггер-слоты срабатывали в одном кадре (schedule был привязан к
+t=0, а не ко времени спавна).
+
+**Решение.**
+
+1. **Бюджет = data + world-state + per-run счётчики.**
+   `data/echo/echo_budget.tres` (rows: min_run → passive/combat/
+   special; RUN 1 = 0, RUN 02/03 = 1+1, RUN 04+ = 1+1+1) +
+   `EchoBudgetState` (счётчики ранa; владеет GhostDirector,
+   EnemyDirector опрашивает) + remnant в spawn-таблицах гатится
+   condition-типом `flag:first_death_done` (новый тип `flag:<id>` —
+   world-state, универсален, без кода на флаг). RUN 02: 1 Combat
+   (первый Remnant) + 1 Passive.
+2. **Passive Echo = GhostTimeline (pure) + GhostController
+   (визуал, без физики).** Timeline: события полного лога пред.
+   ранa → keyframes (t, pos, ry, action); **remap**: комната
+   keyframe-а (footprint-содержание) в новой раскладке
+   разыскивается по room id (ADR-003: якоря идентичны между
+   вариантами) — позиция сдвигается на дельту origin; комнаты нет
+   → keyframe отбрасывается («перематка», §5.2; pulse-
+   подсветка). Интерполяция Catmull-Rom (ry — angle-wrapped lerp);
+   ghost «догоняет» сэмпл с max_speed 4 м/с (speed-cap §5.3 — без
+   телепорт-артефактов). Ghost — per-level (keyframes текущей
+   зоны; camp-кольцо — по footprint hub-комнаты, уровень camp
+   пустой). Dissolve: конец реплея ИЛИ игрок оторвался
+   (dist > fade_dist 20 м) — fade_time 3 с (data,
+   `passive_echo.tres`).
+3. **Combat Echo (B4 #1):** spawn-override —
+   `director.spawn_overrides[remnant_id]` = последняя точка
+   игрока в лагере пред. ранa (из RunRecord; лагерь стабилен —
+   remap тождествен). Канон-секвенция теперь **полная и в
+   порядке** (обе реплики, не random-одна — enemy_logic),
+   уход = data-driven dissolve (`leave_fade` в EnemyData), не hard
+   despawn.
+4. **Маркеры старых runs:** ≤5 (пул) `last_death_pos` полных
+   записей, remap-нутые, per-level, faint emissive (шиммер —
+   полиш Phase 13/10).
+5. **Часы ранa:** накопление дробных deciseconds
+   (60 Гц: +0.167 ds/кадр → 10 ds/с); регрессионный unit-тест.
+6. **Stagger-якорь t0:** schedule слота = t_spawn + phase +
+   count×period — рестарт уровня не бьёт все слоты в один кадр.
+7. **ECHO_TRIGGER в run-записи:** bus-сигнал `echo_triggered`
+   (первая речь Remnant; тип в data-байте 0..4).
+
+**Последствия.** (1) Финальный dissolve/rim-шейдер ghost —
+Phase 13 (MVP — честный prototype-материал: transparency + tint +
+faint emissive; mobile-бюджет ADR-021). (2) Маркеры старейших
+runs сжимаются вместе с логами (5 МБ-кэп → summary без позиции) —
+принято (MVP 10–15 runs, ADR-004). (3) B4-Remnant живёт в лагере
+(«путь игрока» = последние точки в лагере) — «echo на моём пути»
+читается по позиции; зональный путь реплея у Passive. (4)
+`flag:`-условия — общее расширение spawn-системы (фазы 10/11
+используют без кода).
+
+
 ## Реестр рисков (Phase 0, живые)
 
 | # | Риск | Влияние | Митигция |

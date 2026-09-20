@@ -27,6 +27,7 @@ var encounter_lines: PackedStringArray = PackedStringArray()
 var _encounter_idx: int = -1
 var _hit_answered: bool = false
 
+var textures: Variant = null  # the TextureBank (optional)
 var _ia: _INTERACTABLE
 var _label: Label3D
 var _line_left: float = 0.0
@@ -46,8 +47,20 @@ func setup(target: Node) -> void:
 	var cm: CapsuleMesh = CapsuleMesh.new()
 	cm.radius = 0.14
 	cm.height = 0.6
-	var bm: StandardMaterial3D = StandardMaterial3D.new()
-	bm.albedo_color = Color(0.55, 0.58, 0.62)
+	# Phase 13: the palette's pale presence through the cloth
+	# texture (the bank is optional — flat fallback in tests).
+	var _pal = load("res://data/visual/palette.tres")
+	var bm: StandardMaterial3D
+	if textures != null and textures.has("cloth"):
+		bm = textures.material("cloth", _pal.child_pale, 0.85)
+		if bm == null:
+			bm = StandardMaterial3D.new()
+			bm.albedo_color = _pal.child_pale
+			bm.roughness = 0.85
+	else:
+		bm = StandardMaterial3D.new()
+		bm.albedo_color = _pal.child_pale
+		bm.roughness = 0.85
 	cm.material = bm
 	body.mesh = cm
 	body.position = Vector3(0.0, 0.42, 0.0)
@@ -56,8 +69,7 @@ func setup(target: Node) -> void:
 	var sm: SphereMesh = SphereMesh.new()
 	sm.radius = 0.11
 	sm.height = 0.22
-	var hm: StandardMaterial3D = StandardMaterial3D.new()
-	hm.albedo_color = Color(0.6, 0.62, 0.66)
+	var hm: StandardMaterial3D = bm
 	sm.material = hm
 	head.mesh = sm
 	head.position = Vector3(0.0, 0.84, 0.0)

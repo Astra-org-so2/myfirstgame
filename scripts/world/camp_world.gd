@@ -29,14 +29,17 @@ const _GATE_SIL = preload("res://scenes/world/GateSilhouette.tscn")
 
 # WORLD_BIBLE §1 palette: muted green-gray forest, gray-blue fog,
 # warm amber only at the camp (warm = home/life).
+# Phase 13: the structural colors are the canonical palette
+# (WORLD_BIBLE §1); the foliage stays local — camp decoration.
+const _PALETTE = preload("res://data/visual/palette.tres")
 const C_GROUND: Color = Color(0.16, 0.185, 0.145)
 const C_PATH: Color = Color(0.14, 0.125, 0.105)
-const C_TRUNK: Color = Color(0.21, 0.165, 0.125)
+const C_TRUNK: Color = _PALETTE.wood_dark
 const C_LEAF_LOW: Color = Color(0.135, 0.2, 0.135)
 const C_LEAF_HIGH: Color = Color(0.115, 0.175, 0.12)
-const C_STONE: Color = Color(0.33, 0.345, 0.37)
-const C_WOOD: Color = Color(0.27, 0.215, 0.155)
-const C_PILLAR: Color = Color(0.29, 0.3, 0.32)
+const C_STONE: Color = _PALETTE.stone
+const C_WOOD: Color = _PALETTE.wood_dark
+const C_PILLAR: Color = _PALETTE.stone
 const C_SILHOUETTE: Color = Color(0.1, 0.11, 0.13)
 const C_ZONE_MARKER: Color = Color(0.16, 0.17, 0.19)
 # Tent order matches CampLayout.tent_slots: [mara, empty, not human].
@@ -49,8 +52,12 @@ const FLAT_SHADING: int = 1024  # StandardMaterial3D.SHADING_MODE_FLAT
 const ZONE_GATE_RADIUS: float = 10.5
 
 var layout: _LAYOUT
+var textures: Variant = null  # the TextureBank (null = flat)
 var tree_count: int = 0
 var tent_count: int = 0
+# Built surfaces to reskin once the texture bank
+# arrives (the parent scene hands it after this _ready).
+var _reskin: Array = []  # [node, color, tex_id, material]
 var zone_markers: Array = []
 var interactables: Array = []
 
@@ -111,7 +118,9 @@ func _trunk_multimesh() -> MultiMesh:
 	mesh.bottom_radius = 0.34
 	mesh.height = 4.0
 	mm.mesh = mesh
-	mm.material = _mat(C_TRUNK)
+	var trunk_mat: StandardMaterial3D = _mat_textured("wood_dark", C_TRUNK)
+	mm.material = trunk_mat
+	_reskin.append([mm, C_TRUNK, "wood_dark", trunk_mat])
 	return mm
 
 
@@ -145,7 +154,9 @@ func _build_path() -> void:
 		var bm: BoxMesh = BoxMesh.new()
 		bm.size = Vector3(1.7, 0.04, d.length())
 		seg.mesh = bm
-		seg.material = _mat(C_PATH)
+		var seg_mat: StandardMaterial3D = _mat_textured("ground", C_PATH)
+		seg.material = seg_mat
+		_reskin.append([seg, C_PATH, "ground", seg_mat])
 		seg.position = Vector3((a.x + b.x) * 0.5, 0.02, (a.z + b.z) * 0.5)
 		seg.rotation.y = atan2(d.x, d.z)
 		root.add_child(seg)
@@ -170,7 +181,9 @@ func _build_camp_core() -> void:
 		tent.rotation.y = atan2(dir.x, dir.z)
 		var shell: MeshInstance3D = tent.get_node_or_null("Shell")
 		if shell != null:
-			shell.material = _mat(TENT_COLORS[i])
+			var shell_mat: StandardMaterial3D = _mat_textured("cloth", TENT_COLORS[i])
+			shell.material = shell_mat
+			_reskin.append([shell, TENT_COLORS[i], "cloth", shell_mat])
 
 	# Interactable props (prompt stubs; effect content — Phase 4/10/11).
 	_add_interactable(root, _PILLAR, layout.pillar_pos,
@@ -221,7 +234,9 @@ func _build_zone_gates() -> void:
 		marker.rotation.y = a + PI  # face the camp
 		var mat_node: Node3D = marker.get_node_or_null("Monolith")
 		if mat_node != null and mat_node is MeshInstance3D:
-			(mat_node as MeshInstance3D).material = _mat(C_ZONE_MARKER)
+			var mon_mat: StandardMaterial3D = _mat_textured("stone", C_ZONE_MARKER)
+			(mat_node as MeshInstance3D).material = mon_mat
+			_reskin.append([mat_node, C_ZONE_MARKER, "stone", mon_mat])
 		root.add_child(marker)
 		zone_markers.append(marker)
 
@@ -256,6 +271,31 @@ func _place(template: PackedScene, pos: Vector3,
 
 func _xz(v: Vector3) -> Vector3:
 	return Vector3(v.x, 0.0, v.z)
+
+
+# The parent scene hands the bank after this node's _ready (child
+# _ready order): reskin the built surfaces in place.
+func set_textures(bank: Variant) -> void:
+	textures = bank
+	if bank == null:
+		return
+	for t in _reskin:
+
+		var n: Node = t[0]
+		if not is_instance_valid(n):
+			continue
+		var m: StandardMaterial3D = _mat_textured(t[2], t[1])
+		n.material = m
+		t[3] = m
+
+
+func _mat_textured(id: String, color: Color) -> StandardMaterial3D:
+
+	if textures != null and textures.has(id):
+		var m: StandardMaterial3D = textures.material(id, color)
+		if m != null:
+			return m
+	return _mat(color)
 
 
 func _mat(color: Color) -> StandardMaterial3D:

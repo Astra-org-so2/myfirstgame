@@ -15,13 +15,22 @@ var _left: float = 0.0
 var _placed: bool = false
 
 
+var _theme: Variant = null  # the UiTheme kit (lazy: data default)
+
+
+func _th() -> Variant:
+	if _theme == null:
+		_theme = load("res://data/ui/ui_theme.tres")
+	return _theme
+
+
 func _ready() -> void:
 	layer = 10
 	_label = Label.new()
 	_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_label.add_theme_font_size_override("font_size", 22)
-	_label.add_theme_color_override("font_color", Color(0.92, 0.9, 0.84, 1.0))
-	_label.add_theme_color_override("font_shadow_color", Color(0.0, 0.0, 0.0, 0.9))
+	_label.add_theme_font_size_override("font_size", _th().font_toast)
+	_label.add_theme_color_override("font_color", _th().text_parchment)
+	_label.add_theme_color_override("font_shadow_color", _th().text_shadow)
 	_label.add_theme_constant_override("shadow_offset_x", 1)
 	_label.add_theme_constant_override("shadow_offset_y", 1)
 	add_child(_label)

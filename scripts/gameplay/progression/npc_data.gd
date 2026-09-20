@@ -15,6 +15,10 @@ extends Resource
 @export var npc_id: StringName = &""
 @export var display_name: String = ""
 @export var visual_color: Color = Color(0.7, 0.6, 0.5)
+# Phase 13: the shared character look (CharacterVisual): the
+# collar/scarf accent and the hood (the village is hooded).
+@export var accent_color: Color = Color(0.4, 0.35, 0.3)
+@export var has_hood: bool = true
 @export_group("Trust")
 # Interactions needed for trust 1 (PROGRESSION_DESIGN §4: 2).
 @export var trust_1_interactions: int = 2

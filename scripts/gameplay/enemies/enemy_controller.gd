@@ -25,6 +25,7 @@ const _STYLE = preload("res://scripts/gameplay/memory_stats.gd")
 const _CT = preload("res://scripts/gameplay/combat/combat_target.gd")
 const _DREQ = preload("res://scripts/gameplay/combat/damage_request.gd")
 const _PSTATE = preload("res://scripts/player/player_state.gd")
+const _CV = preload("res://scripts/world/character_visual.gd")
 
 # Telegraph readability: shown from WINDUP start (ENEMY_DESIGN §0.2).
 const PATH_REACH: float = 0.35  # waypoint reached
@@ -42,6 +43,7 @@ func _hub() -> float:
 	return _director.hub_radius() if _director != null else 24.0
 
 var _mesh: MeshInstance3D
+var textures: Variant = null  # the TextureBank (optional)
 var _accent: MeshInstance3D
 var _tele: Label3D
 var _speech: Label3D
@@ -176,38 +178,42 @@ func _note_encounter_allowed() -> bool:
 
 
 func _build_visual() -> void:
-	# Prototype silhouettes (ENEMY_DESIGN §1.3/§2.3/§3.3/§4.3/§5.3):
-	# same primitive language as the camp (ADR-022: no .tscn pipeline).
-	_mesh = MeshInstance3D.new()
-	var cap: CapsuleMesh = CapsuleMesh.new()
+	# Phase 13: the shared character language (CharacterVisual).
+	# The archetype silhouettes (ENEMY_DESIGN §x.3) keep their
+	# colors; the cloth texture lands on them; the echo (Mimic)
+	# gets the desaturated layer look (WORLD_BIBLE §1.1).
+	var _pal: Variant = load("res://data/visual/palette.tres")
+	var h: float = 1.7
+	var r: float = 0.35
 	match _data.archetype:
 		_DATA.Archetype.WATCHER:
-			cap.height = 2.2
-			cap.radius = 0.22
+			h = 2.2
+			r = 0.22
 			_base_color = Color(0.10, 0.10, 0.14)
 		_DATA.Archetype.FORGOTTEN:
-			cap.height = 1.6
-			cap.radius = 0.30
+			h = 1.6
+			r = 0.30
 			_base_color = Color(0.92, 0.92, 0.90)  # bleached
 		_DATA.Archetype.MIMIC:
-			cap.height = 1.7
-			cap.radius = 0.35
-			_base_color = Color(0.45, 0.45, 0.48)  # echo: desaturated
+			# The echo: desaturated, pulled toward the cold tint.
+			_base_color = Color(0.45, 0.45, 0.48).lerp(
+					_pal.echo_tint, 0.35)
+		_DATA.Archetype.REMNANT:
+			_base_color = Color(0.78, 0.78, 0.80)  # Eli's white
 		_:
-			cap.height = 1.7
-			cap.radius = 0.35
-			if _data.archetype == _DATA.Archetype.REMNANT:
-				_base_color = Color(0.78, 0.78, 0.80)  # Eli's white
-			else:
-				_base_color = Color(0.16, 0.18, 0.22)  # hollow: dark
-	_mesh.mesh = cap
-	_mesh.position.y = cap.height * 0.5
-	var mat: StandardMaterial3D = StandardMaterial3D.new()
-	mat.albedo_color = _base_color
-	_mesh.material_override = mat
-	add_child(_mesh)
+			_base_color = Color(0.16, 0.18, 0.22)  # hollow: dark
+	var v: Node3D = _CV.build(self, {
+			"height": h,
+			"radius": r,
+			"cloth": _base_color,
+		}, textures)
+	_mesh = v.get_node_or_null("Body")
+	if _mesh == null:
+		push_error("EnemyController: the visual has no Body")
+		return
 
 	# The "accent": what the eye catches (core / eye / blade).
+	var mat: StandardMaterial3D = null
 	_accent = MeshInstance3D.new()
 	var acc: SphereMesh = SphereMesh.new()
 	match _data.archetype:
@@ -215,7 +221,7 @@ func _build_visual() -> void:
 			# Single eye, at the top (ENEMY_DESIGN §3.3).
 			acc.radius = 0.09
 			acc.height = 0.18
-			_accent.position = Vector3(0.0, cap.height - 0.15, 0.0)
+			_accent.position = Vector3(0.0, h - 0.15, 0.0)
 			mat = _accent_mat(Color(0.60, 0.80, 1.00), 2.0)
 		_DATA.Archetype.HOLLOW:
 			# A faint red core in the chest (ENEMY_DESIGN §1.3).
@@ -249,7 +255,7 @@ func _build_visual() -> void:
 	# Telegraph "!" (ENEMY_DESIGN §0.2: 0.4–0.8 s, always readable).
 	_tele = Label3D.new()
 	_tele.text = "!"
-	_tele.position = Vector3(0.0, cap.height + 0.5, 0.0)
+	_tele.position = Vector3(0.0, h + 0.5, 0.0)
 	_tele.font_size = 48
 	_tele.modulate = Color(1.0, 0.55, 0.15)
 	_tele.visible = false
@@ -257,7 +263,7 @@ func _build_visual() -> void:
 
 	# Speech bubble (Remnant/Mimic/Forgotten lines).
 	_speech = Label3D.new()
-	_speech.position = Vector3(0.0, cap.height + 1.0, 0.0)
+	_speech.position = Vector3(0.0, h + 1.0, 0.0)
 	_speech.font_size = 14
 	_speech.modulate = Color(0.90, 0.95, 1.00)
 	_speech.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER

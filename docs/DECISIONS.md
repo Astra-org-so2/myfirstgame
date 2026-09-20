@@ -1144,3 +1144,122 @@ MeshInstance-секции на босса (капсула+голова, общи
 | R7 | Мистика «объясняется слишком рано» | Нарратив | Mystery-прогресс по стадиям (2–3 фрагмента), qa-маршрут Phase 11 |
 | R8 | GPU-divergence: Adreno/Mali/PowerVR рендерят/перф-ведут себя по-разному (арт-артефакты, просадки на конкретном вендоре) | Визуал/перф релиза | Референс-железо = Adreno (владелец); Mali-проверка — Phase 16/17 (по доступности); консервативные шейдеры/бюджеты; fallback mobile renderer (ADR-021) |
 | R9 | Android-тулчейн (SDK/gradle/AAPT2/JDK) отсутствует в песочнице → APK не собирается/не проверяется здесь | Release-этап | Честное ограничение (ADR-012, §15.5): APK-сбор + ADB-QA — на железе владельца по чек-листу Phase 18; песочница готовит export-конфиг и RELEASE_BUILD.md; headless-тесты покрывают логику |
+
+## ADR-032 — Visual polish: палитра/качество/текстуры/персонажи как данные, light-бюджет = жизненный цикл узлов, UI-kit (Phase 13)
+
+**Статус:** принято (Phase 13, 2026-09-20).
+
+**Контекст.** Phase 13 (ROADMAP: визуальный pass по всем сценам,
+замена prototype-элементов по ASSET_STATUS.md, UI-отделка
+mobile-вёрсткой, mobile-графика по TECH_DESIGN §12 — ASTC/атлас/
+draw calls ≤150/lights ≤6/no heavy post, camera polish, color
+grade). Проблемы: (1) цвета — ad-hoc по файлам (комнаты, лагерь,
+персонажи, UI) при каноне WORLD_BIBLE §1 — «один источник»
+нарушен; (2) mobile-графика (§12) — нет пресетов качества и
+контроля числа локальных источников (Light3D в Forward+ — самая
+дорогая статья мобильной GPU); (3) текстуры — ASSET_GUIDE §7
+обещал tools/utils (генераторы), но их не было; (4) каст —
+каждый персонаж строил свой примитив (5 разных кодов, разный
+язык), prototype-долг P11/P12 (босс = капсула+голова); (5) UI —
+не Godot-дефолт, но цвета ad-hoc per-screen; (6) headless wasm
+rig не регистрирует часть нативных сеттеров (Light3D.enabled,
+Environment.msaa, Viewport.render_scale, MeshInstance3D.material)
+и не имеет глобального кэша class_name — тесты не могут
+просто «установить и прочитать» часть визуального состояния.
+
+**Решения.**
+1. **VisualPalette (Resource, data/visual/palette.tres) — единый
+   источник цветов мира** (WORLD_BIBLE §1: muted green-grey,
+   grey-blue fog, ember = единственный тёплый источник до босса,
+   cold white, rust, layer-tints). Комнаты (floor/walls/frames/
+   obstacles/props), лагерь (path/tents/monoliths/trunks),
+   персонажи — только палитра. Правило проверено unit-тестом
+   (validate(): warm/cold инварианты).
+2. **QualityPreset (data/quality/{low,medium,high}.tres) +
+   QualityManager (scene-composed).** Тир-бюджеты §12: lights
+   3/4/6, shadows off/on/on, render_scale 0.75/1.0/1.0, particles
+   0.5/0.75/1.0, MSAA 1/1/2, tex 512/1024. Дефолт = medium
+   (mid-range Android — референс-устройство). F8 (debug builds)
+   циклирует тир с toast. apply(): set_shadow() (rig-
+   регистрируемая пара) + production-only контролы
+   (msaa/render_scale/atlas — в rig их сеттеры no-op; device-QA
+   P16).
+3. **Light-бюджет = жизненный цикл узлов, а не enabled-флаг.**
+   ZoneWorld при enter/set_light_budget создаёт RoomLight только
+   в комнатах до бюджета (chain order: входные комнаты светят,
+   глубинные — на солнце); при повышении бюджета — пересоздаёт
+   из RoomData. Почему: (a) `Light3D.enabled` в rig no-op
+   (проверено) — флаг не наблюдаем тестами; (b) в production
+   несуществующий свет — реальная экономия (слот GPU), а
+   enabled=false остаётся в light-list; (c) детерминизм:
+   min(rooms, budget) узлов. room_node.ensure_light/drop_light
+   (immediate free — бюджет не может пережить кадр).
+4. **Генеративные текстуры (tools/utils/gen_textures.py): чистый
+   stdlib (zlib/struct/hashlib), детерминированный seed, 8 ×
+   64×64 tileable RGBA (stone/stone_dark/ground/wood/wood_dark/
+   cloth/rust/fog_soft), 15 КБ всего.** TextureBank
+   (scene-composed) грузит PNG (Image.load_from_file — имя в rig),
+   tint-модель: albedo_color = palette_target / texture_base —
+   вариация текстуры переживает тон (проверено unit: tint
+   «приземляется» на палитровую цель ±0.02). ASTC — на уровне
+   export preset (post-MVP), .tres-атлас не нужен: примитив-UV
+   0..1, 64px на фасет достаточно; честная пометка в
+   ASSET_STATUS.md.
+5. **CharacterVisual (статический билдер) — один язык каста:**
+   капсула + hood (сплюснутая сфера) + scarf/collar (цилиндр) +
+   emissive visor; wear (0..1) десычатирует cloth (босс =
+   «усталый ты»). Eli (hood/scarf/visor, cloth-тон = канон
+   eli_cloak — prototype-синий из tscn отозван), 4 NPC
+   (accent = идея персонажа в data: Mara=ember, Orren=grey-blue,
+   Nia=moss, Cartographer=ink), Child (child_pale), THE FIGURE
+   (eli_fresh — FRESH-копия, GDD §8), враги (архетипные цвета
+   + сигнатурный акцент eye/core/blade сохранены; Mimic =
+   echo_tint §1.1), босс (worn-Eli + rust-шарф/фонарь), Remnant
+   (Eli-white + blade). Марра = camp-look + hood (tscn) + cloth
+   (reskin через NPC-ноду — репарентинг раньше банка).
+6. **UI-kit (UiTheme, data/ui/ui_theme.tres):** один набор
+   цветов/радиусов/типографики для всех четырёх экранов
+   (toast/inventory/note/death) — «dark matte + warm parchment +
+   campfire-акцент» (WORLD_BIBLE в UI). Тест: все 4 экрана
+   используют `_th()` (нет ad-hoc-цветов). Touch-layout
+   (16:9–20:9 + safe-area + thumb-зоны) не тронут — ADR-021
+   уже mobile-вёрстка.
+7. **Color grade (main.tscn Environment):** холодный ambient
+   (fog-тон, energy 0.3) + лёгкий adjustment (sat 0.96,
+   contrast 1.04, value 0.99) — «muted» WORLD_BIBLE §1; filmic
+   tonemap и fog (fog_blue) уже были; glow/тяжёлый пост — нет
+   (§12 no heavy post; MSAA ≤4x).
+8. **Camera polish:** aspect-aware base FOV (60° @16:9 → 68°
+   @20:9, линейно; compute_base_fov — чистая функция, unit) +
+   sprint-kick (+6°, демпф 1/с, set_sprinting из player
+   RUN-состояния) — «мощь», не дисторсия.
+9. **Риг-лимиты как контракт (документировано в тестах):**
+   материал читаем через material_override / mesh.material
+   (оба registered; MeshInstance3D.material — NO); class_name —
+   только preload (глобального кэша нет — конвенция проекта);
+   Light3D.enabled/Environment.msaa/Viewport.render_scale —
+   production-only (device-checklist P16). Материалы нод-билдеров
+   держатся в членах (room_node.floor_material, camp
+   _reskin-реестр) — это же production-хук для reskin/grading.
+
+**Альтернативы.** (a) Импортированные CC0-модели/текстуры —
+нет: budget 0 ₽ + text-first ADR-005 + лицензионная чистота;
+замена инкрементальна через data (SceneRef). (b) Light-бюджет
+через enabled+energy-зеркало — отклонено: зеркало — фейк
+состояния; создание/удаление узлов — честный контроль в обоих
+средах. (c) UI через Theme-ресурс и theme-наследование —
+отклонено: экраны code-built (ADR-002), StyleBoxFlat из кита —
+минимальный путь без переписывания вёрстки. (d) Атлас UV для
+примитивов — отклонено: UV примитивов 0..1, ремэп ради атласа
+= переписывание работающего; 8 × 64px = 15 КБ не давят на
+бюджет. (e) Глобальные class_name в rig — недоступны (кэш
+строится редактором), preload — конвенция проекта (ADR-022).
+
+**Последствия.** Визуал MVP = «осознанные примитивы + генерация»
+(final-generative по ASSET_STATUS.md): все prototype-элементы
+закрыты или явно приняты (Ghost — принят). Каст читается
+(характеры: hood+scarf+accent). Mobile: lights ≤6 по тирам,
+текстуры 15 КБ, no heavy post, MSAA ≤4x, render_scale по тиру;
+device-верификация (ASTC/export, draw calls, FPS, терм.) — P16
+checklist. Риг не валидирует рендер-свойства (msaa/render_scale/
+atlas/enabled) — это честно помечено в qa_phase13_visual.md.

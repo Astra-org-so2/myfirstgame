@@ -64,6 +64,35 @@ func run(ctx: Variant) -> void:
 	ctx.check(fov_floor <= _RIG.compute_fov(4.5, 0.75) + EPS,
 			"camera: FOV bounded at min distance")
 
+	# --- Phase 13 polish: the aspect-aware base FOV ---
+	# 16:9 and wider keep 60; 20:9 reaches the portrait value; the
+	# ramp is monotone in between.
+	ctx.check(absf(_RIG.compute_base_fov(16.0 / 9.0) - 60.0) < EPS,
+			"camera: 16:9 keeps the base FOV")
+	ctx.check(absf(_RIG.compute_base_fov(20.0 / 9.0) - 68.0) < EPS,
+			"camera: 20:9 reaches the portrait FOV")
+	var mid: float = _RIG.compute_base_fov(18.0 / 9.0)
+	ctx.check(mid > 60.0 and mid < 68.0,
+			"camera: the aspect ramp is between (got %.1f)" % mid)
+	ctx.check(_RIG.compute_base_fov(1.5) == 60.0,
+			"camera: landscape stays at the base")
+	# The collision compensation uses the aspect base as its floor.
+	var fov_close_p: float = _RIG.compute_fov(4.5, 2.25, 68.0)
+	ctx.check(fov_close_p > 68.0,
+			"camera: the portrait base compensates too")
+	# The sprint kick: the flag drives the damped kick.
+	cr.set_sprinting(true)
+	cr._physics_process(1.0 / 60.0)
+	var kick0: float = cr._sprint_fov
+	cr._physics_process(1.0 / 60.0)
+	ctx.check(cr._sprint_fov > kick0,
+			"camera: the sprint kick ramps up")
+	cr.set_sprinting(false)
+	for i in 60:
+		cr._physics_process(1.0 / 60.0)
+	ctx.check(cr._sprint_fov < 0.3,
+			"camera: the sprint kick decays (got %.2f)" % cr._sprint_fov)
+
 	rig.free()
 
 

@@ -36,6 +36,11 @@ var player: Node = null
 var nav: _NAV = null
 var level: Node3D
 var _cooldown: float = SWITCH_COOLDOWN
+# The active local lights cap (quality preset, §12): the level's
+# RoomLights beyond the budget stay disabled (deterministic: the
+# chain keeps its entry-side lights — deeper rooms run on the sun).
+var _light_budget: int = 6
+var textures: Variant = null
 
 
 func setup(run_layout: _RL) -> void:
@@ -67,9 +72,30 @@ func enter(area_id: StringName) -> void:
 		rn.room = rp.room
 		rn.resolved = rp.doors
 		rn.position = rp.origin
+		rn.textures = textures
 		level.add_child(rn)  # _ready builds the visuals
 	nav = _build_nav(a)
+	_apply_light_budget()
 	_cooldown = SWITCH_COOLDOWN
+
+
+func set_light_budget(n: int) -> void:
+	_light_budget = maxi(n, 1)
+	if current != &"" and not is_camp():
+		_apply_light_budget()
+
+
+func _apply_light_budget() -> void:
+	if level == null:
+		return
+	# Chain order = build order = tree order: the entry-side rooms
+	# keep their lights, the deep rooms run on the sun.
+	for i in level.get_child_count():
+		var rn: Node = level.get_child(i)
+		if i < _light_budget:
+			rn.ensure_light()
+		else:
+			rn.drop_light()
 
 
 func is_camp() -> bool:

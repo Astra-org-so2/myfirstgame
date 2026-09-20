@@ -72,13 +72,22 @@ func show_offers(offers: Array, levels: Array, seed: int) -> void:
 		x += card_w + gap
 	# The countdown bar.
 	_bar = ColorRect.new()
-	_bar.color = Color(0.7, 0.55, 0.4, 0.8)
+	_bar.color = _th().accent_warm
+	_bar.color.a = 0.8
 	_bar.position = Vector2(screen.x * 0.3, screen.y * 0.74)
 	_bar_max = screen.x * 0.4
 	_bar.size = Vector2(_bar_max, maxf(2.0, screen.y * 0.008))
 	_root.add_child(_bar)
 	visible = true
 
+
+var _theme: Variant = null  # the UiTheme kit (lazy: data default)
+
+
+func _th() -> Variant:
+	if _theme == null:
+		_theme = load("res://data/ui/ui_theme.tres")
+	return _theme
 
 func _make_card(d: Resource, level: int, rect: Rect2) -> Control:
 	var card: Control = Control.new()
@@ -87,16 +96,15 @@ func _make_card(d: Resource, level: int, rect: Rect2) -> Control:
 	var w: float = rect.size.x
 	var h: float = rect.size.y
 	var bg: ColorRect = ColorRect.new()
-	bg.color = Color(0.10, 0.11, 0.13, 0.92)
+	bg.color = _th().panel_bg
 	bg.position = Vector2.ZERO
 	bg.size = rect.size
 	card.add_child(bg)
 	var title: Label = Label.new()
 	title.text = d.display_name
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_font_size_override("font_size", 18)
-	title.add_theme_color_override("font_color",
-			Color(0.95, 0.92, 0.85, 1.0))
+	title.add_theme_font_size_override("font_size", _th().font_title)
+	title.add_theme_color_override("font_color", _th().text_bright)
 	title.position = Vector2(w * 0.08, h * 0.10)
 	title.size = Vector2(w * 0.84, h * 0.16)
 	card.add_child(title)
@@ -104,9 +112,8 @@ func _make_card(d: Resource, level: int, rect: Rect2) -> Control:
 	line.text = d.ui_line
 	line.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	line.add_theme_font_size_override("font_size", 14)
-	line.add_theme_color_override("font_color",
-			Color(0.8, 0.78, 0.72, 1.0))
+	line.add_theme_font_size_override("font_size", _th().font_small)
+	line.add_theme_color_override("font_color", _th().text_parchment)
 	line.position = Vector2(w * 0.10, h * 0.30)
 	line.size = Vector2(w * 0.80, h * 0.44)
 	card.add_child(line)
@@ -114,9 +121,8 @@ func _make_card(d: Resource, level: int, rect: Rect2) -> Control:
 		var lv: Label = Label.new()
 		lv.text = "(deeper: level %d)" % level
 		lv.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		lv.add_theme_font_size_override("font_size", 12)
-		lv.add_theme_color_override("font_color",
-				Color(0.6, 0.7, 0.6, 1.0))
+		lv.add_theme_font_size_override("font_size", _th().font_tiny)
+		lv.add_theme_color_override("font_color", _th().text_moss)
 		lv.position = Vector2(w * 0.08, h * 0.80)
 		lv.size = Vector2(w * 0.84, h * 0.12)
 		card.add_child(lv)

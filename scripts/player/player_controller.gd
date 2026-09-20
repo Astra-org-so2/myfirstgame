@@ -83,6 +83,12 @@ func _ready() -> void:
 	combat.guarded.connect(_on_combat_guarded)
 
 
+# The camera's sprint kick (P13 polish): the rig reads the run flag.
+func _camera_sprint_sync(state: int) -> void:
+	if camera_rig != null:
+		camera_rig.set_sprinting(state == _STATE.State.RUN)
+
+
 func _physics_process(delta: float) -> void:
 	# Combat target tick (stun decay). The i-frame state is pushed
 	# AFTER the logic update below — the dodge state can end inside the
@@ -150,6 +156,7 @@ func _physics_process(delta: float) -> void:
 
 	# State + visual.
 	var state: int = _logic.state
+	_camera_sprint_sync(state)
 	if state != _prev_state:
 		if _prev_state == _STATE.State.DODGE:
 			dodge_ended.emit()

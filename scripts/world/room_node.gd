@@ -12,6 +12,9 @@ const _ROOM = preload("res://scripts/gameplay/rooms/room_data.gd")
 const _OB = preload("res://scripts/gameplay/rooms/obstacle_box.gd")
 const _DW = preload("res://scripts/gameplay/rooms/doorway_def.gd")
 const _RD = preload("res://scripts/gameplay/rooms/resolved_door.gd")
+# Phase 13: the structural colors come from the canonical
+# palette (WORLD_BIBLE §1) — one source for the whole world.
+const _PALETTE = preload("res://data/visual/palette.tres")
 
 const WALL_H: float = 3.0
 const WALL_T: float = 0.4
@@ -23,6 +26,15 @@ var room: _ROOM
 # are sealed in the current run; the visuals follow the data — the
 # sealed door must look sealed, A16 legibility).
 var resolved: Array = []  # Array[ResolvedDoor]
+var _light: OmniLight3D = null
+# The materials this node USES (the rig no-ops the mesh material
+# setter; the members are the reskin/grading hook AND the test
+# handle for the palette->material wiring).
+var floor_material: StandardMaterial3D = null
+var wall_material: StandardMaterial3D = null
+# The texture bank (the main scene hands it down; null = the
+# flat-color fallback, e.g. in the headless tests).
+var textures: Variant = null
 
 
 func _ready() -> void:
@@ -35,8 +47,9 @@ func _build() -> void:
 	var w: float = room.size.x
 	var d: float = room.size.y
 	# Floor.
+	floor_material = _mat_pal(_PALETTE.ground, "ground")
 	var floor: MeshInstance3D = _box(Vector3(w, 0.2, d),
-			Vector3(0.0, -0.1, 0.0), _mat(0.16, 0.17, 0.16))
+			Vector3(0.0, -0.1, 0.0), floor_material)
 	floor.name = "Floor"
 	add_child(floor)
 	# Walls with doorway gaps (sealed doors get a solid wall + seal).
@@ -78,7 +91,7 @@ func _build() -> void:
 		var ob: _OB = o
 		var box: MeshInstance3D = _box(ob.size,
 				Vector3(ob.position.x, ob.size.y * 0.5, ob.position.z),
-				_mat(0.2, 0.2, 0.21))
+				_mat_pal(_PALETTE.stone_dark, "stone_dark"))
 		box.name = "Obstacle_%d" % oi
 		oi += 1
 		add_child(box)
@@ -86,18 +99,16 @@ func _build() -> void:
 	# visible — ENV_STORYTELLING §3).
 	_prop()
 	# The room's light (data color/energy; shadows off, mobile).
-	var light: OmniLight3D = OmniLight3D.new()
-	light.name = "RoomLight"
-	light.position = Vector3(0.0, WALL_H - 0.6, 0.0)
-	light.light_color = room.light_color
-	light.light_energy = room.light_energy * 2.2
-	light.omni_range = maxf(w, d) * 1.1
-	light.shadow = false
+	# Lifecycled by the ZoneWorld's light budget (quality preset,
+	# §12): rooms beyond the budget have no light node at all.
+	var light: OmniLight3D = _make_light(w, d)
 	add_child(light)
+	_light = light
 
 
 func _wall(parent: Node3D, _side: String, len: float, at: float,
 		gaps: Array, axis: float) -> void:
+	wall_material = _mat_pal(_PALETTE.stone, "stone")
 	# axis 0 = wall runs along X at z = at; axis 1 = along Z at x = at.
 	# gaps: centers of the doorway mouths along the wall.
 	var segs: Array = []  # [start, end] in wall coordinates
@@ -120,11 +131,11 @@ func _wall(parent: Node3D, _side: String, len: float, at: float,
 		var c: float = (a + b) * 0.5
 		if axis == 0.0:
 			var m: MeshInstance3D = _box(Vector3(seg_len, WALL_H, WALL_T),
-					Vector3(c, WALL_H * 0.5, at), _mat(0.22, 0.22, 0.2))
+					Vector3(c, WALL_H * 0.5, at), wall_material)
 			parent.add_child(m)
 		else:
 			var m2: MeshInstance3D = _box(Vector3(WALL_T, WALL_H, seg_len),
-					Vector3(at, WALL_H * 0.5, c), _mat(0.22, 0.22, 0.2))
+					Vector3(at, WALL_H * 0.5, c), wall_material)
 			parent.add_child(m2)
 	# The lintel above each gap (the door is open, the frame remains).
 	for g in gaps:
@@ -132,11 +143,11 @@ func _wall(parent: Node3D, _side: String, len: float, at: float,
 		if axis == 0.0:
 			lintel = _box(Vector3(DOOR_GAP + 0.6, WALL_H - DOOR_H, WALL_T),
 					Vector3(g, DOOR_H + (WALL_H - DOOR_H) * 0.5, at),
-					_mat(0.22, 0.22, 0.2))
+					_mat_pal(_PALETTE.stone, "stone"))
 		else:
 			lintel = _box(Vector3(WALL_T, WALL_H - DOOR_H, DOOR_GAP + 0.6),
 					Vector3(at, DOOR_H + (WALL_H - DOOR_H) * 0.5, g),
-					_mat(0.22, 0.22, 0.2))
+					_mat_pal(_PALETTE.stone, "stone"))
 		parent.add_child(lintel)
 
 
@@ -157,10 +168,10 @@ func _seal(parent: Node3D, p: Vector3) -> void:
 	var slab: MeshInstance3D
 	if axis_x:
 		slab = _box(Vector3(WALL_T, WALL_H, DOOR_GAP + 0.2),
-				p, _mat(0.22, 0.22, 0.2))
+				p, _mat_pal(_PALETTE.stone, "stone"))
 	else:
 		slab = _box(Vector3(DOOR_GAP + 0.2, WALL_H, WALL_T),
-				p, _mat(0.22, 0.22, 0.2))
+				p, _mat_pal(_PALETTE.stone, "stone"))
 	parent.add_child(slab)
 	var ring: MeshInstance3D = MeshInstance3D.new()
 	var cm: CylinderMesh = CylinderMesh.new()
@@ -205,7 +216,7 @@ func _doorframe(parent: Node3D, p: Vector3) -> void:
 	for sgn in [-1.0, 1.0]:
 		var post: MeshInstance3D = _box(
 				Vector3(0.5, DOOR_H + 0.4, 0.5),
-				p + off * sgn, _mat(0.3, 0.3, 0.34))
+				p + off * sgn, _mat_pal(_PALETTE.stone, "stone"))
 		parent.add_child(post)
 
 
@@ -223,7 +234,7 @@ func _prop() -> void:
 			cm.height = 0.08
 			disc.mesh = cm
 			disc.position = Vector3(0.0, 0.04, 0.0)
-			disc.material = _mat(0.3, 0.3, 0.34)
+			disc.material = _mat_pal(_PALETTE.stone, "stone")
 			root.add_child(disc)
 		_ROOM.Role.MYSTERY:
 			var beam: MeshInstance3D = MeshInstance3D.new()
@@ -240,16 +251,16 @@ func _prop() -> void:
 		_ROOM.Role.SHELTER:
 			var table: MeshInstance3D = _box(Vector3(1.6, 0.7, 1.0),
 					Vector3(-room.size.x * 0.25, 0.35, 0.0),
-					_mat(0.32, 0.28, 0.22))
+					_mat_pal(_PALETTE.wood_dark, "wood_dark"))
 			root.add_child(table)
 		_ROOM.Role.COMBAT:
 			var slab: MeshInstance3D = _box(Vector3(2.4, 0.18, 1.2),
-					Vector3(0.0, 0.09, 0.0), _mat(0.2, 0.2, 0.22))
+					Vector3(0.0, 0.09, 0.0), _mat_pal(_PALETTE.stone_dark, "stone_dark"))
 			root.add_child(slab)
 		_ROOM.Role.LOOT:
 			var crate: MeshInstance3D = _box(Vector3(0.7, 0.7, 0.7),
 					Vector3(room.size.x * 0.2, 0.35, 0.0),
-					_mat(0.3, 0.27, 0.2))
+					_mat_pal(_PALETTE.wood_dark, "wood_dark"))
 			root.add_child(crate)
 		_:
 			pass  # CORRIDOR: the obstacles ARE the props
@@ -264,6 +275,50 @@ func _box(sz: Vector3, pos: Vector3, material: StandardMaterial3D) \
 	mi.position = pos
 	mi.material = material
 	return mi
+
+
+# --- The light's lifecycle (the ZoneWorld budget calls these) ---
+
+func _make_light(w: float, d: float) -> OmniLight3D:
+	var light: OmniLight3D = OmniLight3D.new()
+	light.name = "RoomLight"
+	light.position = Vector3(0.0, WALL_H - 0.6, 0.0)
+	light.light_color = room.light_color
+	light.light_energy = room.light_energy * 2.2
+	light.omni_range = maxf(w, d) * 1.1
+	light.shadow = false
+	return light
+
+
+func ensure_light() -> void:
+	# Budget raised (e.g. the F8 cycle): recreate the light from the
+	# room data.
+	if _light != null:
+		return
+	var l: OmniLight3D = _make_light(room.size.x, room.size.y)
+	_light = l
+	add_child(l)
+
+
+func drop_light() -> void:
+	if _light == null:
+		return
+	var l: OmniLight3D = _light
+	_light = null
+	l.free()  # immediate: the budget change must not outlive the call
+
+
+func _pmat(c: Color) -> StandardMaterial3D:
+	return _mat(c.r, c.g, c.b)
+
+# The palette color through the texture bank when available (the
+# texture variation survives the tint, TextureBank model).
+func _mat_pal(c: Color, id: String) -> StandardMaterial3D:
+	if textures != null and textures.has(id):
+		var m: StandardMaterial3D = textures.material(id, c)
+		if m != null:
+			return m
+	return _pmat(c)
 
 
 func _mat(r: float, g: float, b: float) -> StandardMaterial3D:

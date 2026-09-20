@@ -47,15 +47,14 @@ func _build() -> void:
 		cell_c.position = Vector2(x0 + col * cell, y0 + row * cell)
 		cell_c.size = Vector2(cell * 0.9, (grid_h / 3.0) * 0.9)
 		var bg: ColorRect = ColorRect.new()
-		bg.color = Color(0.12, 0.13, 0.15, 0.9)
+		bg.color = _th().cell_bg
 		bg.set_anchors_preset(Control.PRESET_FULL_RECT)
 		cell_c.add_child(bg)
 		var lab: Label = Label.new()
 		lab.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		lab.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		lab.add_theme_font_size_override("font_size", 16)
-		lab.add_theme_color_override("font_color",
-				Color(0.9, 0.87, 0.8, 1.0))
+		lab.add_theme_font_size_override("font_size", _th().font_body)
+		lab.add_theme_color_override("font_color", _th().text_parchment)
 		lab.set_anchors_preset(Control.PRESET_FULL_RECT)
 		cell_c.add_child(lab)
 		cell_c.mouse_filter = Control.MOUSE_FILTER_STOP
@@ -64,6 +63,14 @@ func _build() -> void:
 		_slots.append({"control": cell_c, "label": lab})
 	_place()
 
+
+var _theme: Variant = null  # the UiTheme kit (lazy: data default)
+
+
+func _th() -> Variant:
+	if _theme == null:
+		_theme = load("res://data/ui/ui_theme.tres")
+	return _theme
 
 func _place() -> void:
 	var screen: Vector2 = get_viewport().get_visible_rect().size

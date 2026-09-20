@@ -23,6 +23,7 @@ const _CT = preload("res://scripts/gameplay/combat/combat_target.gd")
 const _ECTRL = preload("res://scripts/gameplay/enemies/enemy_controller.gd")
 const _EDATA = preload("res://scripts/gameplay/enemies/enemy_data.gd")
 const _WDATA = preload("res://scripts/gameplay/combat/weapon_data.gd")
+const _CV = preload("res://scripts/world/character_visual.gd")
 
 # CHARACTER_BIBLE §8 (the 10 lines, the canonical order).
 const LINE_ENTRY: String = "You came back. Good. This time I'll be quick."
@@ -56,6 +57,7 @@ var _target: _CT = null
 var _seal_mats: Array = []
 var _label: Label3D = null
 var _body_mat: StandardMaterial3D = null
+var textures: Variant = null  # the TextureBank (optional)
 var _dissolve_left: float = -1.0
 var _line_left: float = 0.0
 var _learn_cd: float = 0.0
@@ -420,26 +422,23 @@ func is_defeated() -> bool:
 func _build_visual() -> void:
 	# Reveal #7: he is ELI (the player's build) in a worn material —
 	# "the tired you" (CHARACTER_BIBLE §8). The lantern is his.
-	_body_mat = StandardMaterial3D.new()
-	_body_mat.albedo_color = Color(0.55, 0.53, 0.5)
-	var body: MeshInstance3D = MeshInstance3D.new()
-	var cm: CapsuleMesh = CapsuleMesh.new()
-	cm.radius = 0.35
-	cm.height = 1.7
-	body.mesh = cm
-	body.position = Vector3(0.0, 0.85, 0.0)
-	body.material_override = _body_mat
-	body.name = "Body"
-	add_child(body)
-	var head: MeshInstance3D = MeshInstance3D.new()
-	var sm: SphereMesh = SphereMesh.new()
-	sm.radius = 0.22
-	sm.height = 0.44
-	head.mesh = sm
-	head.position = Vector3(0.0, 1.95, 0.0)
-	head.material_override = _body_mat
-	head.name = "Head"
-	add_child(head)
+	# Phase 13: the shared character language (CharacterVisual) —
+	# the worn cloak (wear desaturates) + the hood + the rust.
+	var _pal: Variant = load("res://data/visual/palette.tres")
+	var v: Node3D = _CV.build(self, {
+			"cloth": _pal.first_worn,
+			"wear": 0.55,
+			"hood": true,
+			"scarf": true,
+			"accent": _pal.rust,
+		}, textures)
+	var body: Node = v.get_node_or_null("Body")
+	if body == null:
+		push_error("BossController: the visual has no Body")
+		return
+	# The death dissolve mutates this material (keep the link).
+	_body_mat = body.material_override
+	_body_mat.transparency = 1  # TRANSPARENCY_ALPHA: the fade reads
 	# His lantern (first_traces_seen: "the big footprints + his
 	# lantern" — the same light the player saw in the mine).
 	var stick: MeshInstance3D = MeshInstance3D.new()
@@ -447,8 +446,7 @@ func _build_visual() -> void:
 	bm.size = Vector3(0.04, 0.7, 0.04)
 	stick.mesh = bm
 	stick.position = Vector3(0.45, 1.1, 0.0)
-	var smat: StandardMaterial3D = StandardMaterial3D.new()
-	smat.albedo_color = Color(0.3, 0.26, 0.2)
+	var smat: StandardMaterial3D = _CV.rust_mat(textures)
 	stick.material_override = smat
 	add_child(stick)
 	var lamp: MeshInstance3D = MeshInstance3D.new()
@@ -458,7 +456,7 @@ func _build_visual() -> void:
 	lamp.mesh = lm
 	lamp.position = Vector3(0.45, 0.72, 0.0)
 	var lmat: StandardMaterial3D = StandardMaterial3D.new()
-	lmat.albedo_color = Color(1.0, 0.85, 0.55)
+	lmat.albedo_color = _pal.ember_amber.lerp(Color.WHITE, 0.25)
 	lmat.emission_enabled = true
 	lmat.emission = Color(1.0, 0.8, 0.4)
 	lmat.emission_energy_multiplier = 2.0

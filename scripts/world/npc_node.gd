@@ -28,6 +28,7 @@ const _CT = preload("res://scripts/gameplay/combat/combat_target.gd")
 const _DREQ = preload("res://scripts/gameplay/combat/damage_request.gd")
 const _DLINES = preload("res://scripts/gameplay/mystery/dialogue_lines.gd")
 const _DLN = preload("res://scripts/gameplay/mystery/dialogue_line.gd")
+const _CV = preload("res://scripts/world/character_visual.gd")
 
 const HP: float = 50.0
 
@@ -53,6 +54,11 @@ var current_run_id: int = 1
 
 # `custom_visual` (optional): a richer look to adopt (Mara keeps her
 # Phase 3 model) instead of the generic capsule.
+# The texture bank (the main scene sets it before setup();
+# null = flat fallback in the tests).
+var textures: Variant = null
+
+
 func setup(data: _DATA, state: _STATE, resolver: Node, player: Node,
 		custom_visual: Node = null) -> void:
 	_data = data
@@ -60,6 +66,8 @@ func setup(data: _DATA, state: _STATE, resolver: Node, player: Node,
 	_resolver = resolver
 	if custom_visual != null:
 		add_child(custom_visual)  # reparent: keeps the global position
+		if textures != null:
+			_reskin_custom(custom_visual)
 	else:
 		_build_visual_body()
 	_build_label()
@@ -105,16 +113,31 @@ func get_trust() -> int:
 
 
 func _build_visual_body() -> void:
-	var mi: MeshInstance3D = MeshInstance3D.new()
-	var cm: CapsuleMesh = CapsuleMesh.new()
-	cm.radius = 0.35
-	cm.height = 1.7
-	mi.mesh = cm
-	mi.position = Vector3(0.0, 0.85, 0.0)
-	var mat: StandardMaterial3D = StandardMaterial3D.new()
-	mat.albedo_color = _data.visual_color
-	mi.material_override = mat
-	add_child(mi)
+	# Phase 13: the shared character language (CharacterVisual) —
+	# the cloth is the data color, the accent is the character's
+	# idea (Mara = ember, Orren = grey-blue, ...).
+	var look: Dictionary = {
+		"cloth": _data.visual_color,
+		"accent": _data.accent_color,
+		"hood": _data.has_hood,
+		"scarf": true,
+	}
+	var v: Node3D = _CV.build(self, look, textures)
+	add_child(v)
+
+
+# The custom look (Mara's camp visual): the cloth on the coat/hood.
+func _reskin_custom(v: Node) -> void:
+	var coat: Color = Color(0.3, 0.26, 0.2)
+	for part in ["Body", "Hood"]:
+		# The custom visual is the MaraAnchor wrapper (the look is
+		# one level down), so search, not path.
+		var n: Node = v.find_child(part, true, false)
+		if n == null or not (n is MeshInstance3D):
+			continue
+		var m: StandardMaterial3D = textures.material("cloth", coat, 0.9)
+		if m != null:
+			(n as MeshInstance3D).mesh.material = m
 
 
 func _build_label() -> void:

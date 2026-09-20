@@ -16,6 +16,7 @@ extends Node3D
 const _NOTE = preload("res://scripts/world/note_stand.gd")
 const _BOOK = preload("res://scripts/world/world_book.gd")
 const _EV = preload("res://scripts/gameplay/run/run_event.gd")
+const _CV = preload("res://scripts/world/character_visual.gd")
 
 # Canonical lines (FIRST_30_MINUTES — English MVP).
 const LINE_A2: String = "YOU HAVE BEEN HERE BEFORE."
@@ -401,34 +402,29 @@ func _spawn_figure(area_id: StringName) -> void:
 
 func _build_el_figure() -> Node3D:
 	# Eli's silhouette: the player's build, 100% opacity, no "worn"
-	# material (a FRESH copy — GDD §8).
-	var fig: Node3D = Node3D.new()
-	var mat: StandardMaterial3D = StandardMaterial3D.new()
-	mat.albedo_color = Color(0.82, 0.8, 0.76)
-	var body: MeshInstance3D = MeshInstance3D.new()
-	var cm: CapsuleMesh = CapsuleMesh.new()
-	cm.radius = 0.35
-	cm.height = 1.7
-	body.mesh = cm
-	body.position = Vector3(0.0, 0.85, 0.0)
-	body.material_override = mat
-	body.name = "Body"
-	fig.add_child(body)
-	var head: Node3D = Node3D.new()
-	head.name = "Head"
-	head.position = Vector3(0.0, 1.95, 0.0)
-	fig.add_child(head)
-	var hm: MeshInstance3D = MeshInstance3D.new()
-	var sm: SphereMesh = SphereMesh.new()
-	sm.radius = 0.22
-	sm.height = 0.44
-	hm.mesh = sm
-	hm.material_override = mat
-	head.add_child(hm)
+	# material (a FRESH copy — GDD §8). Phase 13: the shared
+	# character language (the hood + the scarf make it readable as
+	# ELI from 30 m out).
+	var _pal: Variant = load("res://data/visual/palette.tres")
+	var bank: Variant = null
+	if _main != null:
+		bank = _main.get("textures")
+	var v: Node3D = _CV.build(Node3D.new(), {
+			"cloth": _pal.eli_fresh,
+			"accent": _pal.eli_scarf,
+			"hood": true,
+			"scarf": true,
+		}, bank)
+	var body: Node = v.get_node_or_null("Body")
+	var hood: Node = v.get_node_or_null("Hood")
+	if body == null or hood == null:
+		push_error("FirstRunDirector: the figure is missing parts")
+		return v
+	# The dissolve/fade (stages 2/3) fades these two materials.
 	_figure_meshes.clear()
 	_figure_meshes.append(body)
-	_figure_meshes.append(hm)
-	return fig
+	_figure_meshes.append(hood)
+	return v
 
 
 func _build_footprints(pos: Vector3, dir: Vector3) -> void:

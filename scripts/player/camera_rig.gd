@@ -12,6 +12,15 @@ extends Node3D
 
 const BASE_FOV: float = 60.0
 const HEAD_HEIGHT: float = 1.4
+# Phase 13 polish: the portrait aspect (16:9 -> 20:9) narrows the
+# view; the base FOV widens on tall screens (mobile-first, ADR-021).
+const PORTRAIT_FOV: float = 68.0
+const PORTRAIT_RATIO: float = 20.0 / 9.0
+const LANDSCAPE_RATIO: float = 16.0 / 9.0
+# The sprint kick: a few degrees while running, damped (feel, not
+# distortion — the mobile reference keeps the motion subtle).
+const SPRINT_FOV: float = 6.0
+const SPRINT_DAMP: float = 6.0  # 1/s
 # JoyAxis enum members are not registered in the headless wasm rig
 # (ADR-022): use the raw axis indices (2 = right X, 3 = right Y).
 const AXIS_RIGHT_X: int = 2
@@ -34,6 +43,10 @@ var _cam: Camera3D
 var _ray: RayCast3D
 var _initialized: bool = false
 var _mouse_dragging: bool = false
+
+# The sprint kick state (the player sets the run flag each frame).
+var _sprinting: bool = false
+var _sprint_fov: float = 0.0
 
 # Impact shake (Phase 4 feel): impulse adds amplitude, exponential decay.
 var _shake_amp: float = 0.0
@@ -65,13 +78,27 @@ static func compute_offset(yaw_a: float, pitch_a: float, dist: float) -> Vector3
 	return Vector3(sin(yaw_a) * horiz, sin(pitch_a) * dist, cos(yaw_a) * horiz)
 
 
+# The aspect-aware base FOV: 60 degrees at 16:9, up to PORTRAIT_FOV
+# at 20:9 (linear between; clamped outside the range).
+static func compute_base_fov(aspect: float) -> float:
+	if aspect <= LANDSCAPE_RATIO:
+		return BASE_FOV
+	if aspect >= PORTRAIT_RATIO:
+		return PORTRAIT_FOV
+	var t: float = (aspect - LANDSCAPE_RATIO) / (PORTRAIT_RATIO
+			- LANDSCAPE_RATIO)
+	return lerpf(BASE_FOV, PORTRAIT_FOV, t)
+
+
 # Camera FOV that compensates when collision shortens the distance
-# (keeps the frustum width at the player ~constant).
-static func compute_fov(base_dist: float, actual_dist: float) -> float:
+# (keeps the frustum width at the player ~constant). `base_fov` is
+# the aspect-aware value (see compute_base_fov).
+static func compute_fov(base_dist: float, actual_dist: float,
+		base_fov: float = BASE_FOV) -> float:
 	var d: float = maxf(actual_dist, MIN_DIST)
 	if d >= base_dist - 0.001:
-		return BASE_FOV
-	var half: float = tan(deg_to_rad(BASE_FOV) * 0.5)
+		return base_fov
+	var half: float = tan(deg_to_rad(base_fov) * 0.5)
 	return rad_to_deg(2.0 * atan(half * base_dist / d))
 
 
@@ -131,9 +158,19 @@ func _physics_process(delta: float) -> void:
 	_update_camera(delta)
 
 
+# The player tells the rig when it is sprinting (the kick follows,
+# damped, so the motion reads as "momentum", not a zoom jump).
+func set_sprinting(on: bool) -> void:
+	_sprinting = on
+
+
 func _update_camera(delta: float) -> void:
 	var head_local: Vector3 = Vector3(0.0, HEAD_HEIGHT, 0.0)
 	var desired: Vector3 = head_local + compute_offset(yaw, pitch, base_distance)
+	# The sprint kick: approach the target exponentially (symmetric).
+	var sprint_target: float = SPRINT_FOV if _sprinting else 0.0
+	_sprint_fov = lerpf(_sprint_fov, sprint_target,
+			1.0 - exp(-SPRINT_DAMP * delta))
 
 	# Wall collision: cast head -> desired, shorten on hit. The ray node is
 	# placed at the head anchor; Godot 4 casts node-origin -> target_position
@@ -160,7 +197,10 @@ func _update_camera(delta: float) -> void:
 		var t: float = 1.0 - exp(-SMOOTHING * delta)
 		_cam.position = _cam.position.lerp(cam_target, t)
 	_cam.look_at(global_position + Vector3(0.0, HEAD_HEIGHT, 0.0))
-	_cam.fov = compute_fov(base_distance, dist)
+	var aspect: float = get_viewport().get_visible_rect().size.x / \
+			maxf(get_viewport().get_visible_rect().size.y, 1.0)
+	_cam.fov = compute_fov(base_distance, dist,
+			compute_base_fov(aspect)) + _sprint_fov
 
 
 func _snap_to_desired() -> void:

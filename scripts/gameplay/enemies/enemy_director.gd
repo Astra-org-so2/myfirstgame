@@ -65,6 +65,9 @@ const NOISE_DURATION: float = 0.5
 const HUB_PAD: float = 2.0  # boundary pad beyond the nav ring
 
 
+var textures: Variant = null  # the TextureBank (optional)
+
+
 func setup(player: Node, stats: _STYLE, thresholds: _THR,
 		p_resolver: Node) -> void:
 	_player = player
@@ -110,6 +113,7 @@ func start(table: _TABLE) -> void:
 			pos = spawn_overrides[entry.enemy.id]
 			spawn_overrides.erase(entry.enemy.id)  # one-shot
 		var ctrl: _CTRL = _CTRL.new()
+		ctrl.textures = textures
 		ctrl.name = "Enemy_" + String(entry.enemy.id)
 		add_child(ctrl)
 		ctrl.setup(entry.enemy, pos, _player, self)

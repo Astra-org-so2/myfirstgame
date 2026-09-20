@@ -92,6 +92,14 @@ const _BOSS_CTRL = preload("res://scripts/gameplay/boss/boss_controller.gd")
 const _BOSS_GATE = preload("res://scripts/gameplay/boss/boss_gate.gd")
 const _BOSS_DATA = preload("res://data/boss_the_first.tres")
 const _BLADE_DATA = preload("res://data/weapons/first_blade.tres")
+# Phase 13 — the quality tiers (TECHNICAL_DESIGN §12, mobile-first):
+const _QUALITY_MGR = preload("res://scripts/world/quality_manager.gd")
+const _QUALITY_PRESET = preload("res://scripts/world/quality_preset.gd")
+const _QUALITY_LOW = preload("res://data/quality/low.tres")
+const _QUALITY_MEDIUM = preload("res://data/quality/medium.tres")
+const _QUALITY_HIGH = preload("res://data/quality/high.tres")
+const _PALETTE = preload("res://data/visual/palette.tres")
+const _TEX_BANK = preload("res://scripts/world/texture_bank.gd")
 
 # The session seed (RUN 1's layout is the canonical one the A-beats
 # were designed against; run N>1 = derived — RunManager.derive_seed).
@@ -144,6 +152,10 @@ var ghost_director: _GHOST_DIR
 var world_director: _WORLD_DIR
 var note_panel: _NOTE_PANEL
 var mystery: _MYSTERY_DIR
+var quality: _QUALITY_MGR = null
+var textures: _TEX_BANK = null
+var palette: Variant = _PALETTE
+var _f8_prev: bool = false
 var boss_gate: _BOSS_GATE = _BOSS_GATE.new()
 var boss: _BOSS_CTRL = null
 var _mine_deep_timer: float = 0.0
@@ -306,6 +318,16 @@ func _setup_progression(layout: _LAYOUT, camp: _CAMP) -> void:
 	# camp when a zone level is active).
 	camp_layer = Node3D.new()
 	camp_layer.name = "CampLayer"
+	# Phase 13: the texture set (ASSET_GUIDE §7) — composed BEFORE
+	# the cast is built (the NPCs/child/boss need the bank at setup).
+	textures = _TEX_BANK.new()
+	textures.name = "TextureBank"
+	add_child(textures)
+	textures.load_all()
+	director.textures = textures
+	var _vis: Node = player.get_node_or_null("Visual")
+	if _vis != null and _vis.has_method("set_textures"):
+		_vis.set_textures(textures)
 	add_child(camp_layer)
 
 	# NPCs (PROGRESSION_DESIGN §3): Mara stays at her camp spot; the
@@ -321,6 +343,7 @@ func _setup_progression(layout: _LAYOUT, camp: _CAMP) -> void:
 		var pos: Vector3 = npc_positions.get(d.npc_id, Vector3.ZERO)
 		var npc: _NPC_NODE = _NPC_NODE.new()
 		npc.name = "NPC_" + String(d.npc_id)
+		npc.textures = textures
 		if d.npc_id == &"nia":
 			# A11: Nia is in the village, not the camp (the first-30-
 			# minutes script meets her there). She joins the village
@@ -422,6 +445,17 @@ func _setup_zones() -> void:
 	zone_world.set_player(player)
 	zone_world.door_crossed.connect(_on_door_crossed)
 	zone_world.level_freed.connect(_on_level_freed)
+	# Phase 13: the quality tier (medium = the mid-range base,
+	# §12; the reference device is a Snapdragon 7-class Android).
+	quality = _QUALITY_MGR.new()
+	quality.name = "QualityManager"
+	add_child(quality)
+	quality.setup(_QUALITY_MEDIUM, $WorldEnvironment.environment,
+			$Sun, get_viewport())
+	zone_world.set_light_budget(quality.light_budget())
+	# Phase 13: the world surfaces (the cast got the bank earlier).
+	zone_world.textures = textures
+	$CampWorld.set_textures(textures)
 	# The scripted first-30-minutes beats (event-driven, A1–A19).
 	# Phase 11: the reveal gate (the mystery stages, 1 stage/run).
 	# BEFORE first_run: the beats pass the director to the setup.
@@ -555,6 +589,7 @@ func _place_child(area_id: StringName) -> void:
 	var child: _CHILD = _CHILD.new()
 	child.name = "TheChild"
 	child.encounter_lines = sp.lines
+	child.textures = textures
 	child.setup(player)
 	# The data position is an offset from the zone's entry room origin
 	# (level-local, like the village NPCs).
@@ -716,6 +751,27 @@ func _on_door_crossed(area_id: StringName, room_id: StringName,
 # P12 (BOSS_DESIGN §2.1): the deep mine (the 3rd room of the mine
 # chain and below) — two world facts land here: the exploration
 # flag (any run) and the first traces (RUN 05+, once seen).
+# F8 (debug builds only): Low -> Medium -> High -> Low. The toast
+# is the QA handle for the §12 budgets on device.
+func _debug_quality_cycle() -> void:
+	if not OS.is_debug_build():
+		return
+	var pressed: bool = Input.is_action_just_pressed("debug_f8")
+	if pressed and not _f8_prev and quality != null:
+		var next: _QUALITY_PRESET
+		match quality.preset.id:
+			&"low":
+				next = _QUALITY_MEDIUM
+			&"medium":
+				next = _QUALITY_HIGH
+			_:
+				next = _QUALITY_LOW
+		quality.set_preset(next)
+		zone_world.set_light_budget(quality.light_budget())
+		toast.show_text("Quality: " + next.display_name, 1.5)
+	_f8_prev = pressed
+
+
 func _check_mine_deep(delta: float) -> void:
 	if player == null or not is_instance_valid(player) \
 			or _current_area != &"the_mine":
@@ -806,6 +862,7 @@ func _set_up_undercroft() -> void:
 	if not progress.ws.flag(&"boss_defeated"):
 		boss = _BOSS_CTRL.new()
 		boss.name = "BossTheFirst"
+		boss.textures = textures
 		zone_world.level.add_child(boss)
 		boss.global_position = o + Vector3(0.0, 0.0, -3.0)
 		boss.setup(_BOSS_DATA, player, resolver, progress.ws,
@@ -1198,6 +1255,7 @@ func _on_level_freed() -> void:
 
 func _process(delta: float) -> void:
 	_check_mine_deep(delta)
+	_debug_quality_cycle()
 	if _a1_rect != null and _a1_left > 0.0:
 		_a1_left -= delta
 		var k: float = clampf(1.0 - _a1_left / A1_FADE_SECONDS, 0.0, 1.0)

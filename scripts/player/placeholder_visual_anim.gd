@@ -13,6 +13,7 @@ class_name PlaceholderVisualAnim
 extends Node3D
 
 const _STATE = preload("res://scripts/player/player_state.gd")
+const _CV = preload("res://scripts/world/character_visual.gd")
 
 const HURT_FLASH := Color(1.0, 0.35, 0.3, 1.0)
 
@@ -22,6 +23,7 @@ var _body_mat: StandardMaterial3D
 var _visor_mat: StandardMaterial3D
 var _body_mat_base: Color
 var _visor_mat_base: Color
+var textures: Variant = null  # the TextureBank (the main sets it)
 
 
 func _ready() -> void:
@@ -30,12 +32,70 @@ func _ready() -> void:
 	if bm == null or vm == null:
 		push_error("PlaceholderVisualAnim: missing Body/BodyMesh or Body/Visor")
 		return
-	_body_mat = bm.material
-	_visor_mat = vm.material
+	# The tscn keeps the materials on the MESH (not the instance
+	# override): the hurt flash and the cloth swap work on the mesh.
+	_body_mat = (bm.mesh as CapsuleMesh).material
+	_visor_mat = (vm.mesh as BoxMesh).material
+	bm.mesh.material = _body_mat
+	vm.mesh.material = _visor_mat
 	if _body_mat is StandardMaterial3D:
 		_body_mat_base = _body_mat.albedo_color
 	if _visor_mat is StandardMaterial3D:
 		_visor_mat_base = _visor_mat.albedo_color
+	_build_eli_details()
+
+
+# Phase 13: Eli's silhouette — the hood + the scarf (his identity:
+# "the one with the scarf"). The cloth texture lands via the bank
+# (set_textures) when the main scene has it.
+func _build_eli_details() -> void:
+	var _pal: Variant = load("res://data/visual/palette.tres")
+	var body: Node3D = get_node_or_null("Body")
+	if body == null:
+		return
+	var hood: MeshInstance3D = MeshInstance3D.new()
+	hood.name = "Hood"
+	var sm: SphereMesh = SphereMesh.new()
+	sm.radius = 0.32
+	sm.height = 0.6
+	hood.mesh = sm
+	hood.position = Vector3(0.0, 1.72, 0.0)
+	hood.scale = Vector3(1.0, 0.82, 1.06)
+	hood.material_override = _body_mat
+	body.add_child(hood)
+	var scarf: MeshInstance3D = MeshInstance3D.new()
+	scarf.name = "Scarf"
+	var cym: CylinderMesh = CylinderMesh.new()
+	cym.top_radius = 0.41
+	cym.bottom_radius = 0.44
+	cym.height = 0.13
+	scarf.mesh = cym
+	scarf.position = Vector3(0.0, 1.52, 0.0)
+	scarf.material_override = _CV.accent_mat(
+			_pal.eli_scarf, false, textures)
+	body.add_child(scarf)
+
+
+# The bank arrives after _ready (child _ready order): swap the flat
+# cloth for the textured one (the palette cloak is the canonical
+# Eli color — the tscn prototype blue is retired).
+func set_textures(bank: Variant) -> void:
+	textures = bank
+	var _pal: Variant = load("res://data/visual/palette.tres")
+	var m: StandardMaterial3D = bank.material("cloth", _pal.eli_cloak, 0.8)
+	if m != null:
+		_body_mat = m
+		_body_mat_base = _pal.eli_cloak
+		var bm: MeshInstance3D = get_node_or_null("Body/BodyMesh")
+		if bm != null:
+			(bm.mesh as CapsuleMesh).material = m
+	var body: Node3D = get_node_or_null("Body")
+	if body == null:
+		return
+	var scarf: Node = body.get_node_or_null("Scarf")
+	if scarf != null and scarf is MeshInstance3D:
+		(scarf as MeshInstance3D).material_override = \
+				_CV.accent_mat(_pal.eli_scarf, false, bank)
 
 
 func update(state: int, delta: float,

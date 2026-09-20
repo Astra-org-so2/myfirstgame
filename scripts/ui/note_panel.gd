@@ -26,6 +26,14 @@ func _ready() -> void:
 
 # Show the 5-line pool. `existing` = the current note's line id
 # (the stand is re-writable: it is highlighted).
+var _theme: Variant = null  # the UiTheme kit (lazy: data default)
+
+
+func _th() -> Variant:
+	if _theme == null:
+		_theme = load("res://data/ui/ui_theme.tres")
+	return _theme
+
 func show_pool(lines: PackedStringArray, existing: int = -1) -> void:
 	_visible = true
 	visible = true
@@ -38,10 +46,8 @@ func show_pool(lines: PackedStringArray, existing: int = -1) -> void:
 	var panel_w: float = screen.x * 0.86
 	var panel_h: float = screen.y * 0.62
 	var panel: Panel = Panel.new()
-	var bg: StyleBoxFlat = StyleBoxFlat.new()
-	bg.bg_color = Color(0.08, 0.09, 0.1, 0.92)
-	bg.set_corner_radius_all(10)
-	bg.set_content_margin_all(16)
+	var bg: StyleBoxFlat = _th().panel_style()
+	bg.bg_color = _th().panel_bg
 	panel.add_theme_stylebox_override("panel", bg)
 	panel.position = Vector2((screen.x - panel_w) * 0.5,
 			(screen.y - panel_h) * 0.3)
@@ -49,9 +55,8 @@ func show_pool(lines: PackedStringArray, existing: int = -1) -> void:
 	_root.add_child(panel)
 	var title: Label = Label.new()
 	title.text = "leave a note"
-	title.add_theme_font_size_override("font_size", 18)
-	title.add_theme_color_override("font_color",
-			Color(0.85, 0.82, 0.72))
+	title.add_theme_font_size_override("font_size", _th().font_title)
+	title.add_theme_color_override("font_color", _th().text_dim)
 	title.position = Vector2(0.0, 8.0)
 	title.size = Vector2(panel_w, 28.0)
 	panel.add_child(title)
@@ -74,22 +79,16 @@ func show_pool(lines: PackedStringArray, existing: int = -1) -> void:
 func _make_row(text: String, highlight: bool, row_h: float,
 		idx: int = -1) -> Control:
 	var c: Control = Control.new()
-	var bg: StyleBoxFlat = StyleBoxFlat.new()
-	if highlight:
-		bg.bg_color = Color(0.2, 0.22, 0.26, 0.9)
-	else:
-		bg.bg_color = Color(0.13, 0.14, 0.17, 0.85)
-	bg.set_corner_radius_all(6)
+	var bg: StyleBoxFlat = _th().cell_style(highlight)
 	var p: Panel = Panel.new()
 	p.add_theme_stylebox_override("panel", bg)
 	p.set_anchors_preset(Control.PRESET_FULL_RECT)
 	c.add_child(p)
 	var l: Label = Label.new()
 	l.text = "· " + text
-	l.add_theme_font_size_override("font_size", 14)
+	l.add_theme_font_size_override("font_size", _th().font_small)
 	l.add_theme_color_override("font_color",
-			Color(0.88, 0.86, 0.8) if highlight
-			else Color(0.78, 0.77, 0.72))
+			_th().text_parchment if highlight else _th().text_dim)
 	l.position = Vector2(12.0, row_h * 0.5 - 10.0)
 	l.size = Vector2(c.size.x - 24.0, 20.0)
 	c.add_child(l)

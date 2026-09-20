@@ -47,6 +47,9 @@ const SUITES = [
 			["unit"]],
 	["mystery", "res://tests/unit/mystery_test.gd", ["unit"]],
 	["boss", "res://tests/unit/boss_test.gd", ["unit"]],
+	["visual_pass", "res://tests/unit/visual_pass_test.gd", ["unit"]],
+	["ui_theme", "res://tests/unit/ui_theme_test.gd", ["unit"]],
+	["character_visual", "res://tests/unit/character_visual_test.gd", ["unit"]],
 	["player_scene", "res://tests/integration/player_scene_test.gd",
 			["integration"]],
 	["camp_scene", "res://tests/integration/camp_scene_test.gd",
@@ -69,6 +72,10 @@ const SUITES = [
 	["mystery_scene", "res://tests/integration/mystery_scene_test.gd",
 			["integration"]],
 	["boss_scene", "res://tests/integration/boss_scene_test.gd",
+			["integration"]],
+	["visual_scene", "res://tests/integration/visual_scene_test.gd",
+			["integration"]],
+	["cast_scene", "res://tests/integration/cast_scene_test.gd",
 			["integration"]],
 ]
 

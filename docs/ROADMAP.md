@@ -1,6 +1,6 @@
 # AFTER YOU — Roadmap (фазы, вехи, exit-criteria)
 
-Версия: 1.2 (Phase 12 закрыта, GDD v2.0). Формат статуса фазы
+Версия: 1.3 (Phase 13 закрыта, GDD v2.0). Формат статуса фазы
 (обязателен при закрытии):
 `STATUS / IMPLEMENTED / TESTED / KNOWN ISSUES / NEXT`.
 
@@ -756,6 +756,26 @@ camera polish, color grade.
 Manual: qa_phase13_visual.md (+ мобильные чек-листы).
 Exit: «никаких prototype-элементов» (чек по списку); mobile-графика
 в бюджете §12 (ASTC, draw calls, lights).
+
+STATUS: done (2026-09-20, ADR-032).
+IMPLEMENTED: VisualPalette (data-driven мир-цвета, WORLD_BIBLE §1),
+QualityPreset low/medium/high + QualityManager (F8, тир-бюджеты §12),
+light-бюджет = жизненный цикл RoomLight-узлов (medium 4 / high 6),
+генеративные текстуры (8 × 64×64 tileable, seed, 15 КБ) + TextureBank
+(tint-модель), CharacterVisual — один язык каста (Eli/4 NPC/Child/
+THE FIGURE FRESH-копия/враги-архетипы/босс worn-Eli/Remnant),
+color grade (холодный ambient + лёгкий adjustment, filmic, fog),
+UI-kit UiTheme (4 экрана: toast/note/inventory/death), camera polish
+(aspect-aware base FOV 60→68° + damped sprint-kick), ASSET_STATUS.md
+(prototype = 0).
+TESTED: unit visual_pass/ui_theme (палитра/качество/ткань/tint/kit),
+integration: camp_scene (ткань+каст), rooms (свет-бюджет по тиру),
+combat (Remnant/EliFigure), boss (Remnant), ghost (THE FIGURE),
+death (kit), touch_layout (20:9); regression 819/451.
+KNOWN ISSUES: риг не валидирует рендер-свойства (msaa/render_scale/
+atlas/enabled — production-only, device-check P16); ASTC — export
+preset post-MVP; camp-листва flat; Ghost-визуал «явно принят».
+NEXT: Phase 14 (Audio).
 
 ## PHASE 14 — Audio polish
 Scope: все категории по GDD §8 (финальные лицензии или осознанные

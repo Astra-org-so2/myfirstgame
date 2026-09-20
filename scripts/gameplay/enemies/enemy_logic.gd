@@ -59,6 +59,7 @@ var _prev_player_phase: int = -1
 # Set at spawn (director/builder):
 var first_encounter: bool = false   # Remnant: speaks and leaves
 var note_encounter: bool = false  # Remnant: the #6 note reading
+var respect: bool = false          # Remnant: the First Blade (no first attack)
 # Lines appended to the first-encounter sequence at runtime (the
 # #6 beat: the Remnant reads the player's note and adds its line).
 var extra_lines: PackedStringArray = PackedStringArray()
@@ -103,6 +104,15 @@ func get_pos() -> Vector2:
 
 # The controller calls when the resolver lands damage (not blocked).
 # Returns true when the interrupt was accepted.
+# A scripted leave (the boss minion at half hp): the dissolve-as-LEAVE
+# path — no kill, no stats, no remnant_met (the world remnant's flag).
+func gentle_leave() -> bool:
+	if _state == _ST.State.DEATH:
+		return false
+	_enter(_ST.State.LEAVE)
+	return true
+
+
 func interrupt_hurt() -> bool:
 	if _state == _ST.State.DEATH or _state == _ST.State.HURT:
 		return false
@@ -268,6 +278,8 @@ func _idle(sense: _SENSE, events: Array[String]) -> void:
 				events.append(EV_STATE_CHANGED)
 		_:
 			if _seen_or_heard(sense):
+				if respect and not first_encounter and not note_encounter:
+					return  # the First Blade: it does not attack first
 				if _data.archetype == _DATA.Archetype.REMNANT \
 						and (first_encounter or note_encounter):
 					_enter(_ST.State.SPEAK)

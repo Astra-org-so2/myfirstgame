@@ -74,6 +74,7 @@ const _PASSIVE_ECHO_DATA = preload("res://data/echo/passive_echo.tres")
 # Phase 10 — the persistent world (WORLD_STATE_DESIGN, TECH §4):
 const _WORLD_DIR = preload("res://scripts/world/world_director.gd")
 const _NOTE_PANEL = preload("res://scripts/ui/note_panel.gd")
+const _NOTE_STAND = preload("res://scripts/world/note_stand.gd")
 const _NOTE_LINES_DATA = preload("res://data/note_lines.tres")
 const _STANDS_DATA = preload("res://data/player_note_stands.tres")
 const _TRANSFORM_DATA = preload(
@@ -86,6 +87,11 @@ const _MYSTERY_LINES_DATA = preload(
 		"res://data/dialogue/npc_mystery_lines.tres")
 const _CHILD = preload("res://scripts/world/world_child.gd")
 const _CHILD_SPAWNS_DATA = preload("res://data/mystery/child_spawns.tres")
+# Phase 12 — THE FIRST (the Undercroft boss, BOSS_DESIGN):
+const _BOSS_CTRL = preload("res://scripts/gameplay/boss/boss_controller.gd")
+const _BOSS_GATE = preload("res://scripts/gameplay/boss/boss_gate.gd")
+const _BOSS_DATA = preload("res://data/boss_the_first.tres")
+const _BLADE_DATA = preload("res://data/weapons/first_blade.tres")
 
 # The session seed (RUN 1's layout is the canonical one the A-beats
 # were designed against; run N>1 = derived — RunManager.derive_seed).
@@ -138,6 +144,10 @@ var ghost_director: _GHOST_DIR
 var world_director: _WORLD_DIR
 var note_panel: _NOTE_PANEL
 var mystery: _MYSTERY_DIR
+var boss_gate: _BOSS_GATE = _BOSS_GATE.new()
+var boss: _BOSS_CTRL = null
+var _mine_deep_timer: float = 0.0
+var _current_area: StringName = &"camp"
 var _child: Node = null
 var run_generator: _ROOM_GEN
 var _area_pool: Dictionary = {}
@@ -480,6 +490,7 @@ func _check_layout(layout_res: _RUN_LAYOUT, where: String) -> void:
 func _enter_level(area_id: StringName) -> void:
 	if zone_world == null:
 		return
+	_current_area = area_id
 	if tracker != null:
 		tracker.explore_zone(area_id)
 	var is_camp: bool = area_id == &"camp"
@@ -498,6 +509,16 @@ func _enter_level(area_id: StringName) -> void:
 	if world_director != null:
 		world_director.on_level_entered(area_id, zone_world.level)
 		_wire_world_objects()
+	# P12: the mine's first traces (RUN 05+, the deep level) — the
+	# level rebuilds per entry, so the world prop is re-placed on
+	# every entry from RUN 05 (the flag lands when the player
+	# actually reaches the deep rooms — _check_mine_deep).
+	if area_id == &"the_mine" and first_run != null \
+			and run_manager.run_id >= 5:
+		_place_first_traces()
+	# P12: the Undercroft (pre-boss notes + the FIRST BLADE + the boss).
+	if area_id == &"undercroft":
+		_set_up_undercroft()
 	# Phase 11 (M1 stage 2): the Passive Echo walks the player's path
 	# (the reveal lands when the ghost is actually in this level).
 	if ghost_director != null and ghost_director.has_active_ghost():
@@ -682,8 +703,134 @@ func _on_door_crossed(area_id: StringName, room_id: StringName,
 		push_error("Main scene: door target anchor missing: "
 				+ String(rd.to_anchor))
 		return
+	# P12: the Undercroft door is sealed until The First falls
+	# (the door is the boss itself, BOSS_DESIGN §6; one-shot).
+	if target == &"undercroft" and not progress.ws.flag(
+				&"boss_defeated"):
+		toast.show_text("The door is closed. (stone)", 2.5)
+		return
 	_enter_level(target)
 	player.get_port().set_position(t_rp.origin + td.local_pos)
+
+
+# P12 (BOSS_DESIGN §2.1): the deep mine (the 3rd room of the mine
+# chain and below) — two world facts land here: the exploration
+# flag (any run) and the first traces (RUN 05+, once seen).
+func _check_mine_deep(delta: float) -> void:
+	if player == null or not is_instance_valid(player) \
+			or _current_area != &"the_mine":
+		return
+	_mine_deep_timer += delta
+	if _mine_deep_timer < 0.5:
+		return
+	_mine_deep_timer = 0.0
+	var a: _AP = run_layout.get_area(&"the_mine")
+	if a == null or a.rooms.size() <= int(_BOSS_GATE.MINE_DEEP_INDEX):
+		return
+	var p: Vector3 = player.global_position
+	for i in a.rooms.size():
+		var rp: _RP = a.rooms[i]
+		var half: Vector2 = rp.room.size * 0.5 + Vector2(1.0, 1.0)
+		if absf(p.x - rp.origin.x) <= half.x \
+				and absf(p.z - rp.origin.z) <= half.y:
+			if i >= int(_BOSS_GATE.MINE_DEEP_INDEX):
+				_on_mine_deep()
+			return
+
+
+func _on_mine_deep() -> void:
+	if not progress.ws.flag(&"mine_level_3_explored"):
+		progress.ws.set_flag(&"mine_level_3_explored")
+	# RUN 05+: the deep level carries the big footprints and his
+	# lantern — reaching it (in RUN 05+) is seeing them.
+	if run_manager.run_id >= 5 and not progress.ws.flag(
+				&"first_traces_seen"):
+		progress.ws.set_flag(&"first_traces_seen")
+		toast.show_text("...the footprints are bigger than mine.", 3.5)
+
+
+# The mine's deep-level prop (BOSS_DESIGN §2.1: «большие следы» +
+# «его фонарь»): placed in the deepest room on every mine entry from
+# RUN 05 (the level rebuilds per entry — the world remembers).
+func _place_first_traces() -> void:
+	var a: _AP = run_layout.get_area(&"the_mine")
+	if a == null or a.rooms.size() < 2:
+		return
+	var rp: _RP = a.rooms.back()
+	var spot: Vector3 = Vector3.ZERO
+	if rp.room.event_spots.size() > 0:
+		spot = rp.room.event_spots[0]
+	elif rp.room.loot_spots.size() > 0:
+		spot = rp.room.loot_spots[0]
+	first_run.place_first_traces(rp.origin + spot)
+
+
+# P12 (BOSS_DESIGN §2.2-4): the Undercroft content — the 3 pre-boss
+# notes of The First, the FIRST BLADE take/leave, the boss.
+func _set_up_undercroft() -> void:
+	var a: _AP = run_layout.get_area(&"undercroft")
+	if a == null or zone_world.level == null:
+		return
+	var rp: _RP = a.rooms[0]
+	var o: Vector3 = rp.origin
+	# The 3 notes (pre-boss read; CHARACTER_BIBLE §8 #2/#3 live here
+	# for the players who read before they fight).
+	var notes: Array = [
+		["I was you. I was everyone. That's the trick. That's the trap."],
+		["You'll fight like me. Of course. I taught you, in a way."],
+		["Every time you reach the end, you restart everything. "
+		 + "I'm sorry. I was, too. \u2014 The First"],
+	]
+	for i in notes.size():
+		var stand: _NOTE_STAND = _NOTE_STAND.new()
+		stand.name = "NoteStand_first_%d" % i
+		stand.lines = PackedStringArray(notes[i])
+		stand.flag_id = &""
+		stand.beat = "undercroft_first_%d" % i
+		stand.position = o + Vector3(-4.0 + i * 4.0, 0.0, 6.0)
+		stand.setup(player)
+		zone_world.level.add_child(stand)
+	# The FIRST BLADE (WEAPON_DESIGN §4.3): take or leave it — the
+	# choice is world-state (the boss comments either way).
+	if not progress.ws.is_weapon_found(&"weapon_first_blade"):
+		var pickup: _WEAPON_PICKUP = _WEAPON_PICKUP.new()
+		pickup.name = "WeaponPickup_first_blade"
+		pickup.position = o + (rp.room.loot_spots[0]
+				if rp.room.loot_spots.size() > 0
+				else Vector3(6.0, 0.0, 6.0))
+		pickup.setup(_BLADE_DATA, progress, loadout, player,
+				"It is still warm.")
+		zone_world.level.add_child(pickup)
+	# The boss (unless already defeated — the arena then holds the
+	# aftermath: the notes, the stand, the open seal).
+	if not progress.ws.flag(&"boss_defeated"):
+		boss = _BOSS_CTRL.new()
+		boss.name = "BossTheFirst"
+		zone_world.level.add_child(boss)
+		boss.global_position = o + Vector3(0.0, 0.0, -3.0)
+		boss.setup(_BOSS_DATA, player, resolver, progress.ws,
+				loadout, director, o, Vector3(0.0, 0.0, -3.0))
+		boss.defeated.connect(_on_boss_defeated)
+		boss.stage_reveal.connect(_on_boss_stage_reveal)
+		loadout.weapon_changed.connect(boss._on_weapon_changed)
+		if progress.ws.is_weapon_found(&"weapon_first_blade"):
+			progress.ws.set_flag(&"first_blade_taken")
+			boss.blade_taken_changed(true)
+		boss.start_fight()
+
+
+func _on_boss_defeated() -> void:
+	# K6: the door opens (the flag the generator + the sealed door
+	# read); K7 (the gate glow, the thinner fog) is flag-driven on
+	# the gate's next entry (the world remembers, P10).
+	progress.ws.set_flag(&"boss_defeated")
+	toast.show_text("The door is open.", 3.0)
+	toast.show_text("The fog thins.", 3.5)
+
+
+func _on_boss_stage_reveal(stage_id: StringName) -> void:
+	# M2.3 (MYSTERY_REVEAL_MAP): the phase-2 line lands the stage.
+	mystery.reveal(stage_id, progress.ws, run_manager.run_id)
 
 
 # Production weapon pickups (fixed_loot data, WEAPON_DESIGN §5): the
@@ -794,6 +941,12 @@ func _begin_new_run() -> void:
 	var prev_record: Variant = progress.ws.runs.get_run(
 			run_manager.run_id)
 	var seed: int = run_manager.begin_next_run()
+	# The boss door (P12, ADR-019: a window, not a timer): the gate
+	# rule is compound (mine level 3 + deaths + the first traces),
+	# the result is ONE flag — evaluate it BEFORE the generator
+	# reads progress.ws.flags (the door condition is data-driven).
+	progress.ws.set_flag(&"boss_door_open", boss_gate.should_open(
+			progress.ws, run_manager.run_id - 1))
 	run_layout = run_generator.generate(seed, progress.ws.flags)
 	_check_layout(run_layout, "run %d rebuild" % run_manager.run_id)
 	zone_world.setup(run_layout)  # frees the old level, new one
@@ -923,6 +1076,12 @@ func _on_enemy_killed(_enemy_id: StringName, pos: Vector3) -> void:
 # The equipped weapon changed (pickup or the switch key): route its
 # signals (cannon noise wakes enemies; the staff's effects show).
 func _on_weapon_changed(_id: StringName) -> void:
+	# P12: the FIRST BLADE taken (WEAPON_DESIGN §4.3) — the flag the
+	# boss's comments and the remnants' respect read.
+	if String(_id) == "weapon_first_blade":
+		progress.ws.set_flag(&"first_blade_taken")
+		if boss != null and is_instance_valid(boss):
+			boss.blade_taken_changed(true)
 	var c: Node = loadout.current()
 	if c == null:
 		return
@@ -1038,6 +1197,7 @@ func _on_level_freed() -> void:
 # ---------------------------------------------------------------------------
 
 func _process(delta: float) -> void:
+	_check_mine_deep(delta)
 	if _a1_rect != null and _a1_left > 0.0:
 		_a1_left -= delta
 		var k: float = clampf(1.0 - _a1_left / A1_FADE_SECONDS, 0.0, 1.0)

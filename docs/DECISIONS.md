@@ -974,6 +974,163 @@ Whisper #4 (gate, post-boss) — флаг gate_welcome_whisper, триггер
 unit + маршрут integration.
 
 
+## ADR-031 — THE FIRST (Undercroft boss): module scripts/gameplay/boss/, одна-флаг дверь, parry-окно, core-удар по печати, Remnant-миньон (Phase 12)
+
+**Статус:** принято (Phase 12, 2026-09-18).
+
+**Контекст.** Phase 12 (ROADMAP: «Boss: THE FIRST (Undercroft) — 2
+фазы, pattern-memory, core-hit, FIRST BLADE take/leave,
+Remnant-миньон, death sequence K6->K7»): первый и единственный
+босс MVP (BOSS_DESIGN.md). Проблемы: (1) ядро босса (FSM,
+pattern-memory, окно ядра, фазы) — самая «плотная» игровая логика
+проекта; в main_scene она стала бы God-class (ADR-001) и была бы
+не тестируема без сцены (ADR-023); (2) дверь в Undercroft —
+событийное условие из трёх фактов (mine_level_3_explored + 3
+смерти + first_traces_seen, BOSS_DESIGN §2.1), но слой
+комнат/дверей data-driven на ОДНОМ флаге (area_connection.
+condition) — композитное правило и интерфейс-флаг должны жить
+раздельно (ADR-019: «окно, не таймер»); (3) parry босса —
+единственный в проекте механизм, где «блок» должен покрыть
+удар, ещё в полёте (active-фаза прихода идёт ПОСЛЕ
+swing_started) — простое «invulnerable на кадр» блокировало бы
+только кадр, а не удар; (4) FIRST BLADE (WEAPON_DESIGN §4.3) —
+выбор take/leave должен читаться миром (Echoes «уважают» клинок,
+босс комментирует оба исхода) без нового механизма выбора —
+только world-state + существующие сигналы.
+
+**Решения.**
+1. **Модуль scripts/gameplay/boss/ (6 скриптов):** `boss_data`
+   (Resource: все числа боя в data/boss_the_first.tres),
+   `pattern_memory` (RefCounted: история шагов,
+   LEARNED/PARRY_TRIGGER/BROKEN, пороги из данных, фазовое
+   reset_threshold), `boss_sense` (RefCounted: позиция игрока —
+   логика не знает сцену), `boss_logic` (RefCounted FSM:
+   IDLE/TELE-*/ACTIVE-*/CORE_WINDOW/LOOK/PARRY/STUN/
+   PHASE_SHIFT/DEATH_*/DEFEATED; решения только, перемещение —
+   нет), `boss_gate` (RefCounted: композитное правило двери ->
+   ОДИН флаг boss_door_open, «once open, always open»),
+   `boss_controller` (Node3D: визуал, steering (полоса 1.5–3.0
+   м вокруг печати), доставка атак через DamageResolver,
+   печать (TorusMesh, emission в окне ядра), Label3D-реплики,
+   миньон, dissolve). Паттерн P4–P11: чистая логика RefCounted +
+   тонкий Node-мост (ADR-023); main_scene держит только
+   composition + 3 колбэка (defeated/stage_reveal/weapon_changed).
+2. **Шаги pattern-memory = «weapon_id:hit_index» (melee).**
+   Оружие — источник событий (swing_started у melee-контроллера),
+   босс не знает оружие; ranged/staff не дают шагов (босс
+   «учит ваши замахи» — melee-ядро дизайна). Комбо клинка
+   (3 нажатия, combo_window 0.5 с) = последовательность
+   [0,1,2]; 3 повторения = LEARNED (0.3 с «look» + реплика #4,
+   cd 30 с); следующее завершение = PARRY_TRIGGER.
+3. **Parry = CombatTarget.invulnerable на всё окно (0.4 с) +
+   counter 25.** Ключевой момент: `parry_swing()` (boss_logic)
+   fires counter и помечает used, но **не выходит из PARRY** —
+   блок держится до конца окна (тик логики гасит state), иначе
+   active-фаза пришедшего удара (0.35 с после swing_started)
+   проходила бы после «окна». Контроллер additionally ставит
+   invulnerable=true синхронно в кадре триггера (до
+   hitbox-sampling того же удара) — гонка порядка обработки
+   нод. Unit-тест фиксирует оба свойства (window-hold,
+   once-only counter).
+4. **Core-удар = one-shot по печати в окне (2 с / 4 с с клинком;
+   30/50 dmg).** Окно открывается ПОСЛЕ slam (событие
+   core_window_open -> emission печати: «ядро видно», GDD §6.2);
+   окно = состояние FSM (CORE_WINDOW), а не таймер-флаг;
+   успешный core_hit закрывает окно (IDLE). Проверка удара —
+   в swing_started (melee, dist(player, seal) <= range+0.5) —
+   до hitbox-sampling (честно: «удар достал печать»).
+5. **Дверь Undercroft: композит -> один флаг.**
+   `boss_gate.should_open(ws, deaths)` (mine_level_3_explored И
+   deaths >= 3 И first_traces_seen; плюс short-circuit на уже
+   открытом boss_door_open) оценивается в `_begin_new_run` ДО
+   `run_generator.generate` (генератор читает progress.ws.flags);
+   data/areas/the_mine.tres condition = `boss_door_open`
+   (data-driven, как все двери). Факты ложатся из сцены:
+   `_check_mine_deep` (тик 0.5 с, только в the_mine: комната
+   index >= 2 по run_layout = mine_level_3_explored; RUN 05+ =
+   first_traces_seen + toast) и `first_run_director.
+   place_first_traces` (глубочайшая комната: 3 тёмных овала +
+   его фонарь, emission без dynamic light — мобильный бюджет).
+   Тело босса (boss_defeated) — НЕ условие двери: босс
+   достижим только когда окно уже открыто, а «once open»
+   коротко замыкает правило.
+6. **Миньон = duplicate remnant_mirror через существующий
+   enemy pipeline.** `EnemyController.setup(duplicate(true),
+   pos, player, director)` (health 80/damage 15 из boss_data,
+   first_encounter_leaves=false); на <=50% hp — `gentle_leave()`
+   (enemy_logic: _enter(LEAVE)) = dissolve-as-LEAVE: **без
+   kill-записи** (EV_LEAVE-путь директора, P5), без
+   remnant_met-флагов мира (это не встреча). Новый код —
+   `gentle_leave()` (2 строки в logic) + passthrough в
+   controller; pipeline не расширялся.
+7. **FIRST BLADE take/leave = world-state + существующие
+   сигналы, без нового механизма.** Pickup (WeaponPickup,
+   fixed path) -> ws.set_weapon_found + first_blade_found;
+   main `_on_weapon_changed` (weapon_first_blade) -> флаг
+   `first_blade_taken` + `boss.blade_taken_changed(true)`
+   (реплика #5 + logic.set_blade: окно 4 с/50 dmg). «Уважение»
+   (WEAPON_DESIGN §4.1): `enemy_director.respects_first_blade()`
+   (флаг ws) гейтит REMNANT IDLE-aggro (не first/note-встречи);
+   первый реальный удар по такому ремнанту гасит respect
+   (`_respect_broken`); одноразовая реплика «...that was mine.»
+   (<=3 м, speech-bubble — без нового UI).
+8. **Death sequence K6 -> K7:** hp<=0 (set_hp, death BEFORE
+   phase check) -> DEATH_DISSOLVE (3 с, dissolve-алфа
+   _body_mat, реплика #9) -> DEATH_FINAL (реплика #10 «let
+   them go», 2 с) -> DEFEATED -> сигнал defeated ->
+   main: `boss_defeated` (флаг K7: gate glow/туман — P10,
+   flag-driven на следующем входе) + toasts «The door is
+   open.» / «The fog thins.» + M2.3: `stage_reveal("m2_first")`
+   на PHASE_SHIFT (реплика #6 = линия стадии; гейт reveal —
+   RUN 05+, MYSTERY_REVEAL_MAP; сцена RUN <5 получает сигнал,
+   но стадия не ложится — честный гейт, integration проверяет
+   оба факта). Переходы состояний детектирует контроллер
+   member-переменной `_prev_state` (set_hp/parry/core_hit меняют
+   state МЕЖДУ тиками — tick-local prev терял биаты: реплика
+   смерти не звучала).
+9. **Реплики #1–#10 (CHARACTER_BIBLE §8):** #2/#3 — pre-boss
+   стенды (3 записки The First, BOSS_DESIGN §2.2); остальные —
+   в бою по триггерам (вход/learn/blade/phase2/last-stand-30%/
+   core/death/final). #7 (не взял клинок) — в last stand (30%),
+   а не на phase-shift: на phase-shift уже #6 (M2.3) — две
+   реплики подряд ломали beat-ритм (найдено integration-тестом:
+   #7 затирает #6 в Label3D).
+
+**Альтернативы.** (1) Босс как «большой EnemyController»
+(archetype BOSS в enemy_data) — отклонено: pattern-memory +
+core + фазы + миньон не вписываются в encounter-FSM (разные
+инварианты: босс не спавнится таблицей, не имеет
+encounter-флагов, не «уходит»); модуль честнее, а миньон
+использует enemy pipeline как есть. (2) Дверь через
+boss_defeated напрямую — отклонено: BOSS_DESIGN §2.1 — окно
+(три факта), а не «победил босса»; plus boss_defeated ложится
+в середине рана (дверь для следующего). (3) Parry через
+отменённый DamageRequest (flag block) — отклонено: инвази
+resolver-семантики (blocked = i-frames/unkillable);
+invulnerable-тарагет — уже существующий путь (P4). (4) Миньон
+«убиваемый» (kill-запись) — отклонено: BOSS_DESIGN §3.4 —
+«уходит на 50%», не смерть; kill-запись подделала бы
+memory-stats (REM kill) и remnant-флаги. (5) Следы первого
+(The First) как world_director-объект — отклонено: beat
+принадлежит FirstRunDirector (RUN-гated beats, паттерн A16/
+B2/K5); флаг first_traces_seen — world_flags (35 строк).
+
+**Последствия.** (1) 49 unit-проверок (data/pm/fsm/core/death/
+gate) + 40 integration (boss_scene: арена-контент, melee,
+learn, parry-блок+counter, core, phase2+миньон+reveal, blade
+take, death, gate-флаг) + обновлённый run_cycle (дверь sealed
+в RUN 02 — поведение P7/P11 «дверь открыта в RUN 02» заменено
+правилом окна, BOSS_DESIGN §2.1). (2) М2 закрыт (m2_first),
+MVP-end: M1:4 M2:3 M3:3 M4:3 (unit mystery). (3) Босс атакует
+по distance-to-seal (логика), а не distance-to-boss: за печат
+он «держит арену» — swing издалека не бьёт (дальность
+проверяет контроллер); осознанный trade-off (читаемость: телеграф
+всегда у ядра). (4) R6-чек-лист: телеграф-читабельность (>=70%)
+— ручной шаг владельца (qa_phase12_boss.md). (5) Бюджет: +2
+MeshInstance-секции на босса (капсула+голова, общий material),
++2 у печати, 0 dynamic lights (emission) — в рамках ADR-021.
+
+
 ## Реестр рисков (Phase 0, живые)
 
 | # | Риск | Влияние | Митигция |

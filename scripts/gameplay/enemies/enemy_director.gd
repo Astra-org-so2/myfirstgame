@@ -185,6 +185,15 @@ func set_world_state(ws: Variant) -> void:
 func world_state() -> Variant:
 	return _ws
 
+
+# WEAPON_DESIGN §4.1: while the player carries the FIRST BLADE, the
+# remnants respect it (no first attack). The flag is set by the
+# Undercroft's take/leave (the weapon itself is WorldState).
+func respects_first_blade() -> bool:
+	if _ws == null:
+		return false
+	return _ws.flag(&"first_blade_taken")
+
 func _combat_budget_open() -> bool:
 	if _budget == null:
 		return true

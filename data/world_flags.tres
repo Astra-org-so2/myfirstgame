@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="WorldFlagTable" load_steps=33 format=3]
+[gd_resource type="Resource" script_class="WorldFlagTable" load_steps=38 format=3]
 
 [ext_resource type="Script" path="res://scripts/gameplay/progression/world_flag_table.gd" id="1_tbl"]
 [ext_resource type="Script" path="res://scripts/gameplay/progression/world_flag_data.gd" id="2_flag"]
@@ -183,6 +183,36 @@ flag_id = &"child_hit"
 consequence_text = "The child is rarer."
 set_by = "Child hit (the soft penalty)"
 
+[sub_resource type="Resource" id="flag_boss_defeated"]
+script = ExtResource("2_flag")
+flag_id = &"boss_defeated"
+consequence_text = "The fog thins. The city stands."
+set_by = "The First (the death, K6 -> K7)"
+
+[sub_resource type="Resource" id="flag_boss_door"]
+script = ExtResource("2_flag")
+flag_id = &"boss_door_open"
+consequence_text = "The door below the mine is open."
+set_by = "The world (mine 3 + 3 deaths + the traces)"
+
+[sub_resource type="Resource" id="flag_mine_deep"]
+script = ExtResource("2_flag")
+flag_id = &"mine_level_3_explored"
+consequence_text = "The deep mine is known."
+set_by = "The player (the 3rd room of the mine)"
+
+[sub_resource type="Resource" id="flag_first_traces"]
+script = ExtResource("2_flag")
+flag_id = &"first_traces_seen"
+consequence_text = "The big footprints. His lantern."
+set_by = "The deep mine (RUN 05+)"
+
+[sub_resource type="Resource" id="flag_first_blade"]
+script = ExtResource("2_flag")
+flag_id = &"first_blade_taken"
+consequence_text = "The blade is his, then yours."
+set_by = "The Undercroft (take/leave)"
+
 [resource]
 script = ExtResource("1_tbl")
-flags = Array[WorldFlagData]([SubResource("flag_pillar"), SubResource("flag_blade"), SubResource("flag_figure"), SubResource("flag_pyre"), SubResource("flag_first_kill"), SubResource("flag_mine_note"), SubResource("flag_shrine"), SubResource("flag_gate_seal"), SubResource("flag_lake_note"), SubResource("flag_kettle"), SubResource("flag_door"), SubResource("flag_cannon"), SubResource("flag_staff"), SubResource("flag_first_death"), SubResource("flag_mummy"), SubResource("flag_first_echo"), SubResource("flag_passive"), SubResource("flag_nia_name"), SubResource("flag_nia_page"), SubResource("flag_echo_decision"), SubResource("flag_gate_notes"), SubResource("flag_lake"), SubResource("flag_child_number"), SubResource("flag_veyra_b"), SubResource("flag_the_first"), SubResource("flag_kept_whisper"), SubResource("flag_nia_hint"), SubResource("flag_gate_welcome"), SubResource("flag_veyra_told"), SubResource("flag_child_hit")])
+flags = Array[WorldFlagData]([SubResource("flag_pillar"), SubResource("flag_blade"), SubResource("flag_figure"), SubResource("flag_pyre"), SubResource("flag_first_kill"), SubResource("flag_mine_note"), SubResource("flag_shrine"), SubResource("flag_gate_seal"), SubResource("flag_lake_note"), SubResource("flag_kettle"), SubResource("flag_door"), SubResource("flag_cannon"), SubResource("flag_staff"), SubResource("flag_first_death"), SubResource("flag_mummy"), SubResource("flag_first_echo"), SubResource("flag_passive"), SubResource("flag_nia_name"), SubResource("flag_nia_page"), SubResource("flag_echo_decision"), SubResource("flag_gate_notes"), SubResource("flag_lake"), SubResource("flag_child_number"), SubResource("flag_veyra_b"), SubResource("flag_the_first"), SubResource("flag_kept_whisper"), SubResource("flag_nia_hint"), SubResource("flag_gate_welcome"), SubResource("flag_veyra_told"), SubResource("flag_child_hit"), SubResource("flag_boss_defeated"), SubResource("flag_boss_door"), SubResource("flag_mine_deep"), SubResource("flag_first_traces"), SubResource("flag_first_blade")])

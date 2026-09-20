@@ -66,6 +66,11 @@ func data() -> _DATA:
 	return _data
 
 
+# The boss minion: it LEAVES (fades) — not a kill.
+func gentle_leave() -> void:
+	_logic.gentle_leave()
+
+
 func logic() -> _LOGIC:
 	return _logic
 
@@ -130,6 +135,26 @@ func _is_first_remnant() -> bool:
 	if not _data.first_encounter_leaves:
 		return false
 	return _director != null and not _director.remnant_met
+
+
+# WEAPON_DESIGN §4.1: the First Blade — the Echoes "respect" it
+# (a remnant does not attack first while the player carries the
+# blade; one real hit ends the respect).
+func _respect_allowed() -> bool:
+	if _data.archetype != _DATA.Archetype.REMNANT or _respect_broken:
+		return false
+	return _director != null and _director.respects_first_blade()
+
+
+func _respect_line() -> void:
+	if _blade_line_done or _data.archetype != _DATA.Archetype.REMNANT:
+		return
+	if _director == null or not _director.respects_first_blade():
+		return
+	var d: float = global_position.distance_to(_player.global_position)
+	if d <= 3.0:
+		_blade_line_done = true
+		_show_speech("...that was mine.")
 
 
 # #6 (P9, M3 stage 2): the note-reading encounter — once per
@@ -282,6 +307,8 @@ func tick(delta: float) -> Array[String]:
 
 	var sense: _SENSE = _build_sense()
 	_logic.note_encounter = _note_encounter_allowed()
+	_logic.respect = _respect_allowed()
+	_respect_line()
 	_logic.set_position(global_position.x, global_position.z)
 	events = _logic.update(delta, sense, _home)
 
@@ -385,6 +412,8 @@ func _on_damaged(_req: Variant) -> void:
 	# here, so an interrupt is always a real hit.
 	if _logic.interrupt_hurt():
 		_hit_flash = 0.15
+	# The First Blade respect ends with a real hit ("you hit him").
+	_respect_broken = true
 
 
 func _on_killed() -> void:
@@ -601,6 +630,8 @@ func _report_echo() -> void:
 
 
 var _echo_reported: bool = false
+var _respect_broken: bool = false
+var _blade_line_done: bool = false
 
 
 func _exit_tree() -> void:

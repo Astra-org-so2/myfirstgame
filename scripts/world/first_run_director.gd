@@ -525,6 +525,61 @@ func _tick_pyre(delta: float) -> void:
 
 # --- A15 — the shrine whisper --------------------------------------------
 
+# P12 (M2.1 / BOSS_DESIGN §2.1): the deep mine's first traces —
+# RUN 05+, once the level holds them: the big footprints (three
+# dark ovals, a stride bigger than the player's) and HIS lantern.
+# The main places this in the deepest room on mine entries from
+# RUN 05; the flag (first_traces_seen) lands when the player
+# actually reaches the deep rooms.
+func place_first_traces(pos: Vector3) -> void:
+	if _zone_world == null or _zone_world.level == null:
+		return
+	if _zone_world.level.find_child("FirstTraces", true, false) != null:
+		return
+	var root: Node3D = Node3D.new()
+	root.name = "FirstTraces"
+	root.position = pos
+	var dark: StandardMaterial3D = StandardMaterial3D.new()
+	dark.albedo_color = Color(0.08, 0.07, 0.08)
+	dark.roughness = 1.0
+	for i in 3:
+		var fp: MeshInstance3D = MeshInstance3D.new()
+		var m: CylinderMesh = CylinderMesh.new()
+		m.top_radius = 0.22
+		m.bottom_radius = 0.22
+		m.height = 0.015
+		fp.mesh = m
+		fp.material_override = dark
+		fp.scale = Vector3(1.0, 1.0, 1.8)  # an oval, the stride's
+		fp.position = Vector3(0.25 - (i % 2) * 0.5, 0.01, i * 0.9)
+		root.add_child(fp)
+	# His lantern (the same light the player carries — but HIS,
+	# left standing): emission only, no dynamic light (mobile).
+	var stick: MeshInstance3D = MeshInstance3D.new()
+	var bm: BoxMesh = BoxMesh.new()
+	bm.size = Vector3(0.05, 0.75, 0.05)
+	stick.mesh = bm
+	var smat: StandardMaterial3D = StandardMaterial3D.new()
+	smat.albedo_color = Color(0.3, 0.26, 0.2)
+	stick.material_override = smat
+	stick.position = Vector3(0.9, 0.375, 2.2)
+	root.add_child(stick)
+	var lamp: MeshInstance3D = MeshInstance3D.new()
+	var lm: SphereMesh = SphereMesh.new()
+	lm.radius = 0.09
+	lm.height = 0.18
+	lamp.mesh = lm
+	var lmat: StandardMaterial3D = StandardMaterial3D.new()
+	lmat.albedo_color = Color(1.0, 0.85, 0.55)
+	lmat.emission_enabled = true
+	lmat.emission = Color(1.0, 0.8, 0.4)
+	lmat.emission_energy_multiplier = 2.0
+	lamp.material_override = lmat
+	lamp.position = Vector3(0.9, 0.8, 2.2)
+	root.add_child(lamp)
+	_zone_world.level.add_child(root)
+
+
 func _beat_shrine_whisper() -> void:
 	if _ws == null or _ws.flag(&"shrine_echo_seen"):
 		return

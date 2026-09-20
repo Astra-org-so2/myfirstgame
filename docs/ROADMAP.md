@@ -1,6 +1,6 @@
 # AFTER YOU — Roadmap (фазы, вехи, exit-criteria)
 
-Версия: 1.1 (Phase 11 закрыта, GDD v2.0). Формат статуса фазы
+Версия: 1.2 (Phase 12 закрыта, GDD v2.0). Формат статуса фазы
 (обязателен при закрытии):
 `STATUS / IMPLEMENTED / TESTED / KNOWN ISSUES / NEXT`.
 
@@ -666,10 +666,12 @@ Integration: mystery_scene — полный маршрут RUN 1–06 на жи�
 filled page→M1.4, город сказан но **стадия смещена** — assert)
 → RUN 06 (смещённая стадия ложится; MVP-финал M1:4 M2:2 M3:3
 M4:3). Regression: все сьюты Phase 1–10 без изменений.
-KNOWN ISSUES: M2.3-реплика — Phase 12 (данные+флаг готовы:
-the_first_seen); whisper #4 триггер = boss_defeated (Phase 12,
-паттерн K7 ADR-029); Child-хореография/K5-визуал/шиммер-
-частицы — Phase 13; «1 стадия на mystery в run» может сдвинуть
+KNOWN ISSUES: M2.3-реплика — **закрыто Phase 12** (boss line
+#6 = линия m2_first, reveal на phase-shift); whisper #4
+триггер = boss_defeated — **закрыто Phase 12** (флаг
+boss_defeated, паттерн K7 ADR-029); Child-хореография/K5-
+визуал/шиммер-частицы — Phase 13; «1 стадия на mystery в
+run» может сдвинуть
 графику MYSTERY_REVEAL_MAP на +1 run (поведение зафиксировано
 тестом RUN 05/06 — «мир не торопится»).
 NEXT: PHASE 12 — Boss: THE FIRST (Undercroft).
@@ -689,6 +691,59 @@ Manual: boss feel (telegraph readability ≥70% на тесте).
 Exit: boss побеждаем (оба варианта: с/без FIRST BLADE); K7
 трансформация видна (qa-чек-лист); «достаточно качественный»
 по чек-листу.
+
+STATUS: **ЗАКРЫТА** (2026-09-18, ADR-031).
+IMPLEMENTED: модуль босса (gameplay/boss/: BossData
+(data/boss_the_first.tres: hp 600, melee 20/2.8/telegraph 0.5
+с, slam 35/3.5/0.8 с, pattern 3/3, break 3, parry 25/0.4 с,
+core 30/50 окно 2/4 с, фаза 2 @60% + миньон 80/15, dissolve
+3 с), PatternMemory (чистая: LEARNED/PARRY_TRIGGER/BROKEN,
+шаги «weapon_id:hit_index»), BossSense, BossLogic (FSM 13
+состояний, только решения), BossGate (композит-правило
+mine3 + 3 смерти + traces -> ОДИН флаг boss_door_open,
+«once open»), BossController (Node3D-мост: визуал worn-ELI
+(примитивы, общий material) + фонарь, печать (torus,
+emission в окне), Label3D-реплики #1–#10, steering-полоса
+1.5–3.0 м, melee/slam через DamageResolver, parry =
+invulnerable на всё окно (active-фаза пришедшего удара
+блокируется), core one-shot (swing_started, range+0.5),
+миньон = duplicate remnant_mirror через EnemyController
+(LEAVE при <=50%: gentle_leave, без kill-записи), death K6
+(dissolve + #9 -> #10 -> defeated -> boss_defeated +
+toasts))) + main-wiring (boss_door_open оценивается ДО
+run_generator.generate; sealed-дверь «The door is closed.
+(stone)»; Undercroft: 3 записки The First + FIRST BLADE
+(WeaponPickup: take/leave = first_blade_taken, #5/#7,
+respect Echoes: enemy_director.respects_first_blade гейтит
+REMNANT-aggro, «...that was mine.») + босс на event_spot)
++ первые следы (first_run_director.place_first_traces: 3
+ovala + его фонарь, RUN 05+; _check_mine_deep:
+mine_level_3_explored + first_traces_seen) + world_flags
+(35 строк: +boss_defeated, boss_door_open,
+mine_level_3_explored, first_traces_seen,
+first_blade_taken) + the_mine.tres condition =
+boss_door_open.
+TESTED: unit 767 (boss: 49 — data/pm/FSM/core/death/gate,
+parry window-hold + once-only counter), integration 422
+(boss_scene: 40 — арена-контент, melee, learn (#4), parry
+(блок + counter 25), core (30 + #8 + one-shot), фаза 2
+(миньон 80/15, LEAVE @50%, M2.3-сигнал + RUN-гейт: стадия
+не ложится при RUN <5), blade take (флаг + #5 + respect),
+death (#9/#10/boss_defeated/одноразовая дверь); run_cycle:
+RUN 02 дверь sealed — поведение P7 «дверь открыта в RUN 02»
+заменено правилом окна (BOSS_DESIGN §2.1)). MVP-end:
+M1:4 M2:3 M3:3 M4:3 (m2_first закрывает M2).
+KNOWN ISSUES: (1) визуал босса — prototype (капсула+голова,
+примитивы) — P13 (visual pass, ASSET_GUIDE); (2) босс
+атакует по distance-to-seal — издалека FSM «махать» может
+(удар не достаёт): принятый trade-off (телеграф всегда у
+ядра, ADR-031 #3); (3) телеграф-читабельность >=70% —
+ручной тест владельца (qa_phase12_boss.md B1, ____/30);
+(4) K7-визуал — на следующем входе в gate (flag-driven,
+паттерн P10).
+NEXT: P13 (Visual polish: финальные материалы/свет
+включая босса, mobile-графика: ASTC, draw calls <=150,
+lights <=6, UI mobile-вёрстка).
 
 ## PHASE 13 — Visual polish
 Scope: визуальный pass по всем сценам (материалы/свет/композиция),

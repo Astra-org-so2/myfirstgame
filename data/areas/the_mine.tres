@@ -13,7 +13,7 @@
 script = ExtResource("2_ac")
 to = &"undercroft"
 door = &"door_b"
-condition = &"run_02_door_open"
+condition = &"boss_door_open"
 target_door = &"entry_mine"
 
 [resource]

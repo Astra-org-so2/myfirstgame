@@ -330,9 +330,10 @@ func _test_death_and_respawn(ctx: Variant) -> void:
 		if c.to == &"undercroft":
 			conn = c
 	var fwd: Node = mine_ap.rooms.back().door(conn.door)
-	ctx.check(fwd != null and not fwd.is_sealed()
-			and fwd.to_area == &"undercroft",
-			"cycle: RUN 02 the Undercroft edge is open")
+	# P12 (BOSS_DESIGN §2.1): the Undercroft edge is the BOSS GATE —
+	# sealed until the gate rule lands boss_door_open (RUN 05+).
+	ctx.check(fwd != null and fwd.is_sealed(),
+			"cycle: RUN 02 the Undercroft edge is sealed (the boss gate)")
 
 	# "What changed" (WORLD_STATE_DESIGN §9.2): the lines at the
 	# respawn — door + weapons + kettle, ≤ 5, no numbers.
@@ -394,20 +395,17 @@ func _test_run2_world(ctx: Variant) -> void:
 			conn = c
 	var last_rp: Node = mine_ap.rooms.back()
 	var fwd: Node = last_rp.door(conn.door)
+	# P12: the sealed forward door HOLDS (no crossing until the
+	# boss gate lands boss_door_open — the boss fight).
 	_ticks = []
 	zw._cooldown = 0.0
 	_mock.set_position(last_rp.origin + fwd.local_pos)
 	zw._physics_process(DT)
-	ctx.check(zw.current == &"undercroft",
-			"cycle: RUN 02 the forward door enters the Undercroft")
+	ctx.check(zw.current == &"the_mine",
+			"cycle: RUN 02 the sealed forward door holds")
 	var boss_ap: Variant = _main.run_layout.get_area(&"undercroft")
 	var home: Node = boss_ap.rooms[0].door(&"entry_mine")
 	ctx.check(home != null, "cycle: the arena has the entry_mine door")
-	zw._cooldown = 0.0
-	_mock.set_position(boss_ap.rooms[0].origin + home.local_pos)
-	zw._physics_process(DT)
-	ctx.check(zw.current == &"the_mine",
-			"cycle: the entry_mine door returns to the Mine")
 	# B2: the gate — the first open-gate sighting after the seal.
 	_main._enter_level(&"ancient_gate")
 	ctx.check(_beats.has(&"b2_gate_open"),

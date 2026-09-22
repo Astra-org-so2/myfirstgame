@@ -530,14 +530,17 @@ func _setup_zones() -> void:
 	_apply_saved_settings()
 	# Phase 16: the measurement tools (debug builds only — F1 HUD,
 	# F6 benchmark file). They observe the scene, never change it.
-	debug_overlay = _DEBUG_OVERLAY.new()
-	debug_overlay.name = "DebugOverlay"
-	add_child(debug_overlay)
-	debug_overlay.setup(self)
-	perf_bench = _PERF_BENCH.new()
-	perf_bench.name = "PerfBenchmark"
-	add_child(perf_bench)
-	perf_bench.finished.connect(_on_perf_bench_finished)
+	# Phase 18: the CREATION is gated too (not just the handlers) —
+	# a release build must not carry the debug nodes at all.
+	if OS.is_debug_build():
+		debug_overlay = _DEBUG_OVERLAY.new()
+		debug_overlay.name = "DebugOverlay"
+		add_child(debug_overlay)
+		debug_overlay.setup(self)
+		perf_bench = _PERF_BENCH.new()
+		perf_bench.name = "PerfBenchmark"
+		add_child(perf_bench)
+		perf_bench.finished.connect(_on_perf_bench_finished)
 	# Phase 13: the world surfaces (the cast got the bank earlier).
 	zone_world.textures = textures
 	$CampWorld.set_textures(textures)

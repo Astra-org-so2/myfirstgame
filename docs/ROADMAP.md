@@ -880,17 +880,27 @@ Exit: sandbox-строки 0 known critical / 0 known non-critical
 mobile-QA чек-лист — device (владелец, до P18 device-части).
 1019/597 pass.
 
-## PHASE 18 — Release build (Android)
-Scope: export presets (**Android release — primary (ADR-021)**; Windows —
-dev/QA-экспорт, по решению владельца), Release-feature (без DebugTools),
-проверка: нет debug/overlay/test-ассетов/placeholder UI/broken refs;
-icon; version strings; **APK-size ≤ ~2 GB (TECH_DESIGN §15.2)**;
-landscape-lock; safe area в финальном APK.
-Ограничение (ADR-012/§15.5): Android-тулчейн (SDK/gradle) в песочнице
-не гарантирован → финальный экспорт APK выполняет владелец (по
-инструкции в docs/RELEASE_BUILD.md, создаётся в этой фазе).
-Exit: APK стартует на устройстве, проигрывает, save/load OK,
-0 debug-остатков; ADB-QA-прогон пройден.
+## PHASE 18 — Release build (Android) · done (P18, sandbox-часть)
+Scope: export presets + release-feature + readiness-аудит + инструкция
+владельца (ADR-038).
+- `export_presets.cfg`: «Android QA» (debug: ADB-QA, F1/F6 на) +
+  «Android» (release: primary). minSdk 26, arm64-v8a, immersive,
+  exclude `tests/*,tools/*,docs/*`.
+- Version strings: `config/version=0.1.0`, package `after.you`
+  (code 1) / `after.you.qa` (0.1.0-qa). `icon.png` — оригинальная
+  процедурная (gen_icon.py, ASSET_LICENSES).
+- Release-feature: debug-gate усилен — creation guard для
+  DebugOverlay/PerfBenchmark (release не несёт debug-узлы).
+- `tools/check_release.py`: 22 проверки (broken refs, утечки
+  tests/, placeholders, debug-gate, PNG, size 64.7 MB << 2 GB,
+  gitignore-секреты) — exit 0.
+- Keystores НЕ в git (§15.3, .gitignore); `RELEASE_BUILD.md` —
+  пошагово: SDK/JDK, signing, export-debug/release CLI,
+  ADB-QA Exit-чек-лист, troubleshooting.
+Exit: sandbox-сторона release-ready (check_release 22/22);
+фактическая сборка + ADB-QA — владелец (RELEASE_BUILD §3–§5),
+до P19. Windows-экспорт: по решению владельца (не блокирует).
+1019/597 pass.
 
 ## PHASE 19 — Final review
 Scope: независимый review (роль senior reviewer), FINAL_REVIEW.md по

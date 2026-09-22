@@ -1590,3 +1590,55 @@ heal-консумабл, 3/ран, 1/10 drop). Механика существо
 **Следствия.** Regression: edge_cases inventory (drop →
 pickup в последний слот; drop при полном баге → тост «No room
 in the bag.»; мёртвый игрок + drop).
+
+## ADR-038 · P18: Release build — конфигурация в git, сборка и ADB-QA на машине владельца (2026-09-22)
+
+**Контекст.** P18 = release-сборка Android (первичная платформа,
+ADR-021). Ограничение ADR-012/§15.5: Android-тулчейн (SDK/JDK/
+gradle/AAPT2) в песочнице не гарантирован — «собрали APK» в
+песочнице было бы притворством. Но и «пресетов нет, делай как
+знаешь» — нет: конфигурация экспорта — часть релизного
+контракта.
+
+**Решение.** Чистое разделение (тот же принцип, что ADR-021/035):
+
+1. **В git (песочница):** `export_presets.cfg` — два Android-
+   пресета: «Android QA» (debug-экспорт: ADB install, logcat,
+   F1/F6 debug-тулзы РАБОТАЮТ — это QA-инструменты §7) и
+   «Android» (release: primary target). Оба: minSdk 26 (§15.2),
+   arm64-v8a, immersive, `exclude_filter=tests/*,tools/*,docs/*`
+   (тесты/тулзы/доки не в APK). Version strings:
+   `project.godot config/version=0.1.0` + `package` в пресетах
+   (QA: `after.you.qa` / `0.1.0-qa`; release: `after.you` /
+   0.1.0, code 1). `icon.png` — оригинальная процедурная (gen_
+   icon.py, ASSET_LICENSES). Signing-политика: keystores НЕ в
+   git (.gitignore: *.keystore/*.jks/keystore.properties).
+2. **В песочнице (автоматика):** `tools/check_release.py` —
+   readiness-аудит (22 проверки: version/icon/landscape/stretch,
+   пресеты, broken refs, утечки tests/ в game-файлы,
+   placeholder-маркеры, debug-gate — обработчики И creation,
+   PNG-CRC, size-оценка 64.7 MB << 2 GB, gitignore-секреты).
+   Exit 0 = sandbox-сторона release-ready.
+3. **На машине владельца (RELEASE_BUILD.md §1–§6):** JDK 17 +
+   Android SDK, keystores (debug из Android Studio, release
+   keytool — бэкап обязателен), `--export-debug`/`--export-
+   release` CLI, ADB install + QA-прогон (Exit-чек-лист: старт,
+   playable, save/load, 0 debug-остатков, perf-протокол §7,
+   backgrounding, logcat 0 script-ошибок), troubleshooting-
+   таблица.
+
+**Почему так.** Release-ready = конфигурация + авдит в git
+(повторяемо, проверяемо) + фактическая сборка и ADB-QA там, где
+есть SDK и устройство (честно). Debug-gate усилен до P18-
+уровня: в release не только обработчики F1/F6/F8/F9 мёртвы
+(P14), но и сами узлы DebugOverlay/PerfBenchmark не создаются
+(creation guard) — release-бандл не несёт debug-узлы вообще.
+Скрипты dev-тулзов остаются в бандле как preload-зависимости
+main_scene (исключение без code change невозможно; они инертны
+— задокументировано в RELEASE_BUILD §5).
+
+**Следствия.** CI (когда появится): job 1 = тесты +
+check_release (headless), job 2 = gradle-export + aapt badging
+(нужен SDK); ADB-QA — вне CI, на устройстве (§15.3). Каждый
+релиз: version/code +1. iOS (вторичная) — отдельная фаза после
+MVP, если архитектура/бюджеты позволят (ADR-021).

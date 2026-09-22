@@ -4,6 +4,12 @@
 *.aybak
 export/builds/
 
+# Android signing (TECH_DESIGN §15.3 — NEVER in git)
+*.keystore
+*.jks
+keystore.properties
+android/keystores/
+
 # Node / toolchain
 node_modules/
 tools/godot-node/godot-*.mjs

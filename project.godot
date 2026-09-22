@@ -20,7 +20,9 @@ EventBus="*res://scripts/core/event_bus.gd"
 
 config/name="AFTER YOU"
 config/description="3D third-person action roguelite — the world remembers your previous runs."
+config/version="0.1.0"
 run/main_scene="res://scenes/main.tscn"
+config/icon="res://icon.png"
 config/features=PackedStringArray("4.7", "Forward Plus")
 
 [display]

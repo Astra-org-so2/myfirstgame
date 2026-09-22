@@ -1,0 +1,28 @@
+# Godot
+.godot/
+*.tmp
+*.aybak
+export/builds/
+
+# Android signing (TECH_DESIGN §15.3 — NEVER in git)
+*.keystore
+*.jks
+keystore.properties
+android/keystores/
+
+# Node / toolchain
+node_modules/
+tools/godot-node/godot-*.mjs
+tools/godot-node/package-lock.json
+
+# OS/editor junk
+.DS_Store
+Thumbs.db
+*.swp
+
+# Test harness transient files
+project.godot.aybak
+tests/.test_filter
+
+# Python tooling
+__pycache__/

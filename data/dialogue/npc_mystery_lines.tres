@@ -1,0 +1,81 @@
+[gd_resource type="Resource" script_class="DialogueLines" load_steps=9 format=3]
+
+[ext_resource type="Script" path="res://scripts/gameplay/mystery/dialogue_lines.gd" id="1_tbl"]
+[ext_resource type="Script" path="res://scripts/gameplay/mystery/dialogue_line.gd" id="2_ln"]
+
+[sub_resource type="Resource" id="nia_book_hint"]
+script = ExtResource("2_ln")
+id = &"nia_book_hint"
+char = &"nia"
+text = "...I was worried you wouldn't find it. It's on the third shelf."
+trust_req = 1
+run_req = 3
+flag_req = &""
+flag_set = &"nia_book_hint"
+repeat = false
+max_words = 12
+
+[sub_resource type="Resource" id="nia_page_confessed"]
+script = ExtResource("2_ln")
+id = &"nia_page_confessed"
+char = &"nia"
+text = "I wrote it. I don't know how I wrote it."
+trust_req = 0
+run_req = 5
+flag_req = &"nia_name_seen"
+flag_set = &""
+repeat = false
+max_words = 12
+
+[sub_resource type="Resource" id="nia_post_lake"]
+script = ExtResource("2_ln")
+id = &"nia_post_lake"
+char = &"nia"
+text = "Names are a kind of door. Don't open all of them."
+trust_req = 0
+run_req = 5
+flag_req = &"lake_reflection_seen"
+flag_set = &""
+repeat = true
+max_words = 12
+
+[sub_resource type="Resource" id="mara_run5"]
+script = ExtResource("2_ln")
+id = &"mara_run5"
+char = &"mara"
+text = "I won't ask where you've been. Ask me what to do."
+trust_req = 0
+run_req = 5
+flag_req = &""
+flag_set = &""
+repeat = false
+max_words = 12
+
+[sub_resource type="Resource" id="orren_run4"]
+script = ExtResource("2_ln")
+id = &"orren_run4"
+char = &"orren"
+text = "Runners live longer. Slayers get remembered differently."
+trust_req = 1
+run_req = 4
+flag_req = &""
+flag_set = &""
+repeat = false
+max_words = 12
+
+[sub_resource type="Resource" id="carto_city"]
+script = ExtResource("2_ln")
+id = &"carto_city"
+char = &"cartographer"
+text = "I drew the city yesterday. I haven't been there yet. ...yet."
+trust_req = 1
+run_req = 5
+flag_req = &""
+flag_set = &"veyra_city_told"
+repeat = true
+max_words = 12
+
+[resource]
+script = ExtResource("1_tbl")
+lines = Array[Resource]([SubResource("nia_book_hint"), SubResource("nia_page_confessed"), SubResource("nia_post_lake"), SubResource("mara_run5"), SubResource("orren_run4"), SubResource("carto_city")])
+known_chars = PackedStringArray("mara", "orren", "nia", "cartographer")

@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="QualityPreset" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/world/quality_preset.gd" id="1_qp"]
+
+[resource]
+script = ExtResource("1_qp")
+id = &"ultra"
+display_name = "Ultra"
+render_scale = 1.0
+shadows_enabled = true
+shadow_atlas_4x4 = true
+soft_shadows = true
+local_light_budget = 6
+particle_scale = 1.25
+msaa = 2
+texture_max_size = 2048

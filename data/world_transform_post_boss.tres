@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="WorldTransformData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/gameplay/progression/world_transform_data.gd" id="1_data"]
+
+[resource]
+script = ExtResource("1_data")
+fog_factor = 0.375
+light_temp = 5500
+gate_glow = true
+city_visible = true
+echo_passive = 0
+echo_combat = 1
+echo_special = 0
+footprint_permanent = true
+npc_calm = true

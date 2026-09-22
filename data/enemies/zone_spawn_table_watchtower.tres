@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="SpawnTable" load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://scripts/gameplay/enemies/spawn_table.gd" id="1_tbl"]
+[ext_resource type="Script" path="res://scripts/gameplay/enemies/spawn_entry.gd" id="2_ent"]
+[ext_resource type="Resource" path="res://data/enemies/watcher_base.tres" id="e3"]
+[ext_resource type="Resource" path="res://data/enemies/hollow_fast.tres" id="e4"]
+
+[sub_resource type="Resource" id="se0"]
+script = ExtResource("2_ent")
+enemy = ExtResource("e3")
+position = Vector3(0, 0, 0)
+condition = "always"
+
+[sub_resource type="Resource" id="se1"]
+script = ExtResource("2_ent")
+enemy = ExtResource("e4")
+position = Vector3(0, 0, 0)
+condition = "runner"
+
+[resource]
+script = ExtResource("1_tbl")
+entries = Array[SpawnEntry]([SubResource("se0"), SubResource("se1")])

@@ -1,0 +1,39 @@
+[gd_resource type="Resource" script_class="WeaponData" load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/gameplay/combat/weapon_data.gd" id="1_data"]
+[ext_resource type="Script" path="res://scripts/gameplay/combat/weapon_hit.gd" id="2_hit"]
+
+[sub_resource type="Resource" id="Resource_shot"]
+script = ExtResource("2_hit")
+name = &"shot"
+damage = 60
+windup = 1.8
+active = 0.1
+recovery = 0.1
+range = 15.0
+arc = 360.0
+knockback_force = 3.0
+knockback_duration = 0.3
+stamina_cost = 0
+
+[resource]
+script = ExtResource("1_data")
+id = &"weapon_cannon"
+display_name = "Hand Cannon"
+type = 1
+hits = [SubResource("Resource_shot")]
+combo_window = 0.5
+special_name = &"break"
+special_cooldown = 60.0
+special_window = 0.0
+special_stun_duration = 0.0
+special_damage = 120
+hitstop_hit = 0.08
+hitstop_kill = 0.12
+ammo_max = 5
+ammo_reload_max = 1
+reload_time = 1.5
+fire_range = 15.0
+spread_deg = 3.0
+noise_on_fire = true
+color_tint = Color(0.45, 0.42, 0.4, 1)

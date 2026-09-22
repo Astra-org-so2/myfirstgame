@@ -1,0 +1,326 @@
+# AFTER YOU — Game Design Document (GDD)
+
+Версия: **2.0** (Phase 0, креативный дизайн). Заменяет GDD 0.1.
+Источники: Master Prompt (требования production) + Story & World Master Prompt (креативное направление).
+Связанные документы: `docs/design/*.md` (bibles и дизайн-документы), `ARCHITECTURE.md`, `TECHNICAL_DESIGN.md`.
+
+---
+
+## 1. High concept
+
+**AFTER YOU** — 3D third-person action roguelite + exploration + mystery +
+environmental storytelling.
+
+> **Ты можешь умереть. Но мир не забудет тебя.**
+
+Игрок исследует мир, в котором нарушен ход времени. Он умирает и начинает
+новый Run — но мир **помнит**: прежние версии игрока (Echo), оставленные
+вещи, последствия решений, изменившиеся места. Постепенно игрок понимает:
+
+> **смерть — это не reset. Смерть — это способ изменить мир.**
+
+Финальная формулировка проекта (обязательная):
+
+> AFTER YOU — это не «roguelite, у которого есть сюжет».
+> Это **мир, который помнит тебя, замаскированный под roguelite**.
+
+**Платформа (решение владельца, 2026-09): Android first** (mobile-first;
+iOS — позже, если архитектура и бюджет позволят). PC используется только
+для удобства разработки — **все технические решения принимаются с
+позиции «сможет ли это нормально работать на Android-смартфоне?»**
+(touch controls, aspect ratio, память, draw calls, thermal, батарея).
+ADR-021, TECHNICAL_DESIGN §15.
+
+## 2. Тон и ощущения
+
+Мрачный, загадочный, атмосферный, **не** беспросветно депрессивный.
+Не horror в традиционном смысле: **mystery adventure, в котором реальность
+постепенно становится подозрительной**.
+
+Палитра эмоций (по приоритету): любопытство → одиночество → тревога →
+discovery → удивление → paranoia → надежда → ощущение, что мир живёт
+собственной жизнью.
+
+Правила тона:
+- Игра не пугает постоянно. Ужас — точечный (1–2 момента на акт).
+- Сухой юмор — редкий (≤1 раз на 5 взаимодействий), всегда в характере
+  персонажа (см. DIALOGUE_GUIDELINES).
+- Меланхолия > саспенс > хоррор.
+- Мир никогда не объясняет. Он **показывает**.
+
+## 3. Главный герой
+
+**Eli** (~25–30, пол выбирает игрок; нейтральная внешность для
+ассоциации). Имя финальное (решение владельца, GDD §15). Наблюдательный, осторожный, иногда саркастичный; не знает
+прошлого; постепенно одержим тайной мира.
+Внутренний конфликт (эволюция вопроса):
+1. «Кто я?» → 2. «Почему мир помнит меня за меня?» → 3. «А если мои прошлые
+   жизни были не мной?»
+Подробности: `design/CHARACTER_BIBLE.md` §Eli.
+
+## 4. Мир
+
+**Veyra** — место, нарушенное по времени. На поверхности — погибающий
+fantasy-мир; под поверхностью — странности (растут там, где не было;
+предметы не на месте; двери открываются только после смерти; NPC помнят
+несостоявшееся; следы игрока появляются раньше, чем он их оставил).
+Игрок узнаёт правду о Veyra последними актами.
+
+Первая и единственная зона MVP — **The Forgotten Forest** (8 локаций +
+хаб-лагерь, см. World Bible).
+
+## 5. Нравственный крючок (первый запуск)
+
+Никакой cutscene-завязки. Игрок просыпается на лесной дороге без
+воспоминаний. Перед ним — каменный столб с выцарапанным:
+
+> **YOU HAVE BEEN HERE BEFORE.**
+
+Это первая загадка. Всё остальное игрок собирает сам.
+
+## 6. Геймплей-ядро
+
+### 6.1 Персонаж и движение
+Third-person, свободное 3D-перемещение, камера от третьего лица. Действия:
+Move, Sprint (stamina), Dodge (i-frames), Attack (melee-комбо), Ranged
+(Hand Cannon, ограниченный боезапас), Interaction, Inventory (12 слотов),
+Pause. HP / Stamina / Damage / Death. Урон по игроку: hit-stop, shake,
+vignette, knockback. Детали feel-бюджета — ARCHITECTURE + TEST_PLAN.
+**Touch (Android first):** виртуальный джойстик (лево) + кнопки
+(attack/dodge/interact/inventory) + drag-камера (право); landscape;
+safe area + aspect 16:9–20:9 (TECHNICAL_DESIGN §7/§10). Клавиатура/
+мышь и геймпад — для dev/QA (те же actions, два device-layout'а).
+
+### 6.2 Бой
+Readability + feel. Hitbox/hurtbox, единый DamageResolver, telegraphs
+0.4–0.8s (melee), knockback, hit reaction, hit-stop, camera shake, VFX/SFX
+(умеренно: «juice without visual noise»).
+Специфика AFTER YOU: **враги и босс используют данные игрока** (Mimic
+копирует привычки, Remnant строится из прошлых забегов, The First бьёт
+вашими же комбинациями) — бой становится «диалогом с вашим прошлым».
+
+### 6.3 Враги (5 архетипов — не fantasy-монстры, а «симптомы мира»)
+| Архетип | Роль | Уникальный «глагол» |
+|---|---|---|
+| **Hollow** | базовый melee (человек без лица) | рывок с windup |
+| **Remnant** | Combat Echo — собран из данных прошлых забегов игрока | повторяет ваш ход боя |
+| **Watcher** | наблюдатель (не DPS): следит, оставляет «якорь памяти» | наблюдение → якорь → Memory Echo |
+| **Mimic** | зеркалит доминирующее поведение игрока (dodge/ranged/...) | зеркало привычки |
+| **Forgotten** | Corrupted Echo, потерявший идентичность; шепчет фразы из истории игрока | шёпот/дрейф |
+
+Полный дизайн: `design/ENEMY_DESIGN.md`.
+
+### 6.4 Оружие (3 архетипа — по одному глаголу и по одной «оптике» на мир)
+| Архетип | Роль | Оптика (наративно) |
+|---|---|---|
+| **BLADE** | быстрый melee, высокий skill ceiling | «я сам в этом мире» |
+| **HAND CANNON** | ranged, контроль дистанции, ограниченный боезапас | «я держу мир на расстоянии» |
+| **ECHO STAFF** | умеренный урон + уникальные взаимодействия с Echo (read/disrupt/soothe/shatter) | «я читаю мир» — основной инструмент расследования |
+
+Специальный экземпляр: **THE FIRST BLADE** (оружие первой версии Eli;
+Echo реагируют на него иначе; уязвимость босса; выбор: взять/оставить).
+Подробности: `design/WEAPON_DESIGN.md`.
+
+### 6.5 Прогрессия
+- **Run-scoped:** оружие, consumables, Memory Fragments (лор-предметы).
+  Валюты нет (anti-idle-принцип).
+- **Meta («Наследия»):** 10–15 апгрейдов, выбор 1 из 3 после смерти.
+  **Большинство меняют геймплей, а не числа** (Echo Step, Second Chance,
+  Memory, Paradox, Debt, NPC-зависимые и т.д.). Доступность наследия
+  зависит от **поведения игрока** (убил NPC — наследие этого NPC
+  недоступно; «всегда убегаешь» — получают Runners).
+- **World-scoped:** открытия перманентны (двери, комнаты, сокращения,
+  следы, записки).
+Подробности: `design/PROGRESSION_DESIGN.md`.
+
+### 6.6 Echo-система (центральная технология игры)
+Echo — спектр, а не одна механика:
+**Passive** (ghost replay прошлых действий) → **Combat** (Remnant-враг) →
+**Memory** (scripted-реконструкция конкретного события) → **Corrupted**
+(Forgotten) → **False** (похож на вас, ведёт себя иначе — зеркальный бой).
+Ключевое правило: **Echo — часть мира, а не replay**; игра никогда прямо
+не отвечает «это запись или живой человек?» (ambiguity budget).
+Технически: event-based recording (RunEvent), не видео.
+Подробности: `design/ECHO_SYSTEM_DESIGN.md` + TECHNICAL_DESIGN §2/§4/§5.
+
+### 6.7 World Memory (мир помнит)
+WorldState: discovered/killed_npcs/completed_events/choices/
+dropped_items/stored_notes (записки игрока!)/opened_shortcuts/
+unlocked_rooms/mystery_progress + **memory_stats** (скрытая статистика
+поведения: убийства/помощь/побег/маршруты/оружие/смерти).
+Каждый Run применяет state к миру; **всякая перемена видна за 1 секунду**
+(шиммер «мемориальных» объектов + сводка «Что изменилось»).
+**Поведение игрока = сторителлинг** (§6.9).
+Подробности: `design/WORLD_STATE_DESIGN.md`.
+
+### 6.8 NPC (5, каждый — с аркой и ценой за убийство)
+**Mara** (лагерь, hub), **Orren** (старый охотник, watchtower), **Nia**
+(записи/книги, деревня), **The Child** (странный ребёнок, роуминг;
+неуязвим — сюжетная сущность), **The Cartographer** (карты, мост).
+Каждый: 2–4 диалоговых дерева, trust-уровни, 1 «trust gift» (наследие),
+1 перманентное последствие смерти. Подробно: `design/CHARACTER_BIBLE.md`.
+
+### 6.9 Поведение игрока как сюжет
+Скрытые счётчики (memory_stats) двигают мир:
+- «всегда убегаешь» → NPC: *«You always run.»* + наследие Runners;
+- помогаешь NPC (3+ раза) → доверие растёт быстрее, trust gifts;
+- убиваешь много (overkill) → Echo агрессивнее, шёпот Forgotten меняется;
+- убиваешь NPC → перманентные последствия (лагерь холодеет, книги
+  регистрируют, наследия NPC сгорают);
+- исследуешь → дополнительные discoveries (секретные комнаты по
+  порогам exploration);
+- бросаешь предметы/пишешь записки → они остаются в мире (ядро loop).
+**Эксперименты не наказываются** — странное действие даёт не предмет, а
+сцену/диалог/Echo/секрет/изменение мира/клише.
+
+### 6.10 Boss MVP: **THE FIRST**
+Первая версия Eli. Живая (reveal), не «память». Бьёт паттернами на основе
+**ваших** атак (паттерн-память: повторяете комбо 3 раза — First
+«выучил» и парирует). Фазы: Wandering (ваши призрачные атаки) →
+Workshop (арена меняется, Remnant вашего лучшего забега). Уязвимость:
+«ядро» (в окне после slam; FIRST BLADE расширяет окно). Death sequence →
+**первая большая трансформация мира** (врата светятся, туман над озером
+поднимается, виден город, Echo «успокаиваются»).
+Подробности: `design/BOSS_DESIGN.md`.
+
+### 6.11 Mystery (4 больших вопроса, 2 твиста, 6 актов)
+1. Кто такой Eli? 2. Почему мир помнит Runs? 3. Кто создаёт Echo?
+4. Почему Echo утверждают, что Eli проходил путь сотни раз?
+Твист 1: **каждый предыдущий Eli был реальным** (не копия — живой человек
+со своей жизнью). Твист 2: **не все пытались выбраться** (кто-то убивал,
+оставался, использовал, искал другого Eli).
+Антагонист: **The Archivist** — хранительница памяти Veyra; не злодей, а
+система, для которой «смерть — ошибка».
+Финальный выбор (endgame, post-MVP): A — Remember Everything / B — Let It
+End / C — Break the Cycle (true ending: игрок становится новой
+Archivist).
+Подробности: `design/NARRATIVE_STRUCTURE.md` + `design/MYSTERY_REVEAL_MAP.md`.
+
+## 7. Narrative — как подаётся
+
+- Никаких exposition dumps. Один идея за взаимодействие. Правила:
+  DIALOGUE_GUIDELINES.
+- Environmental storytelling: каждый объект/комната = один нарративный
+  beat; записки (1–3 предложения), предметы, архитектура, повторяющиеся
+  сцены, изменения мира. Правила: ENV_STORYTELLING_GUIDE.
+- 10 **signature moments** (scripted discoveries): первый Echo, собственная
+  записка, NPC помнит прошлый Run, изменившееся место, собственная
+  мумия/труп, Echo принимает решение, Первый жив, Archivist показывает
+  историю, «первый Run организовали прошлые версии», финальный выбор.
+  Карта: MYSTERY_REVEAL_MAP §3.
+- Визуальный язык слоёв: normal (muted) / memory (pale glow) / echo
+  (desaturated + emissive) / corruption (unnatural shift) / archivist
+  (monochrome + accent). Звуковой язык: distortion, reversed fragments,
+  whispers, reverb (по слоям).
+- Музыка: **одна мелодия («The Wound»), 5 вариаций** (Normal / Memory /
+  Echo / Archivist / Ending) + ambient-слои + 1 stinger. Скромный, но
+  цельный саундтрек.
+
+## 8. First experience (кратко; детально — FIRST_30_MINUTES / FIRST_3_RUNS)
+
+- **0:00–15s:** black screen, ветер, Eli открывает глаза.
+- **0:15** управление; **0:30** столб «YOU HAVE BEEN HERE BEFORE.»;
+  **0:45** первое оружие (BLADE); **1:30** первый враг (Hollow);
+  **2:30** лагерь (Mara + записка *«If you find this, don't trust the
+  version of me that comes after.»* + «note stand»); **4:00** фигура,
+  похожая на Eli, исчезает (следы ведут в деревню); **6:00** серьёзный
+  бой; **8:00** запечатанная дверь *«YOU WILL OPEN THIS AFTER YOU DIE.»*
+- **~20:00** (window, не таймер) первая смерть: экран темнеет, голос:
+  *«Again?»* → **RUN 02** → **дверь открыта** (первый major reveal).
+- **RUN 02, ~25–30 мин:** первый Echo (ваша прошлая версия):
+  *«You're early.»* — пауза — *«You usually take longer.»* — и уходит.
+- ARC: Run 1 «обычная приключение» → Run 2 «something changed» →
+  Run 3 «the game remembers me» → Run 4+ «I can manipulate the system» →
+  позже «the system is manipulating me».
+
+## 9. Ритмы (loops)
+
+**Retention hook:** игрок постоянно думает «что будет, если я…?»
+(убью NPC? не открою дверь? брошу оружие? умру здесь? помогу Echo?
+нападу на прошлое себя? откажусь Archivist?).
+
+**Discovery loop:** Explore → Fight → Discover → Choice → Die/Escape →
+World changes → Return → Notice consequence → Experiment → Discover more.
+
+**Свобода (обязательно):** старые локации доступны, маршрут меняется,
+контент пропускается, секреты находятся, Echo взаимодействуют раньше
+времени. Не линейный коридор — мягко-направленный хаб.
+
+**No filler:** у каждой комнаты ≥1 из: gameplay / visual / narrative /
+discovery / interaction. Нет — комната не создаётся.
+
+## 10. Visual / Art direction
+
+**Stylized dark fantasy with grounded materials.** Не generic medieval,
+не oversaturated mobile-look, не photoreal AAA, не grimdark-everything.
+Цель: **красивый, атмосферный, немного странный мир.**
+- **Mobile-first** (ADR-021): текстуры ASTC (Android), 512–1024 px;
+  height-fog; 1 directional (тени 1024/2048) + ≤6 локальных источников
+  (High, 3 — Medium/Low); **без тяжёлого post-process** (SSAO/SSR off;
+  MSAA ≤2× High); VFX — пулы (TECHNICAL_DESIGN §9); эмиссивные акценты
+  вместо «дорогого» света. Цели — TECHNICAL_DESIGN §12.
+- Color language слоёв (см. §7) — это нарратив, не стиль.
+- MVP-арт: text-first policy (ADR-005) — примитивы + .tres-материалы +
+  генерируемые текстуры; каждый элемент со статусом final/prototype;
+  финальный арт-пасс — Phase 13.
+
+## 11. MVP-объём (жёстко; post-MVP — только по решению владельца)
+
+**Characters:** 1 protagonist (Eli, 2 варианта пола) · 5 NPC ·
+1 antagonist (The Archivist — только присутствие/seeds, встреча — Act V,
+post-MVP) · 5 enemy archetypes · 1 boss (The First) · Echo-система
+(все 5 типов, MVP-объём каждого — ECHO_SYSTEM_DESIGN).
+**World:** 1 biome · 8 major locations + hub-camp · 13 modular rooms
+(10–15) · Ancient Gate (запечатанный goal; трансформация после босса).
+**Narrative:** полный **Act I** + начало **Act II** (врата открыты, город
+на горизонте) · 1-я большая mystery-линия (Mystery 2 «почему мир помнит») ·
+first Echo reveal · first boss · first major world transformation ·
+10 signature moments (MVP-подмножество: #1–#6, #7, #10-подготовка).
+**Платформа:** Android (primary, mobile-first; ADR-021). iOS/PC —
+post-MVP (архитектура не блокирует: data-driven + порты ARCHITECTURE).
+**Системы (из Phase 0-архитектуры, без изменений):** run recording,
+ghost/passive echo, world memory + memory_stats, записки (note stands),
+save/load, UI, audio, VFX, settings, quality presets (Low/Medium/High/
+Ultra — мобильные), debug tools (release-off).
+**Out of MVP (явно):** Act III–VI и endings A/B/C (архитектура готова,
+контент — post-MVP), Ancient Gate area (the town), 2-й boss, локализация
+RU (EN primary — data-ready), iOS/PC-билды, 2+ биома, геймпад-полиш.
+
+## 12. Метрики успеха
+
+- Death → respawn ≤ 2s технически / ≤ 10s UX (с death screen).
+- **Мобильные цели (ADR-021):** 60 fps @Medium/High на mid-range Android
+  (1080×2400, Snapdragon 7-класс; референс — смартфон владельца);
+  30 fps floor @Low 720p на low-end (SD 6xx-класс) (замер Phase 16,
+  на реальном устройстве).
+- Thermal/батарея: 30-мин сессия без throttling-краха (Low/Medium);
+  нет sustained 100%-нагрузки (VFX/AI-бюджеты, TECHNICAL_DESIGN §12).
+- «Что изменилось» замечено без подсказки ≥70% тест-сессий (QA Phase 17).
+- Игрок задаёт «что будет, если я…» минимум раз в забег (наблюдение QA).
+- 0 unknown-лицензий (ASSET_LICENSES.md) · 0 critical bugs (Phase 19).
+- «Хочется рассказать о находке» — цель #1 (качество-бар §13).
+
+## 13. Quality bar (три вопроса на каждый нарративный элемент)
+
+1. Это интересно? 2. Связано с центральной темой (что делает человека
+человеком: память/тело/выбор/опыт/умение отпустить)? 3. Создаёт желание
+узнать больше?
+Ответ «нет» на все три → элемент удаляется.
+
+## 14. Главный вопрос проекта (тема)
+
+**Что делает человека человеком?** Память? Тело? Выбор? Опыт? Или
+способность отпустить прошлое? — финальный выбор (A/B/C) — ответ на этот
+вопрос тремя способами.
+
+## 15. Решения владельца (закрыты, 2026-09)
+
+| # | Вопрос | Решение | Где зафиксировано |
+|---|---|---|---|
+| 1 | Платформа | **Android first** (iOS позже; PC — только dev). Mobile-first: touch, aspect, память, draw calls, thermal, батарея | ADR-021, TECHNICAL_DESIGN §12/§15 |
+| 2 | Локализация | **EN-only в MVP, RU = data-only** (все строки через localization layer) | ADR-013 |
+| 3 | Имя героя | **Eli** (финально) | §3, CHARACTER_BIBLE §1 |
+| 4 | The Child | **Неуязвим** (нельзя убить/повредить обычными действиями — часть загадки) | CHARACTER_BIBLE §5 |
+
+Дополнительно: бюджет — 0 ₽ (только бесплатные легальные ассеты —
+ADR-005/006); движок — Godot 4.7.2 stable (ADR-001).

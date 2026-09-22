@@ -1,0 +1,62 @@
+[gd_resource type="Resource" script_class="AreaData" load_steps=11 format=3]
+
+[ext_resource type="Script" path="res://scripts/gameplay/areas/area_data.gd" id="1_ad"]
+[ext_resource type="Script" path="res://scripts/gameplay/areas/area_connection.gd" id="2_ac"]
+[ext_resource type="Resource" path="res://data/rooms/camp_room.tres" id="r3"]
+
+[sub_resource type="Resource" id="ac0"]
+script = ExtResource("2_ac")
+to = &"ruined_village"
+door = &"gate_ruined_village"
+condition = &""
+target_door = &"camp_exit"
+[sub_resource type="Resource" id="ac1"]
+script = ExtResource("2_ac")
+to = &"watchtower"
+door = &"gate_watchtower"
+condition = &""
+target_door = &"camp_exit"
+[sub_resource type="Resource" id="ac2"]
+script = ExtResource("2_ac")
+to = &"the_mine"
+door = &"gate_the_mine"
+condition = &""
+target_door = &"camp_exit"
+[sub_resource type="Resource" id="ac3"]
+script = ExtResource("2_ac")
+to = &"old_shrine"
+door = &"gate_old_shrine"
+condition = &""
+target_door = &"camp_exit"
+[sub_resource type="Resource" id="ac4"]
+script = ExtResource("2_ac")
+to = &"broken_bridge"
+door = &"gate_broken_bridge"
+condition = &""
+target_door = &"camp_exit"
+[sub_resource type="Resource" id="ac5"]
+script = ExtResource("2_ac")
+to = &"mysterious_lake"
+door = &"gate_mysterious_lake"
+condition = &""
+target_door = &"camp_exit"
+[sub_resource type="Resource" id="ac6"]
+script = ExtResource("2_ac")
+to = &"ancient_gate"
+door = &"gate_ancient_gate"
+condition = &""
+target_door = &"camp_exit"
+
+[resource]
+script = ExtResource("1_ad")
+
+id = &"camp"
+name = "The Camp"
+theme = "home"
+rooms = Array[RoomData]([ExtResource("r3")])
+room_weights = PackedFloat64Array(1.0)
+connections = Array[AreaConnection]([SubResource("ac0"), SubResource("ac1"), SubResource("ac2"), SubResource("ac3"), SubResource("ac4"), SubResource("ac5"), SubResource("ac6")])
+boss_arena = false
+entry_anchor = &"entry"
+fog_density = 0.85
+light_color = Color(0.55, 0.6, 0.55, 1.0)

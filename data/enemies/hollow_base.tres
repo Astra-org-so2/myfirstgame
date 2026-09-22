@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="EnemyData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/gameplay/enemies/enemy_data.gd" id="1_data"]
+[ext_resource type="Resource" path="res://data/enemies/attacks/hollow_base_atk.tres" id="2_atk"]
+
+[resource]
+script = ExtResource("1_data")
+id = &"hollow_base"
+display_name = "Hollow"
+archetype = 0
+variant = &"base"
+health = 30
+unkillable = false
+speed = 1.8
+sight_range = 10.0
+fov = 120.0
+hear_range = 5.0
+aggro_radius = 12.0
+attack = ExtResource("2_atk")
+update_hz = 10.0
+path_update_hz = 5.0
+hitstun = 0.4
+memory_window = 10.0
+retreat_after = 5.0
+leaves_footprint = true
+dissolve_time = 0.3

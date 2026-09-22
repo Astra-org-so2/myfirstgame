@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="QualityPreset" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/world/quality_preset.gd" id="1_qp"]
+
+[resource]
+script = ExtResource("1_qp")
+id = &"low"
+display_name = "Low"
+render_scale = 0.75
+shadows_enabled = false
+shadow_atlas_4x4 = false
+local_light_budget = 3
+particle_scale = 0.5
+msaa = 1
+texture_max_size = 512

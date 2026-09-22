@@ -1,0 +1,29 @@
+[gd_resource type="Resource" script_class="VisualPalette" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/world/visual_palette.gd" id="1_vp"]
+
+[resource]
+script = ExtResource("1_vp")
+forest = Color(0.36, 0.4, 0.33, 1)
+stone = Color(0.4, 0.42, 0.46, 1)
+wood_dark = Color(0.28, 0.21, 0.15, 1)
+ground = Color(0.3, 0.32, 0.28, 1)
+fog_blue = Color(0.32, 0.34, 0.38, 1)
+ember_amber = Color(1, 0.62, 0.28, 1)
+cold_white = Color(0.88, 0.92, 0.98, 1)
+rust = Color(0.45, 0.16, 0.13, 1)
+city_glow = Color(0.75, 0.8, 0.95, 1)
+eli_cloak = Color(0.42, 0.4, 0.36, 1)
+eli_scarf = Color(0.55, 0.44, 0.32, 1)
+eli_visor = Color(0.5, 0.9, 0.95, 1)
+eli_fresh = Color(0.82, 0.8, 0.76, 1)
+first_worn = Color(0.55, 0.53, 0.5, 1)
+child_pale = Color(0.8, 0.84, 0.82, 1)
+echo_tint = Color(0.62, 0.66, 0.72, 1)
+corruption_tint = Color(0.72, 0.44, 0.62, 1)
+memory_glow = Color(0.85, 0.9, 0.95, 1)
+seal_ring = Color(0.12, 0.12, 0.15, 1)
+seal_glow = Color(0.35, 0.28, 0.22, 1)
+seal_notch = Color(0.05, 0.05, 0.06, 1)
+mystery_beam = Color(0.5, 0.55, 0.7, 1)
+mystery_glow = Color(0.5, 0.55, 0.75, 1)

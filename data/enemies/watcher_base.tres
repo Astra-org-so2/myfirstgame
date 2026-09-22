@@ -1,0 +1,28 @@
+[gd_resource type="Resource" script_class="EnemyData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/gameplay/enemies/enemy_data.gd" id="1_data"]
+[ext_resource type="Resource" path="res://data/enemies/attacks/watcher_atk.tres" id="2_atk"]
+
+[resource]
+script = ExtResource("1_data")
+id = &"watcher_base"
+display_name = "Watcher"
+archetype = 2
+variant = &"base"
+health = 999
+unkillable = true
+speed = 3.0
+sight_range = 20.0
+fov = 360.0
+hear_range = 0.0
+aggro_radius = 12.0
+attack = ExtResource("2_atk")
+update_hz = 10.0
+path_update_hz = 5.0
+hitstun = 0.4
+observe_time = 2.0
+follow_speed_mult = 0.4
+follow_range = 12.0
+vanish_distance = 10.0
+anchors_per_run = 2
+dissolve_time = 0.0

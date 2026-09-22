@@ -1,0 +1,47 @@
+[gd_resource type="Resource" script_class="RoomData" load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://scripts/gameplay/rooms/room_data.gd" id="1_rd"]
+[ext_resource type="Script" path="res://scripts/gameplay/rooms/doorway_def.gd" id="2_dw"]
+[ext_resource type="Script" path="res://scripts/gameplay/rooms/obstacle_box.gd" id="3_ob"]
+
+[sub_resource type="Resource" id="camp_exit"]
+script = ExtResource("2_dw")
+anchor = &"camp_exit"
+local_pos = Vector3(0.0, 0.0, 6.0)
+facing = Vector3(0.0, 0.0, -1.0)
+
+[sub_resource type="Resource" id="to_chain"]
+script = ExtResource("2_dw")
+anchor = &"to_chain"
+local_pos = Vector3(0.0, 0.0, -6.0)
+facing = Vector3(0.0, 0.0, 1.0)
+
+[sub_resource type="Resource" id="ob_0"]
+script = ExtResource("3_ob")
+position = Vector3(0.0, 1.0, -4.0)
+size = Vector3(5.0, 2.0, 2.0)
+
+
+[resource]
+script = ExtResource("1_rd")
+
+id = &"mine_entry"
+areas = PackedStringArray("the_mine")
+variant = 0
+handcrafted = true
+role = 1
+size = Vector2(10.0, 12.0)
+doorways = Array[DoorwayDef]([SubResource("camp_exit"), SubResource("to_chain")])
+enemy_spots = PackedVector3Array(3.5, 0.0, 2.0)
+loot_spots = PackedVector3Array(-3.0, 0.0, 2.0)
+event_spots = PackedVector3Array()
+obstacles = Array[ObstacleBox]([SubResource("ob_0")])
+ambient_fog = 0.85
+light_color = Color(0.55, 0.6, 0.55, 1.0)
+light_energy = 0.55
+fixed_loot = &"weapon_cannon"
+gameplay = ""
+visual = "The mine mouth, a lantern hook (cold)."
+narrative = "The mine stopped mid-shift. The lantern is cold."
+discovery = "The HAND CANNON (production weapon, WEAPON_DESIGN §5)."
+interaction = ""

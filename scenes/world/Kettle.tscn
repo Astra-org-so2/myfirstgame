@@ -1,0 +1,41 @@
+[gd_scene load_steps=6 format=3]
+
+[sub_resource type="CylinderMesh" id="body"]
+top_radius = 0.17
+bottom_radius = 0.19
+height = 0.26
+
+[sub_resource type="CylinderMesh" id="spout"]
+top_radius = 0.035
+bottom_radius = 0.05
+height = 0.22
+
+[sub_resource type="BoxMesh" id="handle"]
+size = Vector3(0.26, 0.04, 0.04)
+
+[sub_resource type="StandardMaterial3D" id="m_iron"]
+albedo_color = Color(0.2, 0.2, 0.22, 1)
+metallic = 0.6
+roughness = 0.4
+
+[sub_resource type="StandardMaterial3D" id="m_iron2"]
+albedo_color = Color(0.24, 0.23, 0.25, 1)
+metallic = 0.5
+roughness = 0.45
+
+[node name="Kettle" type="Node3D"]
+
+[node name="Body" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.13, 0)
+material = SubResource("m_iron")
+mesh = SubResource("body")
+
+[node name="Spout" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.23, 0.2, 0)
+material = SubResource("m_iron")
+mesh = SubResource("spout")
+
+[node name="Handle" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.3, 0)
+material = SubResource("m_iron2")
+mesh = SubResource("handle")

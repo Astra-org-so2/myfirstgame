@@ -1,0 +1,47 @@
+[gd_resource type="Resource" script_class="RoomData" load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://scripts/gameplay/rooms/room_data.gd" id="1_rd"]
+[ext_resource type="Script" path="res://scripts/gameplay/rooms/doorway_def.gd" id="2_dw"]
+[ext_resource type="Script" path="res://scripts/gameplay/rooms/obstacle_box.gd" id="3_ob"]
+
+[sub_resource type="Resource" id="door_a"]
+script = ExtResource("2_dw")
+anchor = &"door_a"
+local_pos = Vector3(0.0, 0.0, 5.0)
+facing = Vector3(0.0, 0.0, -1.0)
+
+[sub_resource type="Resource" id="door_b"]
+script = ExtResource("2_dw")
+anchor = &"door_b"
+local_pos = Vector3(0.0, 0.0, -5.0)
+facing = Vector3(0.0, 0.0, 1.0)
+
+[sub_resource type="Resource" id="ob_0"]
+script = ExtResource("3_ob")
+position = Vector3(1.0, 0.5, -2.0)
+size = Vector3(1.6, 1.0, 3.0)
+
+
+[resource]
+script = ExtResource("1_rd")
+
+id = &"corridor_forest"
+areas = PackedStringArray("watchtower", "mysterious_lake")
+variant = 1
+handcrafted = false
+role = 0
+size = Vector2(4.0, 10.0)
+doorways = Array[DoorwayDef]([SubResource("door_a"), SubResource("door_b")])
+enemy_spots = PackedVector3Array()
+loot_spots = PackedVector3Array()
+event_spots = PackedVector3Array()
+obstacles = Array[ObstacleBox]([SubResource("ob_0")])
+ambient_fog = 0.95
+light_color = Color(0.5, 0.55, 0.55, 1.0)
+light_energy = 0.45
+fixed_loot = &""
+gameplay = "Narrow: one ambush at a time, no flank."
+visual = "A fallen trunk spans the passage; you go around."
+narrative = "Moss covers the steps — someone walked here."
+discovery = ""
+interaction = ""

@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SpawnTable" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/gameplay/enemies/spawn_table.gd" id="1_tbl"]
+[ext_resource type="Script" path="res://scripts/gameplay/enemies/spawn_entry.gd" id="2_ent"]
+[ext_resource type="Resource" path="res://data/enemies/remnant_false.tres" id="e3"]
+
+[sub_resource type="Resource" id="se0"]
+script = ExtResource("2_ent")
+enemy = ExtResource("e3")
+position = Vector3(0, 0, 0)
+condition = "always"
+
+[resource]
+script = ExtResource("1_tbl")
+entries = Array[SpawnEntry]([SubResource("se0")])

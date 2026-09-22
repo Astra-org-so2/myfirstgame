@@ -1,0 +1,59 @@
+[gd_resource type="Resource" script_class="WeaponData" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/gameplay/combat/weapon_data.gd" id="1_data"]
+[ext_resource type="Script" path="res://scripts/gameplay/combat/weapon_hit.gd" id="2_hit"]
+
+[sub_resource type="Resource" id="Resource_u1"]
+script = ExtResource("2_hit")
+name = &"u1"
+damage = 25
+windup = 0.25
+active = 0.15
+recovery = 0.8
+range = 2.0
+arc = 110.0
+knockback_force = 4.0
+knockback_duration = 0.3
+stamina_cost = 10
+
+[sub_resource type="Resource" id="Resource_u2"]
+script = ExtResource("2_hit")
+name = &"u2"
+damage = 25
+windup = 0.25
+active = 0.15
+recovery = 0.8
+range = 2.0
+arc = 120.0
+knockback_force = 4.0
+knockback_duration = 0.3
+stamina_cost = 10
+
+[sub_resource type="Resource" id="Resource_u3"]
+script = ExtResource("2_hit")
+name = &"u3"
+damage = 30
+windup = 0.35
+active = 0.15
+recovery = 1.0
+range = 2.6
+arc = 70.0
+knockback_force = 6.0
+knockback_duration = 0.45
+stamina_cost = 10
+
+[resource]
+script = ExtResource("1_data")
+id = &"weapon_blade"
+display_name = "Blade"
+type = 0
+hits = [SubResource("Resource_u1"), SubResource("Resource_u2"), SubResource("Resource_u3")]
+combo_window = 0.5
+special_name = &"riposte"
+special_cooldown = 30.0
+special_window = 0.5
+special_stun_duration = 1.5
+special_damage = 15
+hitstop_hit = 0.05
+hitstop_kill = 0.1
+color_tint = Color(0.8, 0.82, 0.85, 1)

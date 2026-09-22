@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="InheritanceData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/gameplay/progression/inheritance_data.gd" id="1_data"]
+
+[resource]
+script = ExtResource("1_data")
+id = &"echo_step"
+display_name = "ECHO STEP"
+ui_line = "The world watches your trail."
+layer = 0
+in_mvp_pool = true
+effect_target = 3
+effect_stat = &"afterimage_stun"
+effect_value_1 = 0.5
+effect_value_2 = 0.75
+effect_value_3 = 1.0

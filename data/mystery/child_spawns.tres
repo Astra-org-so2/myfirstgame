@@ -1,0 +1,27 @@
+[gd_resource type="Resource" script_class="ChildSpawns" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/gameplay/mystery/child_spawns.gd" id="1_tbl"]
+[ext_resource type="Script" path="res://scripts/gameplay/mystery/child_spawn.gd" id="2_sp"]
+
+[sub_resource type="Resource" id="run04"]
+script = ExtResource("2_sp")
+run_min = 4
+run_max = 4
+zone = &"ruined_village"
+pos = Vector3(3.0, 0, 4.0)
+lines = PackedStringArray("You died again. I watched. It was the third time.")
+min_deaths = 3
+
+[sub_resource type="Resource" id="run05"]
+script = ExtResource("2_sp")
+run_min = 5
+run_max = 5
+zone = &"ruined_village"
+pos = Vector3(3.0, 0, 4.0)
+lines = PackedStringArray("You're number two-one-seven. I counted. You're slower than the others.", "Some of you stayed. They're quieter now. The trees like them best.")
+min_deaths = 0
+
+[resource]
+script = ExtResource("1_tbl")
+spawns = Array[Resource]([SubResource("run04"), SubResource("run05")])
+skip_flag = &"child_hit"

@@ -1,0 +1,59 @@
+[gd_resource type="Resource" script_class="BossData" load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/gameplay/boss/boss_data.gd" id="1_bd"]
+[ext_resource type="Script" path="res://scripts/gameplay/enemies/attack_data.gd" id="2_at"]
+
+[sub_resource type="Resource" id="melee"]
+script = ExtResource("2_at")
+windup = 0.5
+active = 0.15
+recovery = 0.8
+damage = 20
+knockback_force = 3.0
+knockback_duration = 0.3
+range = 2.8
+arc = 120.0
+noise_radius = 6.0
+
+[sub_resource type="Resource" id="slam"]
+script = ExtResource("2_at")
+windup = 0.8
+active = 0.15
+recovery = 0.8
+damage = 35
+knockback_force = 6.0
+knockback_duration = 0.4
+range = 3.5
+arc = 140.0
+noise_radius = 8.0
+
+[resource]
+script = ExtResource("1_bd")
+id = &"boss_the_first"
+display_name = "The First"
+health = 600
+speed = 2.2
+speed_phase2 = 2.33
+phase2_threshold = 0.6
+melee = SubResource("melee")
+slam = SubResource("slam")
+core_window = 2.0
+core_window_blade = 4.0
+core_damage = 50
+core_damage_plain = 30
+core_glow_time = 0.5
+pattern_length = 3
+pattern_threshold = 3
+parry_window = 0.4
+parry_damage = 25
+break_steps = 3
+break_stun = 1.5
+look_time = 0.3
+learn_line_cooldown = 30.0
+pattern_threshold_phase2 = 2
+minion_health = 80
+minion_damage = 15
+minion_fade_pct = 50.0
+minion_id = &"remnant_mirror"
+dissolve_time = 3.0
+final_line_delay = 2.0

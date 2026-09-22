@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="InheritanceData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/gameplay/progression/inheritance_data.gd" id="1_data"]
+
+[resource]
+script = ExtResource("1_data")
+id = &"paradox"
+display_name = "PARADOX"
+ui_line = "The first strike — free."
+layer = 2
+in_mvp_pool = false
+effect_target = 3
+effect_stat = &"first_hit_mult"
+effect_value_1 = 1.4
+effect_value_2 = 1.6
+effect_value_3 = 1.8

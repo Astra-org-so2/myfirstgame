@@ -53,6 +53,8 @@ const SUITES = [
 	["save_data", "res://tests/unit/save_data_test.gd", ["unit"]],
 	["save_migrator", "res://tests/unit/save_migrator_test.gd", ["unit"]],
 	["save_manager", "res://tests/unit/save_manager_test.gd", ["unit"]],
+	["quality_preset", "res://tests/unit/quality_preset_test.gd", ["unit"]],
+	["perf_benchmark", "res://tests/unit/perf_benchmark_test.gd", ["unit"]],
 	["music_library", "res://tests/unit/music_library_test.gd", ["unit"]],
 	["music_director", "res://tests/unit/music_director_test.gd", ["unit"]],
 	["audio_manager", "res://tests/unit/audio_manager_test.gd", ["unit"]],
@@ -87,6 +89,8 @@ const SUITES = [
 	["audio_scene", "res://tests/integration/audio_scene_test.gd",
 			["integration"]],
 	["save_scene", "res://tests/integration/save_scene_test.gd",
+			["integration"]],
+	["perf_scene", "res://tests/integration/perf_scene_test.gd",
 			["integration"]],
 ]
 

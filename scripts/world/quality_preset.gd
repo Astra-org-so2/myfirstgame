@@ -16,6 +16,8 @@ extends Resource
 @export var shadows_enabled: bool = true
 # The directional shadow atlas (4x4 splits, High).
 @export var shadow_atlas_4x4: bool = false
+# Soft shadow filter (Ultra, §12 "High + soft shadows + VFX 125%").
+@export var soft_shadows: bool = false
 # Active LOCAL lights per level (Low 3 / Medium 4 / High 6, §12).
 @export var local_light_budget: int = 4
 # VFX emission scaling (particles arrive with P14; the knob is here).

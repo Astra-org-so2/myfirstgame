@@ -4,12 +4,13 @@
 
 [resource]
 script = ExtResource("1_qp")
-id = &"high"
-display_name = "High"
+id = &"ultra"
+display_name = "Ultra"
 render_scale = 1.0
 shadows_enabled = true
 shadow_atlas_4x4 = true
+soft_shadows = true
 local_light_budget = 6
-particle_scale = 1.0
+particle_scale = 1.25
 msaa = 2
 texture_max_size = 2048

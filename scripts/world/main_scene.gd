@@ -98,12 +98,17 @@ const _QUALITY_PRESET = preload("res://scripts/world/quality_preset.gd")
 const _QUALITY_LOW = preload("res://data/quality/low.tres")
 const _QUALITY_MEDIUM = preload("res://data/quality/medium.tres")
 const _QUALITY_HIGH = preload("res://data/quality/high.tres")
+const _QUALITY_ULTRA = preload("res://data/quality/ultra.tres")
 # Phase 14 — the final audio (GDD §7): the buses/music/ambient/
 # stinger manager + the settings panel.
 const _AUDIO_MGR = preload("res://scripts/audio/audio_manager.gd")
 const _SETTINGS = preload("res://scripts/ui/settings_panel.gd")
 # Phase 15 — save/load/recovery (TECHNICAL_DESIGN §3).
 const _SAVE_MGR = preload("res://scripts/gameplay/save/save_manager.gd")
+# Phase 16 — the §7 measurements (debug builds only): the F1 HUD
+# and the benchmark file writer.
+const _DEBUG_OVERLAY = preload("res://scripts/ui/debug_overlay.gd")
+const _PERF_BENCH = preload("res://scripts/dev/perf_benchmark.gd")
 const _PALETTE = preload("res://data/visual/palette.tres")
 const _TEX_BANK = preload("res://scripts/world/texture_bank.gd")
 
@@ -159,6 +164,10 @@ var world_director: _WORLD_DIR
 var note_panel: _NOTE_PANEL
 var mystery: _MYSTERY_DIR
 var quality: _QUALITY_MGR = null
+var debug_overlay: _DEBUG_OVERLAY = null
+var perf_bench: _PERF_BENCH = null
+var _f1_prev: bool = false
+var _f6_prev: bool = false
 # Phase 14: the audio (the buses + the music/ambient voices) and
 # the settings panel (F9, debug builds).
 var audio: _AUDIO_MGR = null
@@ -519,6 +528,16 @@ func _setup_zones() -> void:
 	# Phase 15: the saved settings (quality + audio) land now —
 	# both systems exist.
 	_apply_saved_settings()
+	# Phase 16: the measurement tools (debug builds only — F1 HUD,
+	# F6 benchmark file). They observe the scene, never change it.
+	debug_overlay = _DEBUG_OVERLAY.new()
+	debug_overlay.name = "DebugOverlay"
+	add_child(debug_overlay)
+	debug_overlay.setup(self)
+	perf_bench = _PERF_BENCH.new()
+	perf_bench.name = "PerfBenchmark"
+	add_child(perf_bench)
+	perf_bench.finished.connect(_on_perf_bench_finished)
 	# Phase 13: the world surfaces (the cast got the bank earlier).
 	zone_world.textures = textures
 	$CampWorld.set_textures(textures)
@@ -843,12 +862,44 @@ func _debug_quality_cycle() -> void:
 				next = _QUALITY_MEDIUM
 			&"medium":
 				next = _QUALITY_HIGH
+			&"high":
+				next = _QUALITY_ULTRA
 			_:
 				next = _QUALITY_LOW
 		quality.set_preset(next)
 		zone_world.set_light_budget(quality.light_budget())
 		toast.show_text("Quality: " + next.display_name, 1.5)
 	_f8_prev = pressed
+
+
+# F1 (debug builds only): the performance HUD (TEST_PLAN §7).
+func _debug_overlay_toggle() -> void:
+	if not OS.is_debug_build():
+		return
+	var pressed: bool = Input.is_action_just_pressed("debug_f1")
+	if pressed and not _f1_prev and debug_overlay != null:
+		debug_overlay.visible = not debug_overlay.visible
+	_f1_prev = pressed
+
+
+# F6 (debug builds only): a 10 s benchmark of the current area ->
+# user://perf_<area>.txt (the `--benchmark` file, adb pull ->
+# PERF_REPORT.md).
+func _debug_benchmark() -> void:
+	if not OS.is_debug_build():
+		return
+	var pressed: bool = Input.is_action_just_pressed("debug_f6")
+	if pressed and not _f6_prev and perf_bench != null:
+		if perf_bench._scope == null:
+			perf_bench.start(self, String(_current_area), 10.0)
+			toast.show_text("Benchmark: 10 s (%s)" % str(_current_area),
+					2.0)
+	_f6_prev = pressed
+
+
+func _on_perf_bench_finished(stats: Dictionary) -> void:
+	toast.show_text("Benchmark done: user://perf_%s.txt"
+			% str(stats.get("label", "")), 3.0)
 
 
 # Phase 15 — the save seams (TECHNICAL_DESIGN §3). The triggers:
@@ -1435,6 +1486,8 @@ func _process(delta: float) -> void:
 	_check_mine_deep(delta)
 	_debug_quality_cycle()
 	_debug_settings()
+	_debug_overlay_toggle()
+	_debug_benchmark()
 	if _a1_rect != null and _a1_left > 0.0:
 		_a1_left -= delta
 		var k: float = clampf(1.0 - _a1_left / A1_FADE_SECONDS, 0.0, 1.0)

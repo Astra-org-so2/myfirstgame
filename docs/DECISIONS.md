@@ -1477,3 +1477,42 @@ RunManager/RunHistory, честнее, чем синтетический счё�
 kill-mid-write, settings (quality + audio) в save, три точки
 автосейва. Prototype-долгов: нет. Device-QA (P16):
 физический файловик Android, ENOSPC, crash-тесты.
+
+## ADR-035 · P16: Performance — песочница меряет CPU/структуру, GPU — на устройстве (2026-09-22)
+
+**Контекст.** §12-бюджеты (frame ≤16.6/33.3 ms, draw calls ≤150/120,
+tex mem, RAM, thermal) требуют замера. Песочница (wasm Godot-риг)
+не имеет GPU-бренда и физического дисплея: `OS.get_render_info`,
+`OS.get_used_memory_bytes` в риге пусты (verified P15), frame
+wall-time в wasm ≠ frame на Snapdragon.
+
+**Решение.** Честное разделение (тот же принцип, что ADR-021):
+
+1. **Песочница (integration, каждый прогон = замер):** структура
+   сцены (nodes/bodies/fx/local lights vs §12) + frame CPU (логика
+   кадра: player + director + boss, P50/P95) + save write (ms).
+   Результаты в PERF_REPORT: camp 281 nodes / CPU p95 0.16 ms;
+   mine 340 / 0.07 ms (4 lights = exactly Medium-бюджет);
+   boss-арена 334 / 0.09 ms (босс в цепи); save 1 ms — **всё в
+   §12 с запасом**. Аудит-фиксы: High tex 1024→2048 (data-дрейф),
+   Ultra-пресет создан (отсутствовал), `soft_shadows` в apply().
+2. **Устройство (владелец, ADB):** draw calls, tex mem, RAM,
+   frame wall-time, thermal 30 мин, cold start — PERF_REPORT §2
+   (чек-лист по TEST_PLAN §7; референс: SD7/8GB High 60 fps,
+   SD6xx/4GB Low 30 fps floor).
+3. **Инструменты:** F1 DebugOverlay (4 Hz, P50/P95, budgets,
+   device-метрики guarded) + F6 PerfBenchmark (10 s →
+   `user://perf_<area>.txt`, P50/P95/peak + counts) —
+   `OS.is_debug_build()`-guarded, release off (P14-принцип).
+
+**Почему так.** «Все бюджеты pass» из песочницы про GPU было бы
+фейком — GPU-строки в риге пусты. Разделение фиксирует, ЧТО
+валидировано (CPU/структура/данные) и ЧТО ожидает device
+(GPU/thermal) — exit P16 по §12 закрывается владельцем по
+чек-листу. CPU-замеры в wasm — относительные (доказывают:
+логика не bottleneck), абсолютные ms — device.
+
+**Следствия.** F1/F6 — debug-only; benchmark-файлы — формат
+текста (adb pull, diff между build); PERF_REPORT обновляется
+после каждого device-прогона; preset-рекомендация по GPU
+(post-MVP) — когда будут device-данные по моделям.

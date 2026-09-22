@@ -842,15 +842,23 @@ KNOWN ISSUES: нумерация ран сессионная (новый ста�
 физический Android-файловик + crash-тесты — device-QA P16.
 NEXT: Phase 16 (Performance).
 
-## PHASE 16 — Performance (mobile-first)
-Scope: audit по TEST_PLAN §7 (**замеры на референс-устройстве — ADR-021**:
-ADB + F1 overlay → файл), fixes (draw calls, AI, particles, textures,
-nodes, RAM), quality presets (Low/Med/High/Ultra, data-driven) проверены
-на mid-range (High, 60 fps) + low-end (Low, 30 fps floor),
-**thermal-сессия 30 мин (без drop)**, cold start ≤8 c, save write,
-PERF_REPORT.md.
-Exit: бюджет §12 TECH_DESIGN по High (mid-range) И Low (low-end) —
-замеры на устройстве (владелец).
+## PHASE 16 — Performance (mobile-first) · done (P16)
+Scope: audit по TEST_PLAN §7 + fixes + quality presets Low/Med/High/Ultra
+(PERF_REPORT.md).
+- **Песочница (ADR-035):** структура (nodes/bodies/fx/lights vs §12) +
+  frame CPU P50/P95 + save write — camp 281 nodes / p95 0.16 ms /
+  save 1 ms, mine 340 (4 lights = Medium-бюджет), boss-арена 334 —
+  всё в §12 с запасом.
+- **Аудит-фиксы:** High tex 1024→2048 (§12-дрейф), Ultra создан
+  (soft_shadows + atlas + 125% VFX), 4 тира validate-чистые.
+- **Инструменты (debug-only, release off):** F1 DebugOverlay
+  (fps/P50/P95/budgets), F6 PerfBenchmark → user://perf_<area>.txt
+  (adb pull), F8 цикл +Ultra.
+- **GPU/thermal/RAM/texmem** — device-чек-лист (PERF_REPORT §2,
+  владелец, референс SD7/8GB High 60 fps, SD6xx/4GB Low 30 fps).
+Exit: песочница-части в §12 (закрыто); GPU-бюджеты §12 —
+device-чек-лист PERF_REPORT §2 (владелец, до P17 device-QA).
+1012/547 pass.
 
 ## PHASE 17 — QA
 Scope: полный sweep по TEST_PLAN §5/§6 (включая edge-cases матрицу),

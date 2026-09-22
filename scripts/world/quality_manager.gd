@@ -48,6 +48,9 @@ func apply() -> void:
 		# Production-only: the headless rig's bridge does not register
 		# this setter (device QA, P16 checklist).
 		_sun.shadow_atlas_4x4 = preset.shadow_atlas_4x4
+		# DirectionalLight3D.SHADOW_FILTER_* (0/1/2/3): SOFT = 3.
+		# Production-only in the rig (the property is a no-op there).
+		_sun.shadow_filter = 3 if preset.soft_shadows else 0
 	if _env != null:
 		# Environment.MSAA_DISABLED=1 / MSAA_2X=2 / MSAA_4X=4.
 		# Production-only in the rig (see above).

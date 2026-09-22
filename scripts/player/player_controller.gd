@@ -217,6 +217,10 @@ func set_touch_provider(provider: _JOY) -> void:
 # state + knockback WITHOUT damage. Damage itself flows through the
 # DamageResolver -> CombatTarget.damaged -> _on_combat_damaged.
 func take_hit(direction: Vector3) -> void:
+	# §6 (P17): a corpse cannot enter hitstun — a scripted hit that
+	# lands after the death event (double-death window) is dropped.
+	if _dead:
+		return
 	if _logic.state != _STATE.State.HURT:
 		_logic.apply_hurt(direction)
 

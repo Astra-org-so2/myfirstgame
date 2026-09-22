@@ -860,14 +860,25 @@ Exit: песочница-части в §12 (закрыто); GPU-бюджеты
 device-чек-лист PERF_REPORT §2 (владелец, до P17 device-QA).
 1012/547 pass.
 
-## PHASE 17 — QA
-Scope: полный sweep по TEST_PLAN §5/§6 (включая edge-cases матрицу),
-**mobile-QA на устройстве (ADR-021): touch-эргоника, aspect 16:9–20:9,
-safe area (notch), rotation-lock (landscape), battery/thermal-наблюдение,
-connectivity-пауза/резюме, low-memory-поведение (save-устойчивость)**,
-fixes, regression-прогон.
-Exit: 0 known critical; 0 known non-critical без решения; mobile-QA
-чек-лист пройден (на устройстве).
+## PHASE 17 — QA · done (P17, sandbox-часть)
+Scope: полный sweep по TEST_PLAN §5/§6 + fixes + regression.
+- **§6-матрица:** все строки покрыты (edge_cases_test: death×5,
+  save×4, inventory×6, world×3, ghost×4, backgrounding-proxy).
+- **Найдено и закрыто 4 дефекта:** (1) int64 > 2^53 (derived
+  seeds) ломали CRC — valid save quarantined после 2-3 ранов →
+  «i64:» формат-фикс (ADR-036); (2) CampDrop непикабелен
+  (сигнал не объявлен + target = scene root) → ADR-037;
+  (3) take_hit без _dead guard; (4) spawn position без
+  fineness-guard (validate + director skip).
+- **qa_phase17_full.md** — sweep-чек-лист (sandbox [x] /
+  device [ ] по ADR-021/035).
+- Mobile-QA на устройстве (touch/aspect/safe area/thermal/
+  backgrounding/low-memory) — device-строки чек-листа,
+  владелец.
+Exit: sandbox-строки 0 known critical / 0 known non-critical
+без решения (закрыты фиксами + regression-тестами);
+mobile-QA чек-лист — device (владелец, до P18 device-части).
+1019/597 pass.
 
 ## PHASE 18 — Release build (Android)
 Scope: export presets (**Android release — primary (ADR-021)**; Windows —

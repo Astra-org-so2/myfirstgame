@@ -112,6 +112,14 @@ func start(table: _TABLE) -> void:
 		if spawn_overrides.has(entry.enemy.id):
 			pos = spawn_overrides[entry.enemy.id]
 			spawn_overrides.erase(entry.enemy.id)  # one-shot
+		# §6 (P17): the runtime guard — a broken .tres or a broken
+		# echo override must not spawn a corpse of an enemy outside
+		# the map: log + skip (the validate() above is the data net).
+		if not pos.is_finite():
+			push_warning("EnemyDirector: spawn for %s skipped "
+					+ "(non-finite position %s)"
+					% [String(entry.enemy.id), str(pos)])
+			continue
 		var ctrl: _CTRL = _CTRL.new()
 		ctrl.textures = textures
 		ctrl.name = "Enemy_" + String(entry.enemy.id)

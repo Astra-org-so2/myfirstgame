@@ -1334,9 +1334,13 @@ func _on_enemy_killed(_enemy_id: StringName, pos: Vector3) -> void:
 	drop.name = "CampDrop"
 	(camp_layer if camp_layer != null else self).add_child(drop)
 	drop.global_position = Vector3(pos.x, 0.0, pos.z)
-	drop.setup(_CAMP_ITEM, self)
+	drop.setup(_CAMP_ITEM, player)
 	drop.interacted.connect(func(_ia: Node) -> void:
-		if inventory.add(_CAMP_ITEM):
+		# The add result in a variable first (the branch must not
+		# hide the call: the rig's JS bridge mis-compiled
+		# `if add():` in P17 — same code, native-safe either way).
+		var res: int = inventory.add(_CAMP_ITEM)
+		if res >= 0:
 			toast.show_text("You take the small fire.")
 			if sfx != null:
 				sfx.play(&"pickup")

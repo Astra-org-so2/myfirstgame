@@ -43,6 +43,19 @@ static func crc_of(body: Dictionary) -> String:
 # normalization is what makes the CRC stable across the int ->
 # float JSON parse cycle (Godot's parser returns floats for every
 # number: 1757760000 would otherwise come back "1757760000.0").
+# JSON numbers round-trip through float64 (both Godot's and the
+# rig's parsers return floats for every number). int64 values beyond
+# 2^53 (the per-run derived seeds: splitmix64, P8) would come back
+# ROUNDED -> the canonical text changes -> false crc_mismatch -> a
+# VALID save quarantined (P17 found this: after a few runs every
+# save «corrupted»). The format-level fix: out-of-range ints are
+# written as the marker string "i64:<digits>" and restored on parse
+# (strict is_valid_int guard: no note line can accidentally match —
+# the remainder must be a full integer literal).
+const INT64_MARK: String = "i64:"
+const MAX_SAFE_INT: int = 9007199254740992  # 2^53
+
+
 static func canonical(d: Dictionary) -> String:
 	return JSON.stringify(_norm_numbers(d))
 
@@ -59,6 +72,11 @@ static func _norm_numbers(v: Variant) -> Variant:
 			for e in v:
 				out.append(_norm_numbers(e))
 			return out
+		TYPE_INT:
+			var i: int = v
+			if i > MAX_SAFE_INT or i < -MAX_SAFE_INT:
+				return INT64_MARK + str(i)
+			return i
 		TYPE_FLOAT:
 			var f: float = v
 			if is_zero_approx(f - roundf(f)):
@@ -72,7 +90,30 @@ static func parse(text: String) -> Dictionary:
 	var v: Variant = JSON.parse_string(text)
 	if typeof(v) != TYPE_DICTIONARY:
 		return {}
-	return v
+	return _denorm_numbers(v)
+
+
+static func _denorm_numbers(v: Variant) -> Variant:
+	match typeof(v):
+		TYPE_DICTIONARY:
+			var out: Dictionary = {}
+			for k in v:
+				out[str(k)] = _denorm_numbers(v[k])
+			return out
+		TYPE_ARRAY:
+			var out: Array = []
+			for e in v:
+				out.append(_denorm_numbers(e))
+			return out
+		TYPE_STRING:
+			var s: String = v
+			if s.begins_with(INT64_MARK):
+				var rest: String = s.substr(INT64_MARK.length())
+				if rest.is_valid_int():
+					return rest.to_int()
+			return s
+		_:
+			return v
 
 
 # The verification matrix (every failure is a named problem, not

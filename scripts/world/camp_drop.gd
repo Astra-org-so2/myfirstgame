@@ -14,17 +14,32 @@ const _ITEM_DATA = preload("res://scripts/gameplay/progression/item_data.gd")
 var item: _ITEM_DATA
 var interactable: _INTERACTABLE
 
+# The scene (main) connects here: it owns the capacity/cap decision
+# and the player-visible feedback. (P17: the signal was promised by
+# the docstring but never declared — the scene's connection was
+# dead, the camp item was unpickable; the target was the scene
+# root, which has no get_body_position, so the prompt could not
+# show either.)
+signal interacted(interactable: Node3D)
 
-func setup(p_item: _ITEM_DATA, scene_root: Node) -> void:
+
+func setup(p_item: _ITEM_DATA, p_player: Node) -> void:
 	item = p_item
 	_build_visual()
 	# Interactable reads prompt/radius in _ready — set BEFORE add_child.
+	# The target is the PLAYER (the distance poll calls its
+	# get_body_position).
 	interactable = _INTERACTABLE.new()
 	interactable.name = "Interact"
 	interactable.prompt = "A small fire (E)"
 	interactable.interact_radius = 2.2
 	add_child(interactable)
-	interactable.set_target(scene_root)
+	interactable.set_target(p_player)
+	interactable.interacted.connect(_on_interactable_interacted)
+
+
+func _on_interactable_interacted(ia: Node3D) -> void:
+	interacted.emit(ia)
 
 
 func _build_visual() -> void:

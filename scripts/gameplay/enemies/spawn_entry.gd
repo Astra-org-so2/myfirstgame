@@ -32,4 +32,9 @@ func validate() -> Array[String]:
 		problems.append("enemy data is required")
 	if noise_radius < 0.0:
 		problems.append("noise_radius must be >= 0")
+	# §6 (P17): a non-finite spawn position is a broken .tres (or a
+	# broken echo override) — an enemy outside the map wastes budget
+	# and clips through geometry, so the data check catches it here.
+	if not position.is_finite():
+		problems.append("position must be finite (got %s)" % str(position))
 	return problems

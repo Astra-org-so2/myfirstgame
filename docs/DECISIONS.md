@@ -1516,3 +1516,77 @@ wall-time в wasm ≠ frame на Snapdragon.
 текста (adb pull, diff между build); PERF_REPORT обновляется
 после каждого device-прогона; preset-рекомендация по GPU
 (post-MVP) — когда будут device-данные по моделям.
+
+## ADR-036 · P17: int64 > 2^53 в save — формат-фикс «i64:» (2026-09-22)
+
+**Контекст.** §6-свип (edge_cases) убил игрока 5 раз подряд:
+world dict накопил derived run-seeds (splitmix64, P8:
+`derive_seed` — полный int64, ~1e17–1e18). Save-файл при этом
+«корруптился»: load → crc_mismatch → quarantine → recovered_bak
+→ **игрок тихо откатывался на state последнего успешно
+прочитанного save**.
+
+**Корень.** JSON-числа в Godot (и в риге) — float64:
+`JSON.parse_string` возвращает float для КАЖДОГО числа. int64
+за пределами 2^53 (9007199254740992) возвращается ОКРУГЛЁННЫМ
+→ canonical-текст после parse ≠ исходный → CRC не сходится.
+На native и в риге одинаково — production-баг, не артефакт
+песочницы. P15 его не видел: 1 ран = seed 20260917 (<< 2^53);
+баг проявляется с 2-3-го рана (derived seed).
+
+**Решение.** Формат-уровень (save_data.gd, без изменения
+структуры world — SAVE_VERSION остаётся 1):
+- canonical: int за пределами ±2^53 пишется как строка
+  `"i64:<цифры>"`; в пределах — plain number (старые файлы
+  байт-идентичны).
+- parse: строки с префиксом `i64:` возвращаются в int — только
+  при СТРОГОМ `is_valid_int()` остатка (заметка-строка вида
+  «i64:123 is a number» не перетолковывается: остаток не
+  целое литерал).
+- CRC считается по canonical-тексту → round-trip стабилен.
+
+**Почему не «уменьшить seed».** derived seed — часть A-контракта
+P8 (каждый respawn = новый мир; seed deterministically
+производный). Сжатие до 2^53/2^31 урезало бы пространство
+layouts. Формат-фикс не трогает геймплей.
+
+**Следствия.** Regression: save_data_test (exact round-trip
+3569610106698308992 и отрицательного, граница 2^53-1, CRC,
+marker-string guard) + edge_cases saves (двойной save после 5
+ранов: status ok). Device-строка: открыть save после нескольких
+ранов, seeds целы.
+
+## ADR-037 · P17: CampDrop был непикабелен — сигнал + target (2026-09-22)
+
+**Контекст.** §6-строка «полный инвентарь (pickup отказ +
+feedback)» не тестировалась никем до P17: P6 проверял
+InventoryLogic напрямую, scene-level pickup костра не
+покрывался. Свип нашёл, что camp item (единственный
+консумабл MVP) **невозможно подобрать**:
+1. `signal interacted` — обещан docstring-ом CampDrop и
+   подключён в main_scene (`drop.interacted.connect(...)`), но
+   **никогда не объявлен** в классе. Connection висела в
+   никуда (в риге тихо, на native — ScriptError при каждом
+   дропе).
+2. Target Interactable = scene root, у которого нет
+   `get_body_position()` → distance-poll падает/пуст →
+   prompt не показывается даже в принципе.
+
+**Решение.** (camp_drop.gd): `signal interacted(interactable)`
+объявлен + форвард из дочернего Interactable
+(`_on_interactable_interacted`); `setup(p_item, p_player)` —
+target = player (паттерн WeaponPickup). main_scene:
+`drop.setup(_CAMP_ITEM, player)`. Lambda сцены — вызов add в
+переменную, потом ветка (риг-артефакт: `if add():` в
+условии JS-мост перекомпилировал неверно; на native форма
+равносильна — переменная безопасна в обоих мирах).
+
+**Почему это важно.** Костёр — ядро «второго шанса» (GDD §9:
+heal-консумабл, 3/ран, 1/10 drop). Механика существовала в
+данных и в логике, но была отрезана от игрока на последнем
+сантиметре (сигнал). Типичный класс дефекта, который ловит
+ТОЛЬКО end-to-end sweep (не unit логики, не unit сцены).
+
+**Следствия.** Regression: edge_cases inventory (drop →
+pickup в последний слот; drop при полном баге → тост «No room
+in the bag.»; мёртвый игрок + drop).

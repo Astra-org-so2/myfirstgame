@@ -92,6 +92,8 @@ const SUITES = [
 			["integration"]],
 	["perf_scene", "res://tests/integration/perf_scene_test.gd",
 			["integration"]],
+	["edge_cases", "res://tests/integration/edge_cases_test.gd",
+			["integration"]],
 ]
 
 var _failed: int = 0

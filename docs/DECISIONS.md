@@ -1375,3 +1375,105 @@ MVP нет (текст); бус без контента = unnecessary system.
 = final. Mobile: 12 стримов ~4.8 MB RAM (11025 Hz mono),
 обработка = mix-инги Godot (лёгкая), battery-влияние
 измеряется в P16.
+
+## ADR-034 — Save: один слот, CRC32, восстановление по матрице, изоляция тестов (Phase 15)
+
+**Статус:** принято (Phase 15, 2026-09-22).
+
+**Контекст.** Phase 15 (ROADMAP: SaveManager по TECHNICAL_DESIGN §3
+(atomic, crc, versions, migration, recovery), save-матрица +
+kill-mid-write симуляция, settings в save; exit: crash/invalid/
+old-version/missing-asset — без loss core-прогрессии, без crash).
+Проблемы: (1) WorldState (P6) уже был спроектирован под save
+(to_dict/load_dict + «Phase 15 обернёт ЭТОТ ЖИ класс»), но
+envoIope/CRC/файловый слой не существовал; (2) headless-риг:
+user://-I/O работает (probe: write/rename/remove,
+make_dir_recursive с user://-путями), но нет String.to_utf8
+(UTF-8 для CRC — вручную), JSON.stringify сортирует ключи по
+умолчанию, а JSON.parse_string возвращает ВСЕ числа как float
+(int -> float-дрейф ломает CRC-стабильность: 1757760000
+возвращается "1757760000.0"); (3) settings (P13 quality, P14
+audio) должны попасть в save и применяться при старте, но
+создаются в разное время (audio до progress, quality после);
+(4) интеграционные тесты: save в user:// — разделяемое
+состояние между 14+ сьюитами одного harness-процесса (первый
+death-choice в одном сьюите ломал RUN-1-инварианты в
+последующих).
+
+**Решения.**
+1. **Три слоя (scripts/gameplay/save/):** `SaveData` (pure:
+   envelope {format, version, saved_at_unix, engine_version,
+   world, settings, crc32}, canonical JSON, CRC32-IEEE
+   бит-в-бит, verify-матрица с именованными проблемами),
+   `SaveMigrator` (pure: цепочка шагов from-version -> Callable,
+   target; «newer» = отдельный именованный исход, gap =
+   andменованный; шаг обязан продвигать версию — guard от
+   зацикливания), `SaveManager` (Node, scene-composed: file I/O,
+   матрица, atomic-запись, cap). Менеджер работает с ДИКТАМИ
+   (world = WorldState.to_dict(); сцена применяет load_dict) —
+   нет зависимости от progression.
+2. **CRC-стабильность через нормализацию чисел:** canonical(d)
+   = stringify(отсортировано + целочисленные float -> int).
+   Это делает CRC инвариантным к int->float-циклу JSON-парсера
+   (без этого любой round-trip давал crc_mismatch). Проверено:
+   вектор "123456789" = 0xCBF43926, order-free canonical,
+   round-trip verifies.
+3. **Atomic-ish запись (TECH_DESIGN §3):** .tmp -> flush ->
+   close -> DirAccess.rename (POSIX/NTFS атомарно на файле);
+   crash между шагами оставляет СТАРЫЙ или НОВЫЙ файл (тест
+   kill-mid-write: partial .tmp + целый старый -> старый
+   выигрывает, tmp зачищается следующим save). Предыдущий
+   ВАЛИДНЫЙ файл копирован в .bak (невалидный не
+   промутационируется в .bak).
+4. **Матрица восстановления (именованные статусы):**
+   ok / empty / recovered_bak (битый main + валидный .bak ->
+   .bak поднят в live, битый сохранён .corrupt_corrupt) /
+   fresh (оба биты -> оба сохранены, свежий мир) / newer
+   (save от новой версии: файл НЕ ТРОГАЕТСЯ — это save
+   пользователя для другого билда; meta из .bak или safe
+   defaults). quarantine = rename в .corrupt_* (данные
+   пользователя НИКОГДА не удаляются).
+5. **Settings в save (P14-экзит, закрывший P14) + P13 quality:**
+   save-секция {quality: tier-id, audio: {master, music, sfx,
+   ambient, muted}}. Точки: смерть+выбор (перманентный факт,
+   тост «The world remembers.»), возврат в лагерь (safe hub,
+   тихо), WM_CLOSE_REQUEST (тихо). Применение при старте —
+   после создания ОБОИХ систем (audio существует раньше
+   progress, quality — после: `_apply_saved_settings()` вызван
+   в run-setup, мир-секция — до run_manager.init_session,
+   т.к. история ранов = world fact).
+6. **Изоляция тестов без environment-sniffing:** сигнал —
+   «main scene не current_scene» (под harness'ом root =
+   runner, в игре main.tscn = current scene). Изолированный
+   save (уникальный путь, чистится в _exit_tree) у каждой
+   интеграционной сцены; тест, которому нужен общий файл
+   (death->save->reload), ставит `save_path_override` ДО
+   add_child (seam), и сцена не претендует на путь.
+   (DisplayServer в риге = "web", не "headless" — environment-
+   проверки отброшены.)
+7. **5 MB hard cap на файл:** runs-секция — единственный
+   растущий участок; RunHistory уже тримит в рантайме,
+   файловый уровень — последняя линия (oldest full -> summary,
+   log; не снять cap — save НЕ пишется, старый остаётся).
+
+**Альтернативы.** (a) Save в нескольких файлах (world/runs/
+settings) — отклонено: §3 «одна слот-файл», атомарность
+целого проще, CRC одного файла. (b) OGG-подобная бинарная
+запись — отклонено: JSON читаем человеком (QA, recovery на
+device), 5 MB cap при 15 ранах ~150-300 КБ — нет причины
+жать. (c) Авто-автосейв по таймеру — отлонено: «окно, не
+таймер» (ADR-019) — сейвы на фактах (смерть/выбор/хаб/закрытие).
+(d) Load в _ready с реальным путём + чистка user:// перед
+тестами — отклонено: чистка общего хранилища из тестов
+опасна (реальный save разработчика), изоляция по-сьюитно
+честнее. (e) run_count как world fact (схема §3) — НЕ
+введён: нумерация ран сессионная (новый старт = run 1),
+персистентны РЕКОРДЫ (runs-секция) — текущая модель
+RunManager/RunHistory, честнее, чем синтетический счётчик.
+
+**Получено.** Save-система по §3: один слот, CRC32, версии
+(v1, цепочка готова), атомарная запись, бэкап, матрица
+восстановления (6 именованных исходов, все покрыты unit),
+kill-mid-write, settings (quality + audio) в save, три точки
+автосейва. Prototype-долгов: нет. Device-QA (P16):
+физический файловик Android, ENOSPC, crash-тесты.

@@ -50,6 +50,9 @@ const SUITES = [
 	["visual_pass", "res://tests/unit/visual_pass_test.gd", ["unit"]],
 	["ui_theme", "res://tests/unit/ui_theme_test.gd", ["unit"]],
 	["audio_env", "res://tests/unit/audio_env_test.gd", ["unit"]],
+	["save_data", "res://tests/unit/save_data_test.gd", ["unit"]],
+	["save_migrator", "res://tests/unit/save_migrator_test.gd", ["unit"]],
+	["save_manager", "res://tests/unit/save_manager_test.gd", ["unit"]],
 	["music_library", "res://tests/unit/music_library_test.gd", ["unit"]],
 	["music_director", "res://tests/unit/music_director_test.gd", ["unit"]],
 	["audio_manager", "res://tests/unit/audio_manager_test.gd", ["unit"]],
@@ -82,6 +85,8 @@ const SUITES = [
 	["cast_scene", "res://tests/integration/cast_scene_test.gd",
 			["integration"]],
 	["audio_scene", "res://tests/integration/audio_scene_test.gd",
+			["integration"]],
+	["save_scene", "res://tests/integration/save_scene_test.gd",
 			["integration"]],
 ]
 

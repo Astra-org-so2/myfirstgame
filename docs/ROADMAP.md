@@ -1,6 +1,6 @@
 # AFTER YOU — Roadmap (фазы, вехи, exit-criteria)
 
-Версия: 1.4 (Phase 14 закрыта, GDD v2.0). Формат статуса фазы
+Версия: 1.5 (Phase 15 закрыта, GDD v2.0). Формат статуса фазы
 (обязателен при закрытии):
 `STATUS / IMPLEMENTED / TESTED / KNOWN ISSUES / NEXT`.
 
@@ -816,6 +816,31 @@ settings в save.
 Unit: migration, corrupt matrix. Integration: death→save→reload.
 Exit: crash/invalid/old-version/missing-asset — без loss core-
 прогрессии, без crash (матрица 100%).
+
+STATUS: done (2026-09-22, ADR-034).
+IMPLEMENTED: SaveData (envelope {format,version,saved_at,
+engine,world,settings,crc32}, canonical JSON, CRC32-IEEE,
+verify-матрица) + SaveMigrator (цепочка шагов, «newer»/gap —
+именованные, no-loop guard) + SaveManager (user://save/ay_
+save.json, atomic .tmp->rename, .bak, 5 MB cap, матрица:
+ok/empty/recovered_bak/fresh/newer, quarantine .corrupt_* —
+данные пользователя никогда не удаляются); settings в save
+(quality tier + audio: master/music/sfx/ambient/mute); точки
+автосейва: смерть+выбор (тост), safe-hub (лагерь), WM_CLOSE;
+изоляция тестов (main != current_scene -> уникальный save,
+seam save_path_override).
+TESTED: unit save_data (CRC-вектор 0xCBF43926, round-trip,
+tamper, envelope), save_migrator (цепочка, newer, gap, no-
+loop, null-step), save_manager (всё на реальном user:// I/O:
+round-trip, .bak, corrupt->recovered_bak, both-corrupt->fresh
++ quarantine, newer-не-тронут, kill-mid-write partial .tmp);
+integration save_scene (смерть через реальный путь -> выбор ->
+save -> 2-я сцена: flags/inheritance/note/NPC-death/run-history/
+audio-setting — всё на месте); regression 995/523.
+KNOWN ISSUES: нумерация ран сессионная (новый старт = run 1;
+персистентны рекорды — ADR-034 #7); ENOSPC не симулируется;
+физический Android-файловик + crash-тесты — device-QA P16.
+NEXT: Phase 16 (Performance).
 
 ## PHASE 16 — Performance (mobile-first)
 Scope: audit по TEST_PLAN §7 (**замеры на референс-устройстве — ADR-021**:

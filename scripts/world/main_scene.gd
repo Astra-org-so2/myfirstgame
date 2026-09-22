@@ -102,6 +102,8 @@ const _QUALITY_HIGH = preload("res://data/quality/high.tres")
 # stinger manager + the settings panel.
 const _AUDIO_MGR = preload("res://scripts/audio/audio_manager.gd")
 const _SETTINGS = preload("res://scripts/ui/settings_panel.gd")
+# Phase 15 — save/load/recovery (TECHNICAL_DESIGN §3).
+const _SAVE_MGR = preload("res://scripts/gameplay/save/save_manager.gd")
 const _PALETTE = preload("res://data/visual/palette.tres")
 const _TEX_BANK = preload("res://scripts/world/texture_bank.gd")
 
@@ -161,6 +163,16 @@ var quality: _QUALITY_MGR = null
 # the settings panel (F9, debug builds).
 var audio: _AUDIO_MGR = null
 var settings_panel: _SETTINGS = null
+# Phase 15: the save system (the load must land BEFORE the run
+# system reads the world: run 1 vs run N).
+var save_manager: _SAVE_MGR = null
+var _saved_settings: Dictionary = {}
+var _first_camp_done: bool = false
+var _isolated_save: bool = false
+# Test seam (set BEFORE add_child): the save path the scene must
+# use (the death->save->reload test shares one file between two
+# scene instances; the auto-isolation below then stays off).
+var save_path_override: String = ""
 var _f9_prev: bool = false
 var _boss_in_fight: bool = false
 var textures: _TEX_BANK = null
@@ -298,6 +310,39 @@ func _setup_progression(layout: _LAYOUT, camp: _CAMP) -> void:
 	progress.name = "Progression"
 	add_child(progress)
 	progress.setup(tracker.stats, 20260915)
+	# Phase 15: the recovery matrix (TECHNICAL_DESIGN §3). The
+	# restored world must be in place BEFORE run_manager.init_session
+	# (the run count is a world fact).
+	save_manager = _SAVE_MGR.new()
+	save_manager.name = "SaveManager"
+	# Test seam: under the harness the main scene is a CHILD of
+	# the runner (current_scene != self) — every integration scene
+	# gets an ISOLATED save (a fresh game, no bleed between the
+	# suites). A test that needs a specific path sets it before
+	# add_child (the scene then leaves it alone). In the game
+	# main.tscn IS the current scene: the real user://save.
+	if save_path_override != "":
+		save_manager.path = save_path_override
+	elif get_tree().current_scene != self:
+		save_manager.path = "user://save_test/headless_%d.json" \
+				% Time.get_ticks_msec()
+		_isolated_save = true
+	add_child(save_manager)
+	save_manager.register_migrations()
+	var ld: Dictionary = save_manager.load()
+	var status: String = str(ld.status)
+	_saved_settings = ld.settings
+	var world_d: Dictionary = ld.world
+	if not world_d.is_empty():
+		progress.ws.load_dict(world_d)
+	# The player should hear about a recovery, never about the
+	# silent first boot.
+	if status == "recovered_bak":
+		toast.show_text("The world remembers. (save restored)", 3.5)
+	elif status == "fresh" and save_manager != null:
+		toast.show_text("The world started over. (save was lost)", 3.5)
+	elif status == "newer":
+		toast.show_text("A newer save was kept. (new world)", 3.5)
 
 	loadout = _LOADOUT.new()
 	loadout.name = "WeaponLoadout"
@@ -471,6 +516,9 @@ func _setup_zones() -> void:
 	quality.setup(_QUALITY_MEDIUM, $WorldEnvironment.environment,
 			$Sun, get_viewport())
 	zone_world.set_light_budget(quality.light_budget())
+	# Phase 15: the saved settings (quality + audio) land now —
+	# both systems exist.
+	_apply_saved_settings()
 	# Phase 13: the world surfaces (the cast got the bank earlier).
 	zone_world.textures = textures
 	$CampWorld.set_textures(textures)
@@ -580,6 +628,12 @@ func _enter_level(area_id: StringName) -> void:
 	_place_child(area_id)
 	# Phase 14: the audio follows the world (the zone bed + music).
 	_update_audio()
+	# Phase 15: the safe hub is the auto-save point (the session
+	# start is not — nothing to save yet).
+	if area_id == &"camp":
+		if _first_camp_done:
+			_do_save("hub")
+		_first_camp_done = true
 	if is_camp:
 		director.load_nav(_NAV_DATA)
 		director.start(_SPAWN_TABLE)
@@ -795,6 +849,46 @@ func _debug_quality_cycle() -> void:
 		zone_world.set_light_budget(quality.light_budget())
 		toast.show_text("Quality: " + next.display_name, 1.5)
 	_f8_prev = pressed
+
+
+# Phase 15 — the save seams (TECHNICAL_DESIGN §3). The triggers:
+# the death choice (a permanent fact), the safe hub (camp), and
+# the window close. The auto-saves are quiet; only the choice
+# says something.
+func _do_save(reason: String) -> void:
+	if save_manager == null or progress == null:
+		return
+	var st: Dictionary = {}
+	if quality != null:
+		st["quality"] = quality.preset.id
+	if audio != null:
+		st["audio"] = audio.get_settings()
+	var ok: bool = save_manager.save(progress.ws.to_dict(), st)
+	if ok and reason == "choice":
+		toast.show_text("The world remembers.", 2.0)
+
+
+func _apply_saved_settings() -> void:
+	if _saved_settings.is_empty():
+		return
+	var q: StringName = StringName(
+			str(_saved_settings.get("quality", "")))
+	if not q.is_empty() and quality != null and q != quality.preset.id:
+		var preset: _QUALITY_PRESET
+		match q:
+			&"low":
+				preset = _QUALITY_LOW
+			&"high":
+				preset = _QUALITY_HIGH
+			_:
+				preset = _QUALITY_MEDIUM
+		quality.set_preset(preset)
+		if zone_world != null:
+			zone_world.set_light_budget(quality.light_budget())
+	var a: Dictionary = _saved_settings.get("audio", {})
+	if not a.is_empty() and audio != null:
+		audio.settings_from_dict(a)
+	_saved_settings = {}
 
 
 # Phase 14 — the audio seams. The scene owns the facts; the manager
@@ -1149,6 +1243,8 @@ func _death_cause() -> StringName:
 
 func _on_death_choice(data: Resource) -> void:
 	progress.resolve_death_choice(data)
+	# Phase 15: the choice is permanent — it is saved now.
+	_do_save("choice")
 	player.death_choice_pending = false
 	toast.show_text("The world keeps what you choose.")
 	player.request_respawn()
@@ -1320,6 +1416,20 @@ func _on_level_freed() -> void:
 # Phase 8 — UI beats: A1 (the 2 s black fade) and the "what changed"
 # overlay (WORLD_STATE_DESIGN §9.2: ≤ 5 lines, 3 s, skippable).
 # ---------------------------------------------------------------------------
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_WM_CLOSE_REQUEST:
+		# Phase 15: the last auto-save (TECHNICAL_DESIGN §3.5).
+		_do_save("close")
+
+
+func _exit_tree() -> void:
+	# The isolated test save is disposable (the scene's lifetime).
+	if _isolated_save and save_manager != null:
+		for suffix in ["", ".bak", ".tmp"]:
+			DirAccess.remove_absolute(save_manager.path + suffix)
+		_isolated_save = false
+
 
 func _process(delta: float) -> void:
 	_check_mine_deep(delta)

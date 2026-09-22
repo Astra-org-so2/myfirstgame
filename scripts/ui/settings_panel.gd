@@ -92,7 +92,7 @@ func _rebuild() -> void:
 	_root.add_child(bg)
 
 	var title: Label = Label.new()
-	title.text = "Sound"
+	title.text = tr("Sound")
 	title.position = Vector2(x + pad, y + pad * 0.4)
 	title.size = Vector2(w - pad * 2, row_h)
 	title.add_theme_font_size_override("font_size", _th().font_title)
@@ -170,7 +170,7 @@ func _build_mute(x: float, y: float, w: float, h: float) -> Control:
 	row.size = Vector2(w, h)
 	row.mouse_filter = Control.MOUSE_FILTER_STOP
 	var label: Label = Label.new()
-	label.text = "Mute"
+	label.text = tr("Mute")
 	label.position = Vector2(0.0, 0.0)
 	label.size = Vector2(w * 0.22, h)
 	label.add_theme_font_size_override("font_size", _th().font_body)
@@ -273,7 +273,7 @@ func _draw_mute() -> void:
 		_mute_fill.color = _th().danger if on else _th().accent_warm
 	var v: Label = _mute_row.get_node_or_null("MuteValue")
 	if v != null:
-		v.text = "on" if on else "off"
+		v.text = tr("on") if on else tr("off")
 		v.add_theme_color_override("font_color",
 				_th().danger if on else _th().text_dim)
 

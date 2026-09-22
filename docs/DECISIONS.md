@@ -1642,3 +1642,62 @@ check_release (headless), job 2 = gradle-export + aapt badging
 (нужен SDK); ADB-QA — вне CI, на устройстве (§15.3). Каждый
 релиз: version/code +1. iOS (вторичная) — отдельная фаза после
 MVP, если архитектура/бюджеты позволят (ADR-021).
+
+## ADR-039 · P19: Локализационный слой — tr() + data/loc/strings.csv (RU draft) (2026-09-22)
+
+**Контекст.** Final lock: «MVP language=English (RU data-ready,
+translation later, **all strings through the localization layer**)».
+P19-аудит: слоя не было — 65 уникальных user-visible строк
+(102 call site) жили raw-литералами в коде: тосты main_scene,
+interact-промпты, канонические 10 линий босса и 16 линий
+first_run_director, UI-лейблы, заметки оружия (WEAPON_LINES).
+Data-driven-поверхности (диалоги NPC в npc_state.tres,
+mystery-строки, наследия data/inheritances/, «what changed»-строки
+world_flags.tres) были готовы к переводу по структуре; кодовые —
+нет.
+
+**Решение.** Нативный механизм Godot (tr()) на ВСЕХ
+user-visible строках, без нового менеджера:
+- литерал → `tr("...")`; строки-консты → `tr(LINE_X)` **в
+  call-site** (const не может вызывать метод — tr() не
+  константное выражение); конкатенации →
+  `tr("... %s") % value` (вывод байт-идентичен).
+- `data/loc/strings.csv` (en,ru) — единый источник RU-драфта:
+  65 строк, все ru заполнены. `internationalization/locale/
+  fallback="en"` (уже в project.godot).
+- MVP работает на английском: tr() без загруженных переводов =
+  identity — ноль изменения поведения. `.translation` в git НЕ
+  генерируем: компиляция CSV → .translation — 2-минутный шаг
+  редактора Godот (владелец, до RU-релиза), задокументирован
+  в FINAL_REVIEW §Licensing/UX.
+- `tests/unit/localization_test.gd` (5 проверок): статически
+  извлекает ВСЕ tr()-ключи из scripts/ (литералы +
+  конст-справки `tr(LINE_X)` + dict-справки
+  `tr(String(WEAPON_LINES[wid]))` с резолвом значений) и
+  требует: ключ(код) = ключ(CSV) в обе стороны + ru не пуст.
+  Новая строка без CSV-строки = красный тест.
+
+**Исключения (задокументированы в FINAL_REVIEW):** чистые
+символы ("!", "X", "· "), имя собственное «VEYRA B» (не
+переводится), node-name, push_error/log-сообщения
+(developer-facing, не user-visible).
+
+**Риг-ограничения, вскрытые при P19 (влияют на game-код!):**
+1. GDScript ригов НЕ exposes `Dir`, `RegEx`, `RegExMatch` и
+   `String.is_lower/is_upper` → тест (и game-код) — только
+   DirAccess + строковый скан.2. Boot-time class-cache-компиляция скрипта с `class_name`
+   ЛОМАЕТСЯ, если внутри многострочного `PackedStringArray([`
+   вызов-выражение стоит на continuation-line. Обход:
+   вызов-выражения держать на одной строке (gate-футноуты
+   first_run — single-line форма). Детерминированно:
+   baseline без tr() — 0 ошибок, с — 88 integration-FAIL.
+3. Runner: suite со сломанной компиляцией молча пропускался
+   (`load()` возвращает non-null и для битого скрипта,
+   `run()` вызывался в пустоту) → guard `has_method("run")`
+   = громкий FAIL (tests/runner.gd).
+
+**Следствия.** RU data-ready (CSV-драфт в git); переключение
+на RU = скомпилировать .translation + (опц.) сменить locale —
+без code change. Аудит P19: 102 tr()-вызова, 65 ключей, 0
+покрытий-разрывов. unit 1024/0 (5 новых loc-проверок),
+integration 597/0.

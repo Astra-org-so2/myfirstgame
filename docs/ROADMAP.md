@@ -1,7 +1,7 @@
 # AFTER YOU — Roadmap (фазы, вехи, exit-criteria)
 
-Версия: 1.5 (Phase 15 закрыта, GDD v2.0). Формат статуса фазы
-(обязателен при закрытии):
+Версия: 1.9 (Phase 19 закрыта — **MVP завершён**). Формат статуса
+фазы (обязателен при закрытии):
 `STATUS / IMPLEMENTED / TESTED / KNOWN ISSUES / NEXT`.
 
 ## Вехи (milestones)
@@ -902,8 +902,27 @@ Exit: sandbox-сторона release-ready (check_release 22/22);
 до P19. Windows-экспорт: по решению владельца (не блокирует).
 1019/597 pass.
 
-## PHASE 19 — Final review
+## PHASE 19 — Final review · done (P19)
 Scope: независимый review (роль senior reviewer), FINAL_REVIEW.md по
 секциям (Architecture/Gameplay/UX/Visuals/Audio/Performance/Persistence/
 Security/Licensing/Known Bugs/Release Risks), fixes critical.
 Exit: review закрыт; known limitations задокументированы.
+- STATUS: **DONE — MVP завершён** (2026-09-22).
+- IMPLEMENTED: механический аудит (138 скриптов / 18 622 строки,
+  116 .tres, 53 сьюта) + фиксы P19: (1) **локализационный слой**
+  (ADR-039, major: нарушение final lock) — 102 tr()-вызова, 65
+  ключей, `data/loc/strings.csv` (RU draft 65/65),
+  `localization_test.gd` (двунаправленное покрытие код↔CSV);
+  (2) VisualPalette: 5 записей seal/mystery — ad-hoc-цвета
+  room_node = 0 (grep); (3) runner: громкий FAIL вместо тихого
+  пропуска битых сьютов (has_method-guard); (4) чистка 2 мёртвых
+  конста; (5) ASSET_STATUS §5 = 6/6.
+- TESTED: unit **1024/0** (5 новых loc-проверок), integration
+  **597/0**, check_release **22/22** (P18).
+- KNOWN ISSUES: critical = 0. Задокументировано: main_scene 1607
+  (known limitation, рефактор post-MVP), save не шифрован /
+  script_export_mode=1, RU = draft, device QA открыт (владелец,
+  RELEASE_BUILD §3), iOS отложен, риг-ограничения (ADR-039 п.3).
+- NEXT: owner-side release (RELEASE_BUILD.md §1–§6: сборка APK +
+  ADB-QA). Post-MVP по решению владельца (качество/девайс-фидбек),
+  новых систем автоматически нет.

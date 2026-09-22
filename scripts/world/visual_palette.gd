@@ -28,6 +28,16 @@ extends Resource
 # Post-boss: the city's far light (K7).
 @export var city_glow: Color = Color(0.75, 0.80, 0.95)
 
+# --- Narrative effects (P19: pulled out of the ad-hoc literals) ----------
+# The sealed door (A16): a dark ring with a dim ember-glow + notches.
+@export var seal_ring: Color = Color(0.12, 0.12, 0.15)
+@export var seal_glow: Color = Color(0.35, 0.28, 0.22)
+@export var seal_notch: Color = Color(0.05, 0.05, 0.06)
+# The MYSTERY room's beam: the cold memory glow (before the boss the
+# world's other "light" is only this and the campfire).
+@export var mystery_beam: Color = Color(0.50, 0.55, 0.70)
+@export var mystery_glow: Color = Color(0.50, 0.55, 0.75)
+
 # --- Characters -----------------------------------------------------------
 # Eli (the player) and the First (his worn copy).
 @export var eli_cloak: Color = Color(0.42, 0.40, 0.36)

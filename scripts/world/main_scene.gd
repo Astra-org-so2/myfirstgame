@@ -347,11 +347,11 @@ func _setup_progression(layout: _LAYOUT, camp: _CAMP) -> void:
 	# The player should hear about a recovery, never about the
 	# silent first boot.
 	if status == "recovered_bak":
-		toast.show_text("The world remembers. (save restored)", 3.5)
+		toast.show_text(tr("The world remembers. (save restored)"), 3.5)
 	elif status == "fresh" and save_manager != null:
-		toast.show_text("The world started over. (save was lost)", 3.5)
+		toast.show_text(tr("The world started over. (save was lost)"), 3.5)
 	elif status == "newer":
-		toast.show_text("A newer save was kept. (new world)", 3.5)
+		toast.show_text(tr("A newer save was kept. (new world)"), 3.5)
 
 	loadout = _LOADOUT.new()
 	loadout.name = "WeaponLoadout"
@@ -450,7 +450,7 @@ func _setup_progression(layout: _LAYOUT, camp: _CAMP) -> void:
 	# Inheritance was chosen; otherwise it's a cold line.
 	var campfire: _INTERACTABLE = _INTERACTABLE.new()
 	campfire.name = "CampFire"
-	campfire.prompt = "The camp fire (E)"
+	campfire.prompt = tr("The camp fire (E)")
 	campfire.interact_radius = 2.5
 	camp_layer.add_child(campfire)
 	campfire.global_position = layout.bonfire_pos
@@ -714,7 +714,7 @@ func _on_child_hit() -> void:
 	# child — no more appearances (the spawn table's skip_flag).
 	progress.stats.child_hit += 1
 	progress.ws.set_flag(&"child_hit")
-	toast.show_text("The child is gone.", 2.5)
+	toast.show_text(tr("The child is gone."), 2.5)
 
 
 func _free_child() -> void:
@@ -725,7 +725,7 @@ func _free_child() -> void:
 
 # Phase 11: the Archivist whisper #5 (a killed NPC).
 func _on_npc_died_whisper(_npc_id: StringName, _pos: Vector3) -> void:
-	toast.show_text("Remembered. Kept. Always.", 4.0)
+	toast.show_text(tr("Remembered. Kept. Always."), 4.0)
 
 
 # Phase 10: the level's persistent objects get their behavior
@@ -763,7 +763,7 @@ func _on_note_written(line_id: int) -> void:
 		progress.stats.notes_written += 1
 		run_manager.record_event(_EV.Type.NOTE_WRITTEN, 0,
 				position_of_player(), 0, 0, line_id)
-		toast.show_text("The note is saved.", 2.5)
+		toast.show_text(tr("The note is saved."), 2.5)
 		var st: Node = world_director.current_stand()
 		if st != null and st.stand_id == _pending_stand:
 			st.refresh("", false)  # readable from the next run
@@ -841,7 +841,7 @@ func _on_door_crossed(area_id: StringName, room_id: StringName,
 	# (the door is the boss itself, BOSS_DESIGN §6; one-shot).
 	if target == &"undercroft" and not progress.ws.flag(
 				&"boss_defeated"):
-		toast.show_text("The door is closed. (stone)", 2.5)
+		toast.show_text(tr("The door is closed. (stone)"), 2.5)
 		return
 	_enter_level(target)
 	player.get_port().set_position(t_rp.origin + td.local_pos)
@@ -871,7 +871,7 @@ func _debug_quality_cycle() -> void:
 				next = _QUALITY_LOW
 		quality.set_preset(next)
 		zone_world.set_light_budget(quality.light_budget())
-		toast.show_text("Quality: " + next.display_name, 1.5)
+		toast.show_text(tr("Quality: %s") % next.display_name, 1.5)
 	_f8_prev = pressed
 
 
@@ -895,13 +895,13 @@ func _debug_benchmark() -> void:
 	if pressed and not _f6_prev and perf_bench != null:
 		if perf_bench._scope == null:
 			perf_bench.start(self, String(_current_area), 10.0)
-			toast.show_text("Benchmark: 10 s (%s)" % str(_current_area),
+			toast.show_text(tr("Benchmark: 10 s (%s)") % str(_current_area),
 					2.0)
 	_f6_prev = pressed
 
 
 func _on_perf_bench_finished(stats: Dictionary) -> void:
-	toast.show_text("Benchmark done: user://perf_%s.txt"
+	toast.show_text(tr("Benchmark done: user://perf_%s.txt")
 			% str(stats.get("label", "")), 3.0)
 
 
@@ -919,7 +919,7 @@ func _do_save(reason: String) -> void:
 		st["audio"] = audio.get_settings()
 	var ok: bool = save_manager.save(progress.ws.to_dict(), st)
 	if ok and reason == "choice":
-		toast.show_text("The world remembers.", 2.0)
+		toast.show_text(tr("The world remembers."), 2.0)
 
 
 func _apply_saved_settings() -> void:
@@ -1007,7 +1007,7 @@ func _on_mine_deep() -> void:
 	if run_manager.run_id >= 5 and not progress.ws.flag(
 				&"first_traces_seen"):
 		progress.ws.set_flag(&"first_traces_seen")
-		toast.show_text("...the footprints are bigger than mine.", 3.5)
+		toast.show_text(tr("...the footprints are bigger than mine."), 3.5)
 
 
 # The mine's deep-level prop (BOSS_DESIGN §2.1: «большие следы» +
@@ -1095,8 +1095,8 @@ func _on_boss_defeated() -> void:
 	_boss_in_fight = false
 	sfx.play(&"seal")
 	_update_audio_music()
-	toast.show_text("The door is open.", 3.0)
-	toast.show_text("The fog thins.", 3.5)
+	toast.show_text(tr("The door is open."), 3.0)
+	toast.show_text(tr("The fog thins."), 3.5)
 
 
 func _on_boss_stage_reveal(stage_id: StringName) -> void:
@@ -1134,16 +1134,16 @@ func _place_weapons(area_id: StringName) -> void:
 			if first_run != null and WEAPON_LINES.has(wid):
 				first_run.place_gated_weapon_note(area_id, wid,
 						rp.origin + rp.room.loot_spots[0],
-						String(WEAPON_LINES[wid]))
+						tr(String(WEAPON_LINES[wid])))
 			continue
 		var data: Resource
 		var line: String
 		if wid == &"weapon_cannon":
 			data = _CANNON_DATA
-			line = WEAPON_LINES[wid]
+			line = tr(String(WEAPON_LINES[wid]))
 		elif wid == &"weapon_staff":
 			data = _STAFF_DATA
-			line = WEAPON_LINES[wid]
+			line = tr(String(WEAPON_LINES[wid]))
 		else:
 			push_error("Main scene: unknown fixed_loot weapon: "
 					+ String(wid))
@@ -1300,31 +1300,31 @@ func _on_death_choice(data: Resource) -> void:
 	# Phase 15: the choice is permanent — it is saved now.
 	_do_save("choice")
 	player.death_choice_pending = false
-	toast.show_text("The world keeps what you choose.")
+	toast.show_text(tr("The world keeps what you choose."))
 	player.request_respawn()
 
 
 func _on_npc_died(npc_id: StringName, _pos: Vector3) -> void:
 	# The verdict line is on the NPC's own label (3 s); the roster
 	# toast keeps the loss visible if the player walks away.
-	toast.show_text("The world forgot " + String(npc_id) + ".")
+	toast.show_text(tr("The world forgot %s.") % String(npc_id))
 
 
 func _on_campfire(_ia: Node) -> void:
 	var w: Dictionary = progress.effects.world(progress.ws)
 	if w["campfire_heal"]:
 		player.heal(player.data.health_max)
-		toast.show_text("The fire heals.")
+		toast.show_text(tr("The fire heals."))
 	else:
-		toast.show_text("The fire is cold.")
+		toast.show_text(tr("The fire is cold."))
 
 
 func _on_item_used(_index: int, item: _ITEM_DATA) -> void:
 	var healed: float = player.heal(float(item.heal_amount))
 	if healed > 0.0:
-		toast.show_text("You light the small fire.")
+		toast.show_text(tr("You light the small fire."))
 	else:
-		toast.show_text("There is nothing to heal.")
+		toast.show_text(tr("There is nothing to heal."))
 
 
 # Camp item drop (PROGRESSION_DESIGN §4: 3 per run, 1/10 chance).
@@ -1344,11 +1344,11 @@ func _on_enemy_killed(_enemy_id: StringName, pos: Vector3) -> void:
 		# `if add():` in P17 — same code, native-safe either way).
 		var res: int = inventory.add(_CAMP_ITEM)
 		if res >= 0:
-			toast.show_text("You take the small fire.")
+			toast.show_text(tr("You take the small fire."))
 			if sfx != null:
 				sfx.play(&"pickup")
 		else:
-			toast.show_text("No room in the bag."))
+			toast.show_text(tr("No room in the bag.")))
 	_drops.append(drop)
 
 
@@ -1390,7 +1390,7 @@ func _on_staff_marked(positions: PackedVector3Array) -> void:
 
 func _on_staff_disrupted(count: int) -> void:
 	if count > 0:
-		toast.show_text("The echo shatters.")
+		toast.show_text(tr("The echo shatters."))
 
 
 # A small ground dust (code mesh; ADR-024): the staff's shatter and

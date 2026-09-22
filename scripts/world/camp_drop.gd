@@ -31,7 +31,7 @@ func setup(p_item: _ITEM_DATA, p_player: Node) -> void:
 	# get_body_position).
 	interactable = _INTERACTABLE.new()
 	interactable.name = "Interact"
-	interactable.prompt = "A small fire (E)"
+	interactable.prompt = tr("A small fire (E)")
 	interactable.interact_radius = 2.2
 	add_child(interactable)
 	interactable.set_target(p_player)

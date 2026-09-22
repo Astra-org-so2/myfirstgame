@@ -35,7 +35,7 @@ var _examined: bool = false
 func setup(target: Node) -> void:
 	_ia = _INTERACTABLE.new()
 	_ia.name = "IA_mummy"
-	_ia.prompt = "Look (E)"
+	_ia.prompt = tr("Look (E)")
 	_ia.interact_radius = 2.4
 	_ia.set_target(target)
 	add_child(_ia)

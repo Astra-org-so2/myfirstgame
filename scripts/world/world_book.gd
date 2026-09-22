@@ -23,7 +23,7 @@ var _page_left: float = 0.0
 func setup(target: Node) -> void:
 	_ia = _INTERACTABLE.new()
 	_ia.name = "IA_Book"
-	_ia.prompt = "Look (E)"
+	_ia.prompt = tr("Look (E)")
 	_ia.interact_radius = 2.2
 	_ia.set_target(target)
 	add_child(_ia)

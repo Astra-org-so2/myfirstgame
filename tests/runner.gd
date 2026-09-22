@@ -59,6 +59,7 @@ const SUITES = [
 	["music_director", "res://tests/unit/music_director_test.gd", ["unit"]],
 	["audio_manager", "res://tests/unit/audio_manager_test.gd", ["unit"]],
 	["character_visual", "res://tests/unit/character_visual_test.gd", ["unit"]],
+	["localization", "res://tests/unit/localization_test.gd", ["unit"]],
 	["player_scene", "res://tests/integration/player_scene_test.gd",
 			["integration"]],
 	["camp_scene", "res://tests/integration/camp_scene_test.gd",
@@ -127,6 +128,14 @@ func _run_suite(target: String) -> void:
 			check(false, "runner: suite script loads: " + target)
 			return
 		var test: Node = script.new()
+		# A failed-to-compile script still returns a non-null Script object
+		# (and load() above does not fail) — the missing run() would then be
+		# a SILENT zero-check suite. Make it a loud failure instead.
+		if test == null or not test.has_method("run"):
+			check(false, "runner: suite has run(): " + target)
+			if test != null:
+				test.queue_free()
+			return
 		add_child(test)
 		await test.run(self)
 		test.queue_free()

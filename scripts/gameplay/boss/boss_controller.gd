@@ -105,7 +105,7 @@ func start_fight() -> void:
 	if _fight_started:
 		return
 	_fight_started = true
-	_say(LINE_ENTRY)
+	_say(tr(LINE_ENTRY))
 
 
 # The player took the FIRST BLADE (the main scene + the pickup
@@ -113,7 +113,7 @@ func start_fight() -> void:
 func blade_taken_changed(taken: bool) -> void:
 	if taken and not _blade_line_done and _fight_started:
 		_blade_line_done = true
-		_say(LINE_TOOK_BLADE)
+		_say(tr(LINE_TOOK_BLADE))
 	logic.set_blade(taken)
 
 
@@ -165,7 +165,7 @@ func _on_player_swing() -> void:
 		_PM.Event.LEARNED:
 			logic.enter_look()
 			if _learn_cd <= 0.0:
-				_say(LINE_LEARNED)
+				_say(tr(LINE_LEARNED))
 				_learn_cd = data.learn_line_cooldown
 		_PM.Event.PARRY_TRIGGER:
 			logic.enter_parry()
@@ -197,7 +197,7 @@ func _parry_counter() -> void:
 	var d: float = global_position.distance_to(_player.get_body_position())
 	if d <= data.melee.range:
 		_hit_player(float(data.parry_damage))
-	_say("— (clash)")
+	_say(tr("— (clash)"))
 
 
 func _hit_boss_core(amount: float, _weapon_id: StringName) -> void:
@@ -212,7 +212,7 @@ func _hit_boss_core(amount: float, _weapon_id: StringName) -> void:
 	logic.set_hp(_target.hp)
 	if not _core_line_done and _target.hp > 0.0:
 		_core_line_done = true
-		_say(LINE_CORE)
+		_say(tr(LINE_CORE))
 
 
 # --- The physics tick ---------------------------------------------------
@@ -326,9 +326,9 @@ func _on_state(_prev: int, cur: int) -> void:
 			_on_phase2()
 		_LOGIC.State.DEATH_DISSOLVE:
 			_dissolve_left = data.dissolve_time
-			_say(LINE_DEATH)
+			_say(tr(LINE_DEATH))
 		_LOGIC.State.DEATH_FINAL:
-			_say(LINE_FINAL)
+			_say(tr(LINE_FINAL))
 		_LOGIC.State.DEFEATED:
 			_on_defeated()
 
@@ -336,7 +336,7 @@ func _on_state(_prev: int, cur: int) -> void:
 # --- Phase 2 (60%): the arena changes, the Remnant of the best run -----
 
 func _on_phase2() -> void:
-	_say(LINE_PHASE2)
+	_say(tr(LINE_PHASE2))
 	# M2.3 (MYSTERY_REVEAL_MAP): the line lands the stage (the main
 	# scene resolves the gate).
 	stage_reveal.emit(&"m2_first")
@@ -386,7 +386,7 @@ func _on_damage_applied(res: Variant) -> void:
 				and _target.hp <= _target.max_hp * 0.3 \
 				and not _ws.flag(&"first_blade_taken"):
 			_left_blade_line_done = true
-			_say(LINE_LEFT_BLADE)
+			_say(tr(LINE_LEFT_BLADE))
 		return
 	if _minion == null or _minion_faded:
 		return

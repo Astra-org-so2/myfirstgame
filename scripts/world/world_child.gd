@@ -36,7 +36,7 @@ var _line_left: float = 0.0
 func setup(target: Node) -> void:
 	_ia = _INTERACTABLE.new()
 	_ia.name = "IA_Child"
-	_ia.prompt = "Look (E)"
+	_ia.prompt = tr("Look (E)")
 	_ia.interact_radius = 2.4
 	_ia.set_target(target)
 	add_child(_ia)

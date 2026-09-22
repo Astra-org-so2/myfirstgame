@@ -73,7 +73,7 @@ func setup(data: _DATA, state: _STATE, resolver: Node, player: Node,
 	_build_label()
 	_ia = _INTERACTABLE.new()
 	_ia.name = "IA_" + String(_data.npc_id)
-	_ia.prompt = "Talk to %s (E)" % _data.display_name
+	_ia.prompt = tr("Talk to %s (E)") % _data.display_name
 	_ia.interact_radius = 2.4
 	add_child(_ia)
 	_ia.set_target(player)

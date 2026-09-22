@@ -184,9 +184,9 @@ func _seal(parent: Node3D, p: Vector3) -> void:
 		ring.rotation.x = deg_to_rad(90.0)
 	else:
 		ring.rotation.z = deg_to_rad(90.0)
-	var rm: StandardMaterial3D = _mat(0.12, 0.12, 0.15)
+	var rm: StandardMaterial3D = _mat_pal(_PALETTE.seal_ring, "seal_ring")
 	rm.emission_enabled = true
-	rm.emission = Color(0.35, 0.28, 0.22)
+	rm.emission = _PALETTE.seal_glow
 	rm.emission_energy_multiplier = 0.7
 	ring.material = rm
 	parent.add_child(ring)
@@ -198,11 +198,13 @@ func _seal(parent: Node3D, p: Vector3) -> void:
 		if axis_x:
 			notch = _box(Vector3(0.14, 0.3, 0.2),
 					p + Vector3(0.0, 1.5, 0.0)
-					+ Vector3(0.0, off.x, off.y), _mat(0.05, 0.05, 0.06))
+					+ Vector3(0.0, off.x, off.y),
+			_mat_pal(_PALETTE.seal_notch, "seal_notch"))
 		else:
 			notch = _box(Vector3(0.2, 0.3, 0.14),
 					p + Vector3(0.0, 1.5, 0.0)
-					+ Vector3(off.x, off.y, 0.0), _mat(0.05, 0.05, 0.06))
+					+ Vector3(off.x, off.y, 0.0),
+			_mat_pal(_PALETTE.seal_notch, "seal_notch"))
 		parent.add_child(notch)
 
 
@@ -242,9 +244,10 @@ func _prop() -> void:
 			bm.size = Vector3(0.35, 3.4, 0.35)
 			beam.mesh = bm
 			beam.position = Vector3(0.0, 1.7, 0.0)
-			var em: StandardMaterial3D = _mat(0.5, 0.55, 0.7)
+			var em: StandardMaterial3D = _mat_pal(
+					_PALETTE.mystery_beam, "mystery_beam")
 			em.emission_enabled = true
-			em.emission = Color(0.5, 0.55, 0.75)
+			em.emission = _PALETTE.mystery_glow
 			em.emission_energy_multiplier = 1.6
 			beam.material = em
 			root.add_child(beam)

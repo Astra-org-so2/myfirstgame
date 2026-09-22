@@ -28,7 +28,6 @@ const LINE_A16: String = "YOU WILL OPEN THIS AFTER YOU DIE."
 const LINE_A16_NOTE: String = "I was here. I didn't open it."
 const LINE_A16_NOTE2: String = "I was here. I came back for it."
 const LINE_A16_NOTE3: String = "I was here. It is still waiting."
-const LINE_A14: String = "It's heavy. Use it once. — E."
 const LINE_A17: String = "Don't go to the lake before the mine. — E."
 const LINE_A12_NOTE: String = "what burned?"
 const LINE_B2: String = "That wasn't there."
@@ -36,14 +35,13 @@ const LINE_A19: String = "Again?"
 const LINE_KETTLE: String = "The kettle is cold."
 const LINE_KETTLE_WASHED: String = "It's clean. Warm, even."
 # #6 (RUN 03 D2): the Remnant reads the player's note (section 4).
-const LINE_D6: String = "\u2026I forgot that."
+const LINE_D6: String = "…I forgot that."
 # The Archivist whispers (DIALOGUE_GUIDELINES 2.7, MVP 5 lines).
 const LINE_ARCHIVIST_KEPT: String = "He is kept. He is counted."
 const LINE_ARCHIVIST_LAKE: String = \
 		"You call it death because you cannot remember."
 const LINE_ARCHIVIST_GATE: String = \
 		"Welcome back, two-one-seven. I saved your seat."
-const LINE_ARCHIVIST_NPC: String = "Remembered. Kept. Always."
 # K5: the reflection lasts this long (NARRATIVE_STRUCTURE: 2 s).
 const LAKE_REFLECTION_SECONDS: float = 2.0
 # K4: the page states (M1.3 blank name -> M1.4 the world «writes» it).
@@ -121,7 +119,7 @@ func _on_echo_triggered(echo_type: StringName, _pos: Vector3) -> void:
 	# Echo — once per session.
 	if not _ws.flag(&"he_is_counted_whisper"):
 		_ws.set_flag(&"he_is_counted_whisper")
-		_toast(LINE_ARCHIVIST_KEPT, 4.0)
+		_toast(tr(LINE_ARCHIVIST_KEPT), 4.0)
 	if echo_type != &"combat":
 		return
 	# #1 (M3 stage 1): the Remnant speaks for the first time.
@@ -143,7 +141,7 @@ func _on_echo_triggered(echo_type: StringName, _pos: Vector3) -> void:
 		var data: Node = ctrl.data()
 		if data != null and data.id == &"remnant_mirror" \
 				and ctrl.has_method("add_encounter_line"):
-			ctrl.add_encounter_line(LINE_D6)
+			ctrl.add_encounter_line(tr(LINE_D6))
 			break
 
 
@@ -177,13 +175,13 @@ func on_level_entered(area_id: StringName) -> void:
 		&"ruined_village":
 			_build_pyre()
 			_place_note(area_id, "village_note",
-					PackedStringArray([LINE_A12_NOTE]), &"",
+					PackedStringArray([tr(LINE_A12_NOTE)]), &"",
 					0, 2.5)
 			_place_book(area_id)
 		&"mysterious_lake":
 			_build_ice_circle()
 			_place_note(area_id, "lake_note",
-					PackedStringArray([LINE_A17]), &"lake_note_read",
+					PackedStringArray([tr(LINE_A17)]), &"lake_note_read",
 					1, 3.0)
 			# K5 (M3 stage 3, RUN 05+): the reflection in the water.
 			_beat_lake_reflection()
@@ -221,7 +219,7 @@ func on_run_started(run_id: int) -> void:
 		_build_first_kill_trace()
 		if not _again_shown:
 			_again_shown = true
-			_toast(LINE_A19, 2.5)
+			_toast(tr(LINE_A19), 2.5)
 	_place_veyra_map()
 
 
@@ -274,7 +272,7 @@ func _beat_pillar(_ia: Node) -> void:
 	if _ws == null or _ws.flag(&"pillar_seen"):
 		return
 	_ws.set_flag(&"pillar_seen")
-	_toast(LINE_A2, 3.0)
+	_toast(tr(LINE_A2), 3.0)
 	_record_event(_EV.Type.EVENT_COMPLETED, 2)
 	beat_fired.emit(&"a2_pillar")
 
@@ -290,7 +288,7 @@ func _on_first_swing() -> void:
 	_a3_done = true
 	if _ws != null:
 		_ws.set_flag(&"blade_found")
-	_toast(LINE_A3, 3.0)
+	_toast(tr(LINE_A3), 3.0)
 	_record_event(_EV.Type.EVENT_COMPLETED, 3)
 	_mystery_reveal(&"m1_k1")  # M1 stage 1 (K1)
 	beat_fired.emit(&"a3_first_swing")
@@ -348,7 +346,7 @@ func _build_distant_hollow() -> void:
 # --- A7 — the camp note (#2, own handwriting) ---------------------------
 
 func _beat_camp_note(_ia: Node) -> void:
-	_toast(LINE_A7, 5.0)
+	_toast(tr(LINE_A7), 5.0)
 	_record_event(_EV.Type.EVENT_COMPLETED, 7)
 	beat_fired.emit(&"a7_camp_note")
 
@@ -357,9 +355,9 @@ func _beat_camp_note(_ia: Node) -> void:
 
 func _beat_kettle(_ia: Node) -> void:
 	if _ws != null and _ws.flag(&"kettle_washed"):
-		_toast(LINE_KETTLE_WASHED, 3.0)
+		_toast(tr(LINE_KETTLE_WASHED), 3.0)
 	else:
-		_toast(LINE_KETTLE, 2.5)
+		_toast(tr(LINE_KETTLE), 2.5)
 
 
 # --- A10 — the figure (pred-echo: not the Watcher) ----------------------
@@ -580,7 +578,7 @@ func _beat_shrine_whisper() -> void:
 	if _ws == null or _ws.flag(&"shrine_echo_seen"):
 		return
 	_ws.set_flag(&"shrine_echo_seen")
-	_toast(LINE_A15, 4.0)
+	_toast(tr(LINE_A15), 4.0)
 	_record_event(_EV.Type.EVENT_COMPLETED, 15)
 	beat_fired.emit(&"a15_shrine")
 
@@ -592,7 +590,7 @@ func _beat_gate() -> void:
 		return
 	if _rm.run_id == 1 and not _ws.flag(&"gate_seal_seen"):
 		_ws.set_flag(&"gate_seal_seen")
-		_toast(LINE_A16, 4.0)
+		_toast(tr(LINE_A16), 4.0)
 		_place_gate_footnotes()
 		_record_event(_EV.Type.EVENT_COMPLETED, 16)
 		beat_fired.emit(&"a16_gate")
@@ -600,7 +598,7 @@ func _beat_gate() -> void:
 		# B2: the first time the open door is seen (after the seal was
 		# seen) — Eli's own thought. M2 stage 2 (the world «answers»).
 		_b2_shown = true
-		_toast(LINE_B2, 3.0)
+		_toast(tr(LINE_B2), 3.0)
 		_mystery_reveal(&"m2_gate")
 		beat_fired.emit(&"b2_gate_open")
 
@@ -617,8 +615,7 @@ func _place_gate_footnotes() -> void:
 		return
 	var rooms: Array = a.rooms
 	var last: Node = rooms.back()
-	_place_note_at(&"ancient_gate", "gate_footnotes", PackedStringArray([
-			LINE_A16_NOTE, LINE_A16_NOTE2, LINE_A16_NOTE3]),
+	_place_note_at(&"ancient_gate", "gate_footnotes", PackedStringArray([tr(LINE_A16_NOTE), tr(LINE_A16_NOTE2), tr(LINE_A16_NOTE3)]),
 			&"gate_note_read", last.origin + Vector3(0.0, 0.0, 2.0))
 
 
@@ -819,7 +816,7 @@ func _beat_lake_reflection() -> void:
 	_zone_world.level.add_child(fig)
 	_lake_reflection = fig
 	_lake_reflection_t = LAKE_REFLECTION_SECONDS
-	_toast(LINE_ARCHIVIST_LAKE, 4.0)
+	_toast(tr(LINE_ARCHIVIST_LAKE), 4.0)
 	_lake_reflection_done = true
 	_mystery_reveal(&"m3_lake")
 	beat_fired.emit(&"k5_lake_reflection")
@@ -880,4 +877,4 @@ func _beat_gate_welcome() -> void:
 	if _ws.flag(&"gate_welcome_whisper"):
 		return
 	_ws.set_flag(&"gate_welcome_whisper")
-	_toast(LINE_ARCHIVIST_GATE, 4.5)
+	_toast(tr(LINE_ARCHIVIST_GATE), 4.5)

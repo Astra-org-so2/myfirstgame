@@ -54,7 +54,7 @@ func show_pool(lines: PackedStringArray, existing: int = -1) -> void:
 	panel.size = Vector2(panel_w, panel_h)
 	_root.add_child(panel)
 	var title: Label = Label.new()
-	title.text = "leave a note"
+	title.text = tr("leave a note")
 	title.add_theme_font_size_override("font_size", _th().font_title)
 	title.add_theme_color_override("font_color", _th().text_dim)
 	title.position = Vector2(0.0, 8.0)

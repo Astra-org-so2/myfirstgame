@@ -72,10 +72,14 @@
 
 ## 5. Чек P13-экзита (визуал)
 
-- [ ] Все строки раздела 2 = `final` или «явно принят» (батч 2)
-- [ ] UI-kit (раздел 3) = `final` (батч 3)
-- [ ] Цвета структур мира только из VisualPalette (grep-чек: нет ad-hoc `_mat(r,g,b)`
-      в room_node/camp_world, кроме осознанных исключений)
-- [ ] Light-бюджеты по preset (тесты visual_scene)
-- [ ] Текстуры — только из assets/textures (генератор), детерминированно
-- [ ] QA: tests/qa/qa_phase13_visual.md + мобильные чек-листы
+Все пункты закрыты; фактическое закрытие подтверждено в P19 (FINAL_REVIEW):
+
+- [x] Все строки раздела 2 = `final` или «явно принят» (батч 2) — P19-аудит: 0 строк в статусе draft
+- [x] UI-kit (раздел 3) = `final` (батч 3) — `data/ui/ui_theme.tres`, используется 5 панелями (toast, death_screen, inventory, note, settings)
+- [x] Цвета структур мира только из VisualPalette (grep-чек: нет ad-hoc `_mat(r,g,b)`
+      в room_node/camp_world, кроме осознанных исключений) — P19: последние ad-hoc цвета
+      (seal ring/notches, mystery beam) вынесены в палитру (seal_ring/seal_glow/seal_notch/
+      mystery_beam/mystery_glow); grep-чек = 0 совпадений
+- [x] Light-бюджеты по preset (тесты visual_scene) — зелёные в каждом ране, включая P19
+- [x] Текстуры — только из assets/textures (генератор), детерминированно — `tools/utils/gen_textures.py`
+- [x] QA: tests/qa/qa_phase13_visual.md + мобильные чек-листы — 14 чек-листов phase2–17 в `tests/qa/`

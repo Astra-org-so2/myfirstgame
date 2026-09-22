@@ -54,7 +54,7 @@ func setup(target: Node) -> void:
 	board.material_override = board_mat
 	add_child(board)
 	_label = Label3D.new()
-	_label.text = "note"
+	_label.text = tr("note")
 	_label.position = Vector3(0.0, 1.75, 0.0)
 	_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	_label.outline_size = 4

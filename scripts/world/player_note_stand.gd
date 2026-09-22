@@ -28,7 +28,7 @@ var _read_done: bool = false
 func setup(target: Node) -> void:
 	_ia = _INTERACTABLE.new()
 	_ia.name = "IA_write_" + String(stand_id)
-	_ia.prompt = "Write a note (E)"
+	_ia.prompt = tr("Write a note (E)")
 	_ia.interact_radius = 2.2
 	_ia.set_target(target)
 	add_child(_ia)
@@ -68,8 +68,8 @@ func setup(target: Node) -> void:
 func refresh(readable: String, is_readable: bool) -> void:
 	has_readable = is_readable
 	readable_line = readable
-	_ia.prompt = "Read your note (E)" if is_readable \
-			else "Write a note (E)"
+	_ia.prompt = tr("Read your note (E)") if is_readable \
+			else tr("Write a note (E)")
 	if not is_readable:
 		_label.visible = false
 		_label.modulate.a = 0.0
@@ -85,7 +85,7 @@ func _on_interacted(_node: Node) -> void:
 		_read_done = true
 		note_read.emit(stand_id, first)
 		return
-	_ia.prompt = "Write a note (E)"
+	_ia.prompt = tr("Write a note (E)")
 	write_requested.emit(stand_id)
 
 

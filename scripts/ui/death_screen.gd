@@ -119,7 +119,7 @@ func _make_card(d: Resource, level: int, rect: Rect2) -> Control:
 	card.add_child(line)
 	if level >= 2:
 		var lv: Label = Label.new()
-		lv.text = "(deeper: level %d)" % level
+		lv.text = tr("(deeper: level %d)") % level
 		lv.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		lv.add_theme_font_size_override("font_size", _th().font_tiny)
 		lv.add_theme_color_override("font_color", _th().text_moss)

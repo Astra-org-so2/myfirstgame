@@ -1,6 +1,6 @@
 # AFTER YOU — Roadmap (фазы, вехи, exit-criteria)
 
-Версия: 1.3 (Phase 13 закрыта, GDD v2.0). Формат статуса фазы
+Версия: 1.4 (Phase 14 закрыта, GDD v2.0). Формат статуса фазы
 (обязателен при закрытии):
 `STATUS / IMPLEMENTED / TESTED / KNOWN ISSUES / NEXT`.
 
@@ -784,6 +784,30 @@ Scope: все категории по GDD §8 (финальные лицензи
 1 stinger (boss reveal), GDD v2.0 §7; звуковой язык слоёв (WORLD_BIBLE §1.1).
 Manual: qa_phase14_audio.md (LUFS, no clipping).
 Exit: полный audio pass; volumes/mute в settings работают.
+
+STATUS: done (2026-09-22, ADR-033).
+IMPLEMENTED: «The Wound» ×5 (Normal/Memory/Echo/Archivist/Ending,
+одна мелодия, 5 тембров+времени) офлайн-генерацией (gen_audio.py,
+seed, 11025 Hz, ~4.8 MB) + MusicLibrary-банк; 6 ambient-слоёв по
+зонам (16 s loop, seam crossfade) + stinger (boss reveal, 4 s);
+MusicDirector (чистая цепочка ENDING>ARCHIVIST>ECHO>MEMORY>NORMAL
+на фактах сцены, crossfade 1.5 s); AudioManager (буса Music/SFX/
+Ambient, A/B crossfade-голоса, ambient-swap, stinger, settings
+master/music/sfx/ambient + mute в dB); SfxBus 12 кью (P4/P6 +
+door/seal/death/note/ui/echo) на SFX-бусе; SettingsPanel
+(kit-вёрстка, F9, живые слайдеры + mute); wiring по seams
+(zone/door/death/note/echo/boss).
+TESTED: unit audio_env (контракт AudioServer в риге),
+music_library (12 файлов: длины/пики/loop/отличия), music_
+director (приоритеты), audio_manager (буса/crossfade/settings/
+mute/round-trip); integration audio_scene (буса в main scene,
+пул на SFX, bed по зонам, 12 кью, панель на бусах), boss_scene
+(stinger + ARCHIVIST + ENDING); regression 945/501.
+KNOWN ISSUES: headless не валидирует восприятие (LUFS,
+тембр, mix) — device-QA P16; persistence настроек — P15
+(дикт get_settings() готов); Voice-буса нет (MVP без голосовых
+реплик — текст); F9 = debug (release — settings-меню P15).
+NEXT: Phase 15 (Save/load/recovery).
 
 ## PHASE 15 — Save/load/recovery
 Scope: SaveManager (atomic, crc, versions, migration, recovery) по

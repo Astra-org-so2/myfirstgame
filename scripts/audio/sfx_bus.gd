@@ -1,10 +1,10 @@
-# SfxBus — a small SFX playback pool for Phase 4 (prototype status).
+# SfxBus — the SFX playback pool (Phase 14: final).
 #
-# Final audio architecture (buses Master/Music/SFX/Voice, settings in
-# save) arrives with AudioManager in Phase 14; until then this node owns
-# a fixed pool of AudioStreamPlayers and the procedural streams from
-# SfxLibrary. No bus routing here (default Master) on purpose — one
-# fewer system to maintain before Phase 14.
+# The AudioManager owns the buses (Music/SFX/Ambient); this node owns
+# the POOL: a fixed set of AudioStreamPlayers and the procedural
+# streams from SfxLibrary (deterministic, budget 0). The pool routes
+# to the SFX bus when it exists (the AudioManager creates it first in
+# the tree); the levels sit on the bus (AudioManager settings).
 class_name SfxBus
 extends Node
 
@@ -14,6 +14,8 @@ const NAMES: Array[StringName] = [
 	&"swing", &"hit", &"riposte", &"hurt",
 	# Phase 6: the Hand Cannon's shot + the found-thing "plink".
 	&"shot", &"pickup",
+	# Phase 14: the world's voice.
+	&"door", &"seal", &"death", &"note", &"ui", &"echo",
 ]
 const POOL_SIZE: int = 3
 
@@ -30,9 +32,20 @@ func _ready() -> void:
 	_streams[&"hurt"] = _LIB.generate_hurt()
 	_streams[&"shot"] = _LIB.generate_shot()
 	_streams[&"pickup"] = _LIB.generate_pickup()
+	# Phase 14: the world's voice.
+	_streams[&"door"] = _LIB.generate_door()
+	_streams[&"seal"] = _LIB.generate_seal()
+	_streams[&"death"] = _LIB.generate_death()
+	_streams[&"note"] = _LIB.generate_note()
+	_streams[&"ui"] = _LIB.generate_ui()
+	_streams[&"echo"] = _LIB.generate_echo()
 	for i in POOL_SIZE:
 		var p: AudioStreamPlayer = AudioStreamPlayer.new()
 		p.name = "Sfx%d" % i
+		# The SFX bus (the AudioManager created it first in the tree);
+		# on a scene without the AudioManager the pool stays on Master.
+		if AudioServer.get_bus_index("SFX") >= 0:
+			p.bus = "SFX"
 		add_child(p)
 		_players.append(p)
 

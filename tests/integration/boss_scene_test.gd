@@ -125,6 +125,16 @@ func _test_arena_setup(ctx: Variant) -> void:
 		_reveals.append(s))
 	_boss.defeated.connect(func() -> void:
 		_defeated_count += 1)
+	# Phase 14: the reveal (the stinger over the monochrome arena).
+	ctx.check(_main.audio != null,
+			"boss: the audio manager is composed")
+	ctx.check(_main.audio.current_zone() == &"undercroft",
+			"boss: the undercroft bed is on")
+	ctx.check(_main.audio.is_stinger_playing(),
+			"boss: the reveal stinger plays")
+	ctx.check(_main.audio.current_variation()
+			== _main.audio._DIR.Variation.ARCHIVIST,
+			"boss: the arena plays the ARCHIVIST variation")
 	# The boss stands on the seal (the arena's event spot).
 	ctx.check(absf(_boss.global_position.x - (o.x + 0.0)) < 0.01
 			and absf(_boss.global_position.z - (o.z - 3.0)) < 0.01,
@@ -388,6 +398,10 @@ func _test_death_sequence(ctx: Variant) -> void:
 			"boss: the defeated signal fired exactly once")
 	ctx.check(_main.progress.ws.flag(&"boss_defeated"),
 			"boss: the boss_defeated flag (K7 + the door)")
+	# Phase 14: the seal + the final scene (the Ending, the door).
+	ctx.check(_main.audio.current_variation()
+			== _main.audio._DIR.Variation.ENDING,
+			"boss: the final scene plays the ENDING variation")
 	# The gate rule (BOSS_DESIGN §2.1): the deep mine + 3 deaths +
 	# the first traces -> the door opens (in the test scene the
 	# world facts are the ones the fight required to be met).

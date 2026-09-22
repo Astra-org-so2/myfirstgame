@@ -1263,3 +1263,115 @@ Environment.msaa, Viewport.render_scale, MeshInstance3D.material)
 device-верификация (ASTC/export, draw calls, FPS, терм.) — P16
 checklist. Риг не валидирует рендер-свойства (msaa/render_scale/
 atlas/enabled) — это честно помечено в qa_phase13_visual.md.
+
+## ADR-033 — Audio: процедурный саундтрек офлайн, buses + crossfade-менеджер, настройки-дикт (Phase 14)
+
+**Статус:** принято (Phase 14, 2026-09-22).
+
+**Контекст.** Phase 14 (ROADMAP: все категории GDD §7,
+AudioManager (buses/pool/levels), «The Wound» ×5 (Normal/Memory/
+Echo/Archivist/Ending) + ambient-слои + 1 stinger (boss reveal),
+звуковой язык слоёв WORLD_BIBLE §1.1; exit: полный audio pass,
+volumes/mute в settings). Проблемы: (1) бюджет 0 ₽ + лицензионная
+чистота — финальных лицензионных трэков нет; (2) музыка по
+GDD = «одна мелодия в 5 вариациях» + ambient + stinger = 12
+стримов ~20 с каждый — рантайм-синтез на wasm (5 × 24 s ×
+22050 Hz × гармоники) = секундная hitch на старте и в каждом
+переключении; (3) headless-риг: AudioServer-API работает
+(add_bus/set_bus_name/set_bus_volume_db/set_bus_mute/set_bus_
+send, AudioStreamPlayer.bus/play/playing — проверено
+audio_env_test), но `Math`/`ln()`/`log10()`-глобалы частично
+отсутствуют (log() есть), enum-константы AudioStreamWAV не
+гарантированы; (4) P4-долг: SfxBus «prototype» с 6 кью без
+буса, SfxLibrary «заглушки»; (5) exit требует «volumes/mute в
+settings», а settings-экрана не было (P15 держит persistence).
+
+**Решения.**
+1. **Саундтрек = офлайн-генерация (tools/utils/gen_audio.py,
+   чистый stdlib: wave/math/random, зашитые seeds) -> 12 WAV
+   11025 Hz mono 16-bit (~4.8 MB), byte-стабильная
+   регенерация** (md5-проверено). Тот же контракт, что
+   gen_textures.py (P13): звук — математика, не ассеты, 0 ₽,
+   ноль лицензионных обязательств (ASSET_LICENSES: «внешних
+   ассетов нет»). Почему офлайн: рантайм-генерация 12 × ~20 с
+   = wasm-hitch; почему 11025 Hz: контент < 3.1 kHz (птицы
+   2.8k + свип 300) — вдвое меньше памяти/времени, aliasing
+   невидим (Nyquist 5.5 kHz).
+2. **MusicLibrary = runtime-банк** (FileAccess -> AudioStreamWAV,
+   путь, доказанный текстурами P13): 5 вариаций (loop 24 s,
+   seam crossfade 0.25 s — шов мелодии на одной ноте D4), 6
+   ambient (loop 16 s, seam 0.5 s), stinger (4 s one-shot).
+   Уровни запечены в файлах: музыка/stinger peak 0.85,
+   ambient 0.35 (bed); сверху — бусы (см. 5).
+3. **Мелодия «The Wound»: 8-долевая фраза (D-minor), которая
+   поднимается и не разрешается + 8-долевой ответ ниже;
+   loop = фраза+ответ+фраза (24 s @60 BPM).** Вариации
+   меняют ТЕМБР И ВРЕМЯ, но не ноты (GDD §7: «скромный, но
+   цельный»): normal (sparse, sine+гарм.2), memory (октава
+   вверх, long decay, 3-tap reverb), echo (каждый 4-й нот
+   «игрaет назад» — reversed-фрагмент + 4-tap echo),
+   archivist (чистый синус = monochrome, стаккато, дрон D2,
+   rust-metal акцент Bb5 на сильных долях), ending (2
+   гармоники, тёплый пад D3/A3/F4, финальная фраза +октава).
+4. **MusicDirector (RefCounted, чистая логика): цепочка
+   приоритетов ENDING > ARCHIVIST > ECHO > MEMORY > NORMAL**,
+   ранги = факты, которые сцена уже знает: boss_defeated &&
+   undercroft (финальная сцена), boss в бою (monochrome-арена
+   THE FIRST), Passive Echo рядом, post-boss (мир помнит —
+   P11), иначе normal. Сцена кормит факты, менеджер только
+   плейбек — никакого audio-состояния, которого нет у сцены.
+   Crossfade 1.5 s (A/B-голоса), повторный pick того же факта
+   бесплатен (needs_switch).
+5. **AudioManager (Node, scene-composed): бусы Music/SFX/Ambient
+   на Master** (создаются в _ready, add_bus+set_bus_name+
+   set_bus_send — валидация audio_env_test), дефолты 0/-3/-9 dB;
+   music-голос (2 игрока, crossfade), ambient-голос (loop,
+   swap по зоне), stinger (one-shot на Music-бусе), **settings:
+   master/music/sfx/ambient (0..1) + mute** -> dB на бусах
+   (20*log10 через log()/ln-константу — Math-синглтона в риге
+   нет; 0 -> -80 dB floor). get_settings()/settings_from_dict()
+   — дикт, который P15 сохранит в save (persistence — P15,
+   честно).
+6. **SfxBus (P4 -> final): 12 кью** (P4/P6: swing/hit/riposte/
+   hurt/shot/pickup; P14: door/seal/death/note/ui/echo — все
+   процедурные в рантайме, seed, пик < 0.9), пул 3 слота
+   (oldest-steal), **роутинг в SFX-бус** (менеджер создаётся
+   в дереве раньше пула; без менеджера — Master, честно).
+   Смысл кью: door = смена зоны; seal = смерть босса; death =
+   падение (тело 200->40 Hz + удар + reversed-шёпот, «Again?» —
+   текст, не голос — MVP без TTS осознано); note = бумага; ui =
+   тик; echo = шёпот-набухание при появлении Passive Echo.
+7. **SettingsPanel (пятый экран, ADR-002 code-built + UiTheme-
+   kit): 4 слайдера + Mute, живое применение на бусах**,
+   центральный бокс (aspect-safe 16:9–20:9), thumb-строки
+   >= 44 px, tap/drag (тот же _gui_input-путь, ADR-021) +
+   детерминированный API set_slider()/toggle_mute() для тестов.
+   F9 (debug action уже был в input map) — toggle; release:
+   экран живёт за settings-меню P15.
+8. **Wiring в main_scene (seams, не новая логика):** _enter_level
+   -> set_zone + update_music; undercroft -> stinger +
+   _boss_in_fight; boss_defeated -> seal + update_music (ENDING);
+   door_crossed -> door; death -> death; note_read -> note;
+   Passive Echo reveal -> echo + update_music; F9 -> панель.
+
+**Альтернативы.** (a) CC0-трэки/войс (Freesound и т.п.) —
+отклонено: бюджет 0 ₽ + «только бесплатные легальные» +
+лицензионный трекинг 12+ файлов vs ноль; процедурный путь уже
+доказан в проекте (текстуры P13, SFX P4). (b) OGG-сжатие —
+отклонено: 4.8 MB WAV не давят на мобильный бюджет (P16), OGG-
+декодер в wasm-риге непроверен (не валидировать то, что не
+нужно). (c) Music-состояние в AudioManager (авто-pick) —
+отклонено: менеджер не знает мир (ADR-019 «окно, не таймер»;
+факты у сцены). (d) Voice-бус — не создаём: голосовых реплик в
+MVP нет (текст); бус без контента = unnecessary system.
+(e) Settings-экран в P15 — отклонено: P14-экзит требует
+работающих volumes/mute; экранный путь (kit-вёрстка + API)
+небольшой, persistence всё равно P15.
+
+**Получено.** Полный audio pass (GDD §7): 5 вариаций + 6 ambient
++ stinger + 12 SFX + 3 буса + settings. Headless-контракт
+рига для аудио задокументирован (audio_env_test). Prototype-
+долги P4 (SfxBus/SfxLibrary) сняты — ASSET_STATUS: аудио
+= final. Mobile: 12 стримов ~4.8 MB RAM (11025 Hz mono),
+обработка = mix-инги Godot (лёгкая), battery-влияние
+измеряется в P16.

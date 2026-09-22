@@ -98,6 +98,10 @@ const _QUALITY_PRESET = preload("res://scripts/world/quality_preset.gd")
 const _QUALITY_LOW = preload("res://data/quality/low.tres")
 const _QUALITY_MEDIUM = preload("res://data/quality/medium.tres")
 const _QUALITY_HIGH = preload("res://data/quality/high.tres")
+# Phase 14 — the final audio (GDD §7): the buses/music/ambient/
+# stinger manager + the settings panel.
+const _AUDIO_MGR = preload("res://scripts/audio/audio_manager.gd")
+const _SETTINGS = preload("res://scripts/ui/settings_panel.gd")
 const _PALETTE = preload("res://data/visual/palette.tres")
 const _TEX_BANK = preload("res://scripts/world/texture_bank.gd")
 
@@ -153,6 +157,12 @@ var world_director: _WORLD_DIR
 var note_panel: _NOTE_PANEL
 var mystery: _MYSTERY_DIR
 var quality: _QUALITY_MGR = null
+# Phase 14: the audio (the buses + the music/ambient voices) and
+# the settings panel (F9, debug builds).
+var audio: _AUDIO_MGR = null
+var settings_panel: _SETTINGS = null
+var _f9_prev: bool = false
+var _boss_in_fight: bool = false
 var textures: _TEX_BANK = null
 var palette: Variant = _PALETTE
 var _f8_prev: bool = false
@@ -221,9 +231,17 @@ func _setup_combat(layout: _LAYOUT) -> void:
 	vfx = _VFX.new()
 	vfx.name = "VfxPool"
 	add_child(vfx)
+	# Phase 14: the audio manager first (its SFX bus must exist when
+	# the pool's _ready routes the players).
+	audio = _AUDIO_MGR.new()
+	audio.name = "AudioManager"
+	add_child(audio)
 	sfx = _SFX.new()
 	sfx.name = "SfxBus"
 	add_child(sfx)
+	settings_panel = _SETTINGS.new()
+	settings_panel.name = "SettingsPanel"
+	add_child(settings_panel)
 	vignette = _VIG.new()
 	vignette.name = "HurtVignette"
 	add_child(vignette)
@@ -557,7 +575,11 @@ func _enter_level(area_id: StringName) -> void:
 	# (the reveal lands when the ghost is actually in this level).
 	if ghost_director != null and ghost_director.has_active_ghost():
 		mystery.reveal(&"m1_passive", progress.ws, run_manager.run_id)
+		# Phase 14: the Echo walks with you (its voice + the variation).
+		sfx.play(&"echo")
 	_place_child(area_id)
+	# Phase 14: the audio follows the world (the zone bed + music).
+	_update_audio()
 	if is_camp:
 		director.load_nav(_NAV_DATA)
 		director.start(_SPAWN_TABLE)
@@ -650,6 +672,7 @@ func _on_write_requested(stand_id: StringName) -> void:
 
 
 func _on_player_note_read(stand_id: StringName, first_time: bool) -> void:
+	sfx.play(&"note")
 	if first_time:
 		run_manager.record_event(_EV.Type.ECHO_NOTE_READ, 0,
 				position_of_player(), 0, 0)
@@ -746,6 +769,8 @@ func _on_door_crossed(area_id: StringName, room_id: StringName,
 		return
 	_enter_level(target)
 	player.get_port().set_position(t_rp.origin + td.local_pos)
+	# Phase 14: the heavy door (the cross that changes the zone).
+	sfx.play(&"door")
 
 
 # P12 (BOSS_DESIGN §2.1): the deep mine (the 3rd room of the mine
@@ -770,6 +795,38 @@ func _debug_quality_cycle() -> void:
 		zone_world.set_light_budget(quality.light_budget())
 		toast.show_text("Quality: " + next.display_name, 1.5)
 	_f8_prev = pressed
+
+
+# Phase 14 — the audio seams. The scene owns the facts; the manager
+# owns the playback (ADR-033).
+func _update_audio() -> void:
+	if audio == null:
+		return
+	audio.set_zone(_current_area)
+	_update_audio_music()
+
+
+func _update_audio_music() -> void:
+	if audio == null:
+		return
+	var ghost: bool = ghost_director != null \
+			and ghost_director.has_active_ghost()
+	audio.update_music(_current_area, _boss_in_fight,
+			progress.ws.flag(&"boss_defeated"), ghost)
+
+
+# F9 (debug builds only): the audio settings panel.
+func _debug_settings() -> void:
+	if not OS.is_debug_build():
+		return
+	var pressed: bool = Input.is_action_just_pressed("debug_f9")
+	if pressed and not _f9_prev and settings_panel != null:
+		if settings_panel.visible:
+			settings_panel.close()
+		else:
+			sfx.play(&"ui")
+			settings_panel.show_panel(audio)
+	_f9_prev = pressed
 
 
 func _check_mine_deep(delta: float) -> void:
@@ -873,7 +930,12 @@ func _set_up_undercroft() -> void:
 		if progress.ws.is_weapon_found(&"weapon_first_blade"):
 			progress.ws.set_flag(&"first_blade_taken")
 			boss.blade_taken_changed(true)
+		# Phase 14: the reveal (the stinger over the monochrome arena).
+		_boss_in_fight = true
+		if audio != null:
+			audio.play_stinger()
 		boss.start_fight()
+		_update_audio_music()
 
 
 func _on_boss_defeated() -> void:
@@ -881,6 +943,10 @@ func _on_boss_defeated() -> void:
 	# read); K7 (the gate glow, the thinner fog) is flag-driven on
 	# the gate's next entry (the world remembers, P10).
 	progress.ws.set_flag(&"boss_defeated")
+	# Phase 14: the seal breaks; the final scene is the Undercroft.
+	_boss_in_fight = false
+	sfx.play(&"seal")
+	_update_audio_music()
 	toast.show_text("The door is open.", 3.0)
 	toast.show_text("The fog thins.", 3.5)
 
@@ -1038,6 +1104,8 @@ func _begin_new_run() -> void:
 
 
 func _on_player_died(_pos: Vector3) -> void:
+	# Phase 14: the fall (the body, not a voice — "Again?" is text).
+	sfx.play(&"death")
 	# Phase 8 (A19): the run ends. The run system gets the death
 	# (record + flags + the run record) BEFORE the death screen, so
 	# the "what changed" lines are ready when the respawn comes.
@@ -1256,6 +1324,7 @@ func _on_level_freed() -> void:
 func _process(delta: float) -> void:
 	_check_mine_deep(delta)
 	_debug_quality_cycle()
+	_debug_settings()
 	if _a1_rect != null and _a1_left > 0.0:
 		_a1_left -= delta
 		var k: float = clampf(1.0 - _a1_left / A1_FADE_SECONDS, 0.0, 1.0)

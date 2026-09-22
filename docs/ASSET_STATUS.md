@@ -56,16 +56,19 @@
 | Единый UI-kit (общие цвета/радиусы/шрифты) | scripts/ui/ | **prototype → final (P13-батч 3)** | сейчас цвета ad-hoc per-screen; батч 3: kit + чек 20:9 |
 | Touch-layout (joystick/cam/actions) | touch_layout.gd | **final** | normalized 16:9–20:9 + safe-area + thumb-зоны (ADR-021) |
 
-## 4. Аудио (scope P14)
+## 4. Аудио (P14 закрыт)
 
 | Элемент | Где | Статус | Примечание |
 |---|---|---|---|
-| SFX (swing/hit/hurt/shot/pickup…) | sfx_library.gd | **prototype** | процедурные (математика), детерминированно; P14: финальные через gen_sfx.py/.strm |
-| Музыка/эмбиенс | — | **prototype** | отсутствует; P14 |
+| «The Wound» ×5 вариаций (Normal/Memory/Echo/Archivist/Ending) | assets/audio/wound_*.wav | **final** | процедурная (gen_audio.py, seed, byte-стабильно), 11025 Hz, ~24 c loop, GDD §7 |
+| Ambient-слои (camp/wild/stone/mine/lake/undercroft) | assets/audio/amb_*.wav | **final** | там же; 16 c loop, seam crossfade; зоны делят слои (wild: деревня/башня/мост; stone: храм/врата) |
+| Stinger (boss reveal) | assets/audio/stinger.wav | **final** | там же; 4 s one-shot |
+| SFX (12 кью: swing/hit/riposte/hurt/shot/pickup + door/seal/death/note/ui/echo) | sfx_library.gd | **final** | процедурные в рантайме (математика, seed, детерминированно) |
+| AudioManager (buses Music/SFX/Ambient, crossfade, stinger, settings) | scripts/audio/ | **final** | P14: ADR-033; settings-экран = settings_panel (F9 debug) |
 
-A-элементы закрыты в P14 (фаза аудио) — P13-экзит «никаких prototype-элементов»
-относится к визуальным элементам (scope P13: pass по сценам, UI, mobile-графика,
-camera, color grade).
+Примечание: «prototype-статус» SFX из P4 снят в P14 — полная сетка кью +
+маршрутизация в SFX-бус + уровни/мьют в settings. Голосовые реплики —
+текст (toast/death screen), не аудио (MVP без TTS/войса — осознано).
 
 ## 5. Чек P13-экзита (визуал)
 
